@@ -118,11 +118,48 @@ export type SoftphoneCredentials = {
     wss_url: string | null;
 };
 
+export type CallbackStatus = "pending" | "in_progress" | "done" | "failed" | "canceled";
+
+export type Callback = {
+    id: number;
+    phone: string;
+    customer_name: string | null;
+    reason: string | null;
+    source: "ai_agent" | "queue_timeout" | "manual";
+    assign_to: "human" | "ai";
+    queue_slug: string | null;
+    workflow_id: number | null;
+    status: CallbackStatus;
+    scheduled_at: string;
+    attempts: number;
+    max_attempts: number;
+    last_attempt_at: string | null;
+    origin_workflow_run_id: number | null;
+    callback_workflow_run_id: number | null;
+    handoff_id: string | null;
+    assigned_agent_id: number | null;
+    outcome: string | null;
+    notes: string | null;
+    created_at: string | null;
+    completed_at: string | null;
+};
+
+export type CreateCallback = {
+    phone: string;
+    customer_name?: string | null;
+    reason?: string | null;
+    scheduled_at?: string | null;
+    assign_to?: "human" | "ai";
+    queue_slug?: string | null;
+    workflow_id?: number | null;
+    notes?: string | null;
+};
+
 export type Handoff = {
     id: string;
     queue_slug: string | null;
     caller_number: string | null;
-    status: "pending" | "answered";
+    status: "pending" | "answered" | "abandoned";
     summary_status: "pending" | "ready" | "failed" | "skipped";
     reason: string | null;
     summary: string | null;
@@ -260,6 +297,16 @@ export const enterpriseApi = {
     listHandoffs: () => call<Handoff[]>("get", `${BASE}/contact-center/handoffs`),
     acceptHandoff: (id: string) =>
         call<Handoff>("post", `${BASE}/contact-center/handoffs/${encodeURIComponent(id)}/accept`),
+    listCallbacks: (view: "open" | "closed" | "all" = "open", mine = false) =>
+        call<Callback[]>("get", `${BASE}/contact-center/callbacks?view=${view}${mine ? "&mine=true" : ""}`),
+    createCallback: (body: CreateCallback) => call<Callback>("post", `${BASE}/contact-center/callbacks`, body),
+    updateCallback: (id: number, body: Partial<CreateCallback> & { status?: CallbackStatus; outcome?: string }) =>
+        call<Callback>("patch", `${BASE}/contact-center/callbacks/${id}`, body),
+    dialCallback: (id: number) => call<Callback>("post", `${BASE}/contact-center/callbacks/${id}/dial`),
+    completeCallback: (
+        id: number,
+        body: { result: "reached" | "no_answer" | "wrong_number"; outcome?: string; retry_in_minutes?: number },
+    ) => call<Callback>("post", `${BASE}/contact-center/callbacks/${id}/complete`, body),
     mySeat: () => call<Agent | null>("get", `${BASE}/contact-center/me`),
 
     // Customer memory

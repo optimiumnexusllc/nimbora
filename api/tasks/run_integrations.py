@@ -172,10 +172,15 @@ async def _update_usage_info_with_qa_tokens(
 
 
 async def _remember_customer(workflow_run, organization_id: int) -> None:
-    """Update the caller's profile and history (customer memory)."""
+    """Update the caller's profile and history (customer memory).
+
+    Also closes (or reschedules) the callback this call was placing, if any.
+    """
+    from api.services.contact_center.callbacks import complete_ai_callback_from_run
     from api.services.customer_memory.service import record_call_in_memory
 
     await record_call_in_memory(workflow_run, organization_id)
+    await complete_ai_callback_from_run(workflow_run, organization_id)
 
 
 async def run_integrations_post_workflow_run(_ctx, workflow_run_id: int):

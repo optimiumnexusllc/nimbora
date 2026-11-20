@@ -44,8 +44,11 @@ async def create_tool(request: CreateToolRequest) -> dict[str, Any]:
       organization; ask the user to create/select it in the UI first.
     - `recording_not_found` — a message's recording_id is not in this
       organization; ask the user to upload/select a recording in the UI.
-    - `destination_not_found` — a `transfer_agent` tool's `workflow_id` is
-      not an agent in this organization; confirm the id with `list_workflows`.
+    - `destination_not_found` — a `transfer_agent` or `schedule_callback`
+      tool's `workflow_id` is not an agent in this organization; confirm the
+      id with `list_workflows`.
+    - `queue_not_found` — a `schedule_callback` tool's `queue_slug` is not a
+      contact-center queue of this organization.
     - `organization_required` — the API key user has no selected organization.
     - `create_failed` — unexpected persistence or backend failure; retry once,
       then surface the error.

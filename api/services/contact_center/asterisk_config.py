@@ -68,6 +68,7 @@ OVERFLOW_NUMBER_RE = re.compile(r"^\+?[0-9]{2,15}$")
 _SAFE_TEXT_RE = re.compile(r"[^\w \-\.'À-ÿ]", re.UNICODE)
 
 HANDOFF_GOSUB_CONTEXT = "nimbora-handoff"
+CALLBACK_DIALPLAN_CONTEXT = "nimbora-callback-out"
 
 _reload_lock = asyncio.Lock()
 
@@ -229,6 +230,16 @@ def render_extensions(
         "; header and shows the AI agent's handoff card.",
         f'exten => s,1,ExecIf($["${{{HANDOFF_CHANNEL_VARIABLE}}}" != ""]?Set(PJSIP_HEADER(add,{HANDOFF_HEADER})=${{{HANDOFF_CHANNEL_VARIABLE}}}))',
         " same => n,Return()",
+        "",
+        f"[{CALLBACK_DIALPLAN_CONTEXT}]",
+        "; Click-to-call callbacks: reached only by the API's ARI originate,",
+        "; once the agent has answered. No endpoint uses this context.",
+        "exten => _+X.,1,NoOp(NIMBORA callback ${NIMBORA_CALLBACK})",
+        " same => n,Dial(Local/${EXTEN}@nimbora-outbound,60)",
+        " same => n,Hangup()",
+        "exten => _X.,1,NoOp(NIMBORA callback ${NIMBORA_CALLBACK})",
+        " same => n,Dial(Local/${EXTEN}@nimbora-outbound,60)",
+        " same => n,Hangup()",
         "",
     ]
 

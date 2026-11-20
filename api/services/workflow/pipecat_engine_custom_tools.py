@@ -264,6 +264,9 @@ class CustomToolManager:
         elif tool.category == ToolCategory.TRANSFER_CALL.value:
             timeout_secs = self._transfer_handler_timeout_secs(tool)
             handler = self._create_transfer_call_handler(tool, function_name)
+        elif tool.category == ToolCategory.SCHEDULE_CALLBACK.value:
+            timeout_secs = 10.0
+            handler = self._create_schedule_callback_handler(tool, function_name)
         else:
             timeout_ms = ((tool.definition or {}).get("config", {}) or {}).get(
                 "timeout_ms", 5000
@@ -359,6 +362,36 @@ class CustomToolManager:
                 )
 
         return http_tool_handler
+
+    def _create_schedule_callback_handler(self, tool: Any, function_name: str):
+        """Record a callback promise (team list or a later AI call)."""
+
+        async def schedule_callback_handler(
+            function_call_params: FunctionCallParams,
+        ) -> None:
+            from api.services.contact_center.callbacks import (
+                schedule_callback_from_call,
+            )
+
+            logger.info(f"Schedule callback EXECUTED: {function_name}")
+            try:
+                organization_id = await self.get_organization_id()
+                workflow_run = await db_client.get_workflow_run(
+                    self._engine._workflow_run_id, organization_id=organization_id
+                )
+                result = await schedule_callback_from_call(
+                    organization_id=organization_id,
+                    workflow_run=workflow_run,
+                    gathered_context=getattr(self._engine, "_gathered_context", None),
+                    config=((tool.definition or {}).get("config") or {}),
+                    arguments=function_call_params.arguments or {},
+                )
+            except Exception as e:
+                logger.error(f"Schedule callback '{function_name}' failed: {e}")
+                result = {"status": "error", "error": "Callback could not be saved"}
+            await function_call_params.result_callback(result)
+
+        return schedule_callback_handler
 
     def _create_mcp_handler(self, session: "McpToolSession", function_name: str):
         """Create a handler that proxies an LLM function call to a live MCP

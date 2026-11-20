@@ -3,6 +3,12 @@ export { EndCallToolConfig, type EndCallToolConfigProps } from "./EndCallToolCon
 export { buildHttpToolTestSnapshot, HttpToolTestDialog } from "./http-tool-test";
 export { HttpApiToolConfig, type HttpApiToolConfigProps, type HttpBodyFormat } from "./HttpApiToolConfig";
 export {
+    type CallbackAssignee,
+    type CallbackQueueOption,
+    ScheduleCallbackToolConfig,
+    type ScheduleCallbackToolConfigProps,
+} from "./ScheduleCallbackToolConfig";
+export {
     TransferAgentToolConfig,
     type TransferAgentToolConfigProps,
     type TransferAgentWorkflowOption,

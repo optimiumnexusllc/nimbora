@@ -153,6 +153,35 @@ def tool_to_function_schema(tool: Any) -> dict[str, Any]:
         }
         required.append("reason")
 
+    if definition.get("type") == "schedule_callback":
+        properties = {
+            "preferred_time": {
+                "type": "string",
+                "description": (
+                    "When the customer wants to be called back, as ISO 8601 local "
+                    "date/time (e.g. 2026-11-21T10:00), or 'asap'. Resolve "
+                    "relative times ('demain matin', 'in two hours') from the "
+                    "current date before calling."
+                ),
+            },
+            "reason": {
+                "type": "string",
+                "description": "Why the customer should be called back, in one sentence.",
+            },
+            "customer_name": {
+                "type": "string",
+                "description": "Customer's name if known.",
+            },
+            "phone_number": {
+                "type": "string",
+                "description": (
+                    "Only if the customer gives a different number to call back; "
+                    "omit to use the number of the current call."
+                ),
+            },
+        }
+        required = ["preferred_time", "reason"]
+
     function_name = custom_tool_function_name(tool.name)
 
     return {

@@ -33,6 +33,7 @@ ToolCategoryValue = Literal[
     "transfer_call",
     "transfer_agent",
     "calculator",
+    "schedule_callback",
     "native",
     "integration",
     "mcp",
@@ -578,6 +579,8 @@ class ToolDefinitionBase(BaseModel):
         tool_type = self.type
         if tool_type == "calculator" and self.messages:
             raise ValueError("Calculator tools do not support messages")
+        if tool_type == "schedule_callback" and self.messages:
+            raise ValueError("Schedule callback tools do not support messages")
         if tool_type in {"end_call", "transfer_call", "transfer_agent"}:
             if len(self.messages) > 1 or any(m.event != "start" for m in self.messages):
                 raise ValueError("This tool supports at most one start message")
@@ -720,6 +723,58 @@ class CalculatorToolDefinition(ToolDefinitionBase):
     type: Literal["calculator"] = Field(description="Tool type.")
 
 
+class ScheduleCallbackConfig(BaseModel):
+    """Configuration for Schedule Callback tools.
+
+    The model fills the time and the reason during the call; who calls back
+    is fixed here: the human team (optionally a given queue) or an AI agent.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    assign_to: Literal["human", "ai"] = Field(
+        default="human",
+        description=(
+            "Who calls the customer back: 'human' puts the callback in the "
+            "contact-center team's list, 'ai' has workflow_id place the call "
+            "automatically at the scheduled time."
+        ),
+    )
+    queue_slug: str | None = Field(
+        default=None,
+        max_length=48,
+        description="Contact-center queue whose agents should call back (human).",
+    )
+    workflow_id: int | None = Field(
+        default=None,
+        description="NIMBORA agent that places the callback. Required with 'ai'.",
+    )
+    default_delay_minutes: int = Field(
+        default=0,
+        ge=0,
+        le=10080,
+        description="Delay applied when the customer asks to be called 'asap'.",
+    )
+
+    @model_validator(mode="after")
+    def _ai_needs_agent(self):
+        if self.assign_to == "ai" and not self.workflow_id:
+            raise ValueError("workflow_id is required when assign_to is 'ai'")
+        if self.assign_to == "human" and self.workflow_id is not None:
+            raise ValueError("workflow_id is only accepted when assign_to is 'ai'")
+        return self
+
+
+class ScheduleCallbackToolDefinition(ToolDefinitionBase):
+    """Tool definition for Schedule Callback tools."""
+
+    type: Literal["schedule_callback"] = Field(description="Tool type.")
+    config: ScheduleCallbackConfig = Field(
+        default_factory=ScheduleCallbackConfig,
+        description="Schedule Callback configuration.",
+    )
+
+
 class McpToolDefinition(ToolDefinitionBase):
     """Persisted MCP tool definition."""
 
@@ -733,6 +788,7 @@ ToolDefinition = Annotated[
     | TransferCallToolDefinition
     | TransferAgentToolDefinition
     | CalculatorToolDefinition
+    | ScheduleCallbackToolDefinition
     | McpToolDefinition,
     Field(discriminator="type"),
 ]

@@ -127,6 +127,94 @@ export type ActiveCallsResponse = {
 };
 
 /**
+ * AgentCreateRequest
+ */
+export type AgentCreateRequest = {
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Extension
+     */
+    extension: string;
+    /**
+     * User Id
+     */
+    user_id?: number | null;
+};
+
+/**
+ * AgentResponse
+ */
+export type AgentResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Extension
+     */
+    extension: string;
+    /**
+     * Sip Username
+     */
+    sip_username: string;
+    /**
+     * User Id
+     */
+    user_id: number | null;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Queues
+     */
+    queues: Array<string>;
+};
+
+/**
+ * AgentSummary
+ */
+export type AgentSummary = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Display Name
+     */
+    display_name: string;
+    /**
+     * Extension
+     */
+    extension: string;
+};
+
+/**
+ * AgentUpdateRequest
+ */
+export type AgentUpdateRequest = {
+    /**
+     * Display Name
+     */
+    display_name?: string | null;
+    /**
+     * User Id
+     */
+    user_id?: number | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+};
+
+/**
  * AmbientNoiseConfigurationDefaults
  */
 export type AmbientNoiseConfigurationDefaults = {
@@ -756,6 +844,96 @@ export type CallEventsSettings = {
 export type CallType = 'inbound' | 'outbound';
 
 /**
+ * CallbackResponse
+ */
+export type CallbackResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Phone
+     */
+    phone: string;
+    /**
+     * Customer Name
+     */
+    customer_name: string | null;
+    /**
+     * Reason
+     */
+    reason: string | null;
+    /**
+     * Source
+     */
+    source: string;
+    /**
+     * Assign To
+     */
+    assign_to: string;
+    /**
+     * Queue Slug
+     */
+    queue_slug: string | null;
+    /**
+     * Workflow Id
+     */
+    workflow_id: number | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Scheduled At
+     */
+    scheduled_at: string;
+    /**
+     * Attempts
+     */
+    attempts: number;
+    /**
+     * Max Attempts
+     */
+    max_attempts: number;
+    /**
+     * Last Attempt At
+     */
+    last_attempt_at: string | null;
+    /**
+     * Origin Workflow Run Id
+     */
+    origin_workflow_run_id: number | null;
+    /**
+     * Callback Workflow Run Id
+     */
+    callback_workflow_run_id: number | null;
+    /**
+     * Handoff Id
+     */
+    handoff_id: string | null;
+    /**
+     * Assigned Agent Id
+     */
+    assigned_agent_id: number | null;
+    /**
+     * Outcome
+     */
+    outcome: string | null;
+    /**
+     * Notes
+     */
+    notes: string | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+    /**
+     * Completed At
+     */
+    completed_at: string | null;
+};
+
+/**
  * CampaignDefaultsResponse
  */
 export type CampaignDefaultsResponse = {
@@ -1023,6 +1201,16 @@ export type CampaignsResponse = {
 };
 
 /**
+ * CheckoutRequest
+ */
+export type CheckoutRequest = {
+    /**
+     * Plan Code
+     */
+    plan_code: string;
+};
+
+/**
  * ChunkResponseSchema
  *
  * Response schema for a document chunk.
@@ -1195,6 +1383,24 @@ export type CloudonixConfigurationRequest = {
 };
 
 /**
+ * CompleteCallbackRequest
+ */
+export type CompleteCallbackRequest = {
+    /**
+     * Result
+     */
+    result: 'reached' | 'no_answer' | 'wrong_number';
+    /**
+     * Outcome
+     */
+    outcome?: string | null;
+    /**
+     * Retry In Minutes
+     */
+    retry_in_minutes?: number | null;
+};
+
+/**
  * ContextDestinationMappingConfig
  *
  * Resolve a transfer destination from gathered or initial context.
@@ -1302,6 +1508,44 @@ export type CreateApiKeyResponse = {
      * Created At
      */
     created_at: string;
+};
+
+/**
+ * CreateCallbackRequest
+ */
+export type CreateCallbackRequest = {
+    /**
+     * Phone
+     */
+    phone: string;
+    /**
+     * Customer Name
+     */
+    customer_name?: string | null;
+    /**
+     * Reason
+     */
+    reason?: string | null;
+    /**
+     * Scheduled At
+     */
+    scheduled_at?: string | null;
+    /**
+     * Assign To
+     */
+    assign_to?: 'human' | 'ai';
+    /**
+     * Queue Slug
+     */
+    queue_slug?: string | null;
+    /**
+     * Workflow Id
+     */
+    workflow_id?: number | null;
+    /**
+     * Notes
+     */
+    notes?: string | null;
 };
 
 /**
@@ -1466,7 +1710,7 @@ export type CreateToolRequest = {
      *
      * Tool category. Must match definition.type.
      */
-    category?: 'http_api' | 'end_call' | 'transfer_call' | 'transfer_agent' | 'calculator' | 'native' | 'integration' | 'mcp';
+    category?: 'http_api' | 'end_call' | 'transfer_call' | 'transfer_agent' | 'calculator' | 'schedule_callback' | 'native' | 'integration' | 'mcp';
     /**
      * Icon
      *
@@ -1495,6 +1739,8 @@ export type CreateToolRequest = {
     } & TransferAgentToolDefinition) | ({
         type: 'calculator';
     } & CalculatorToolDefinition) | ({
+        type: 'schedule_callback';
+    } & ScheduleCallbackToolDefinition) | ({
         type: 'mcp';
     } & McpToolDefinition);
 };
@@ -1644,7 +1890,7 @@ export type CurrentUsageResponse = {
      */
     period_end: string;
     /**
-     * Used NIMBORA Tokens
+     * Used Nimbora Tokens
      */
     used_nimbora_tokens: number;
     /**
@@ -1663,6 +1909,178 @@ export type CurrentUsageResponse = {
      * Price Per Second Usd
      */
     price_per_second_usd?: number | null;
+};
+
+/**
+ * CustomerCreateRequest
+ */
+export type CustomerCreateRequest = {
+    /**
+     * Phone
+     */
+    phone: string;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Tags
+     */
+    tags?: Array<string>;
+};
+
+/**
+ * CustomerDetailResponse
+ */
+export type CustomerDetailResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Phone
+     */
+    phone: string;
+    /**
+     * Name
+     */
+    name: string | null;
+    /**
+     * Notes
+     */
+    notes: string | null;
+    /**
+     * Tags
+     */
+    tags: Array<string>;
+    /**
+     * Attributes
+     */
+    attributes: {
+        [key: string]: unknown;
+    };
+    /**
+     * Last Summary
+     */
+    last_summary: string | null;
+    /**
+     * Last Sentiment
+     */
+    last_sentiment: string | null;
+    /**
+     * Total Calls
+     */
+    total_calls: number;
+    /**
+     * First Seen At
+     */
+    first_seen_at: string | null;
+    /**
+     * Last Seen At
+     */
+    last_seen_at: string | null;
+    /**
+     * Interactions
+     */
+    interactions: Array<InteractionResponse>;
+};
+
+/**
+ * CustomerListResponse
+ */
+export type CustomerListResponse = {
+    /**
+     * Customers
+     */
+    customers: Array<CustomerResponse>;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Memory Enabled
+     */
+    memory_enabled: boolean;
+};
+
+/**
+ * CustomerResponse
+ */
+export type CustomerResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Phone
+     */
+    phone: string;
+    /**
+     * Name
+     */
+    name: string | null;
+    /**
+     * Notes
+     */
+    notes: string | null;
+    /**
+     * Tags
+     */
+    tags: Array<string>;
+    /**
+     * Attributes
+     */
+    attributes: {
+        [key: string]: unknown;
+    };
+    /**
+     * Last Summary
+     */
+    last_summary: string | null;
+    /**
+     * Last Sentiment
+     */
+    last_sentiment: string | null;
+    /**
+     * Total Calls
+     */
+    total_calls: number;
+    /**
+     * First Seen At
+     */
+    first_seen_at: string | null;
+    /**
+     * Last Seen At
+     */
+    last_seen_at: string | null;
+};
+
+/**
+ * CustomerUpdateRequest
+ */
+export type CustomerUpdateRequest = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Tags
+     */
+    tags?: Array<string> | null;
+    /**
+     * Attributes
+     */
+    attributes?: {
+        [key: string]: unknown;
+    } | null;
 };
 
 /**
@@ -1718,7 +2136,7 @@ export type DailyUsageBreakdownResponse = {
      */
     total_cost_usd?: number | null;
     /**
-     * Total NIMBORA Tokens
+     * Total Nimbora Tokens
      */
     total_nimbora_tokens: number;
     /**
@@ -1744,7 +2162,7 @@ export type DailyUsageItem = {
      */
     cost_usd?: number | null;
     /**
-     * NIMBORA Tokens
+     * Nimbora Tokens
      */
     nimbora_tokens: number;
     /**
@@ -2509,6 +2927,76 @@ export type HttpValidationError = {
 };
 
 /**
+ * HandoffResponse
+ */
+export type HandoffResponse = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Queue Slug
+     */
+    queue_slug: string | null;
+    /**
+     * Caller Number
+     */
+    caller_number: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Summary Status
+     */
+    summary_status: string;
+    /**
+     * Reason
+     */
+    reason: string | null;
+    /**
+     * Summary
+     */
+    summary: string | null;
+    /**
+     * Customer Name
+     */
+    customer_name: string | null;
+    /**
+     * Sentiment
+     */
+    sentiment: string | null;
+    /**
+     * Next Step
+     */
+    next_step: string | null;
+    /**
+     * Collected Data
+     */
+    collected_data: {
+        [key: string]: unknown;
+    };
+    /**
+     * Transcript
+     */
+    transcript: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Workflow Run Id
+     */
+    workflow_run_id: number | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+    /**
+     * Answered At
+     */
+    answered_at: string | null;
+};
+
+/**
  * HealthResponse
  */
 export type HealthResponse = {
@@ -2822,6 +3310,52 @@ export type InitiateCallRequest = {
 };
 
 /**
+ * InteractionResponse
+ */
+export type InteractionResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Workflow Run Id
+     */
+    workflow_run_id: number | null;
+    /**
+     * Direction
+     */
+    direction: string | null;
+    /**
+     * Agent Name
+     */
+    agent_name: string | null;
+    /**
+     * Summary
+     */
+    summary: string | null;
+    /**
+     * Sentiment
+     */
+    sentiment: string | null;
+    /**
+     * Outcome
+     */
+    outcome: string | null;
+    /**
+     * Transferred To Queue
+     */
+    transferred_to_queue: string | null;
+    /**
+     * Duration Seconds
+     */
+    duration_seconds: number | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+};
+
+/**
  * ItemKind
  */
 export type ItemKind = 'node' | 'edge' | 'workflow';
@@ -2883,6 +3417,32 @@ export type LangfuseCredentialsResponse = {
 };
 
 /**
+ * LanguageOut
+ */
+export type LanguageOut = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Stt Language
+     */
+    stt_language: string;
+    /**
+     * Voices
+     */
+    voices: Array<VoiceOut>;
+    /**
+     * Note
+     */
+    note: string;
+};
+
+/**
  * LastCampaignSettingsResponse
  */
 export type LastCampaignSettingsResponse = {
@@ -2897,6 +3457,36 @@ export type LastCampaignSettingsResponse = {
     rate_limit_per_second?: number;
     schedule_config?: ScheduleConfigResponse | null;
     circuit_breaker?: CircuitBreakerConfigResponse | null;
+};
+
+/**
+ * LocalAIInfo
+ */
+export type LocalAiInfo = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
+    /**
+     * Default Language
+     */
+    default_language: string;
+    /**
+     * Llm Model
+     */
+    llm_model: string;
+    /**
+     * Stt Model
+     */
+    stt_model: string;
+    /**
+     * Languages
+     */
+    languages: Array<LanguageOut>;
+    /**
+     * Stt Languages
+     */
+    stt_languages: Array<string>;
 };
 
 /**
@@ -3168,6 +3758,16 @@ export type McpToolDefinition = {
      * MCP server configuration.
      */
     config: McpToolConfig;
+};
+
+/**
+ * MemorySettings
+ */
+export type MemorySettings = {
+    /**
+     * Enabled
+     */
+    enabled: boolean;
 };
 
 /**
@@ -3836,6 +4436,146 @@ export type PhoneNumberUpdateRequest = {
     extra_metadata?: {
         [key: string]: unknown;
     } | null;
+};
+
+/**
+ * PlanResponse
+ */
+export type PlanResponse = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description: string | null;
+    /**
+     * Currency
+     */
+    currency: string;
+    /**
+     * Monthly Price Cents
+     */
+    monthly_price_cents: number;
+    /**
+     * Included Minutes
+     */
+    included_minutes: number | null;
+    /**
+     * Overage Price Cents Per Minute
+     */
+    overage_price_cents_per_minute: number | null;
+    /**
+     * Max Concurrent Calls
+     */
+    max_concurrent_calls: number | null;
+    /**
+     * Max Agents
+     */
+    max_agents: number | null;
+    /**
+     * Max Human Seats
+     */
+    max_human_seats: number | null;
+    /**
+     * Max Campaigns
+     */
+    max_campaigns: number | null;
+    /**
+     * Features
+     */
+    features: {
+        [key: string]: boolean;
+    };
+    /**
+     * Purchasable
+     */
+    purchasable: boolean;
+    /**
+     * Is Public
+     */
+    is_public: boolean;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+};
+
+/**
+ * PlanUpdateRequest
+ */
+export type PlanUpdateRequest = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Currency
+     */
+    currency?: string | null;
+    /**
+     * Monthly Price Cents
+     */
+    monthly_price_cents?: number | null;
+    /**
+     * Included Minutes
+     */
+    included_minutes?: number | null;
+    /**
+     * Overage Price Cents Per Minute
+     */
+    overage_price_cents_per_minute?: number | null;
+    /**
+     * Max Concurrent Calls
+     */
+    max_concurrent_calls?: number | null;
+    /**
+     * Max Agents
+     */
+    max_agents?: number | null;
+    /**
+     * Max Human Seats
+     */
+    max_human_seats?: number | null;
+    /**
+     * Max Campaigns
+     */
+    max_campaigns?: number | null;
+    /**
+     * Features
+     */
+    features?: {
+        [key: string]: boolean;
+    } | null;
+    /**
+     * Stripe Price Id
+     */
+    stripe_price_id?: string | null;
+    /**
+     * Is Public
+     */
+    is_public?: boolean | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Sort Order
+     */
+    sort_order?: number | null;
+    /**
+     * Unlimited
+     */
+    unlimited?: Array<'included_minutes' | 'max_concurrent_calls' | 'max_agents' | 'max_human_seats' | 'max_campaigns'>;
 };
 
 /**
@@ -4538,6 +5278,146 @@ export type PublishWorkflowRequest = {
 };
 
 /**
+ * QueueCreateRequest
+ */
+export type QueueCreateRequest = {
+    /**
+     * Slug
+     *
+     * Short identifier used in transfers: queue:<slug>
+     */
+    slug: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Strategy
+     */
+    strategy?: 'fewestcalls' | 'leastrecent' | 'linear' | 'random' | 'ringall' | 'rrmemory' | 'wrandom';
+    /**
+     * Ring Timeout Seconds
+     */
+    ring_timeout_seconds?: number;
+    /**
+     * Max Wait Seconds
+     */
+    max_wait_seconds?: number;
+    /**
+     * Wrapup Seconds
+     */
+    wrapup_seconds?: number;
+    /**
+     * Announce Position
+     */
+    announce_position?: boolean;
+    /**
+     * Overflow Destination
+     */
+    overflow_destination?: string | null;
+    /**
+     * Agent Ids
+     */
+    agent_ids?: Array<number>;
+};
+
+/**
+ * QueueResponse
+ */
+export type QueueResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Slug
+     */
+    slug: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Transfer Destination
+     */
+    transfer_destination: string;
+    /**
+     * Strategy
+     */
+    strategy: string;
+    /**
+     * Ring Timeout Seconds
+     */
+    ring_timeout_seconds: number;
+    /**
+     * Max Wait Seconds
+     */
+    max_wait_seconds: number;
+    /**
+     * Wrapup Seconds
+     */
+    wrapup_seconds: number;
+    /**
+     * Announce Position
+     */
+    announce_position: boolean;
+    /**
+     * Overflow Destination
+     */
+    overflow_destination: string | null;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Agents
+     */
+    agents: Array<AgentSummary>;
+};
+
+/**
+ * QueueUpdateRequest
+ */
+export type QueueUpdateRequest = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Strategy
+     */
+    strategy?: 'fewestcalls' | 'leastrecent' | 'linear' | 'random' | 'ringall' | 'rrmemory' | 'wrandom' | null;
+    /**
+     * Ring Timeout Seconds
+     */
+    ring_timeout_seconds?: number | null;
+    /**
+     * Max Wait Seconds
+     */
+    max_wait_seconds?: number | null;
+    /**
+     * Wrapup Seconds
+     */
+    wrapup_seconds?: number | null;
+    /**
+     * Announce Position
+     */
+    announce_position?: boolean | null;
+    /**
+     * Overflow Destination
+     */
+    overflow_destination?: string | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
+    /**
+     * Agent Ids
+     */
+    agent_ids?: Array<number> | null;
+};
+
+/**
  * RecordingCreateRequestSchema
  *
  * Request schema for creating a recording record after upload.
@@ -4737,6 +5617,16 @@ export type RedialCampaignRequest = {
 };
 
 /**
+ * RedirectResponse
+ */
+export type RedirectResponse = {
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
  * RetryConfigRequest
  */
 export type RetryConfigRequest = {
@@ -4882,6 +5772,71 @@ export type SipTransportDetails = {
      * Uri
      */
     uri: string;
+};
+
+/**
+ * ScheduleCallbackConfig
+ *
+ * Configuration for Schedule Callback tools.
+ *
+ * The model fills the time and the reason during the call; who calls back
+ * is fixed here: the human team (optionally a given queue) or an AI agent.
+ */
+export type ScheduleCallbackConfig = {
+    /**
+     * Assign To
+     *
+     * Who calls the customer back: 'human' puts the callback in the contact-center team's list, 'ai' has workflow_id place the call automatically at the scheduled time.
+     */
+    assign_to?: 'human' | 'ai';
+    /**
+     * Queue Slug
+     *
+     * Contact-center queue whose agents should call back (human).
+     */
+    queue_slug?: string | null;
+    /**
+     * Workflow Id
+     *
+     * NIMBORA agent that places the callback. Required with 'ai'.
+     */
+    workflow_id?: number | null;
+    /**
+     * Default Delay Minutes
+     *
+     * Delay applied when the customer asks to be called 'asap'.
+     */
+    default_delay_minutes?: number;
+};
+
+/**
+ * ScheduleCallbackToolDefinition
+ *
+ * Tool definition for Schedule Callback tools.
+ */
+export type ScheduleCallbackToolDefinition = {
+    /**
+     * Schema Version
+     *
+     * Schema version.
+     */
+    schema_version?: number;
+    /**
+     * Messages
+     *
+     * Configured speech. An empty list disables announcements. HTTP/MCP choose one start entry and one entry per delayed timing at random. End-call and transfer tools support one start entry only.
+     */
+    messages?: Array<ToolStartTextMessage | ToolStartAudioMessage | ToolDelayedTextMessage | ToolDelayedAudioMessage>;
+    /**
+     * Type
+     *
+     * Tool type.
+     */
+    type: 'schedule_callback';
+    /**
+     * Schedule Callback configuration.
+     */
+    config?: ScheduleCallbackConfig;
 };
 
 /**
@@ -5042,6 +5997,113 @@ export type SignupRequest = {
      * Name
      */
     name?: string | null;
+};
+
+/**
+ * SoftphoneCredentials
+ *
+ * Shown once at creation or reset: the clear password is never stored.
+ */
+export type SoftphoneCredentials = {
+    agent: AgentResponse;
+    /**
+     * Sip Username
+     */
+    sip_username: string;
+    /**
+     * Sip Password
+     */
+    sip_password: string;
+    /**
+     * Sip Realm
+     */
+    sip_realm: string;
+    /**
+     * Wss Url
+     */
+    wss_url: string | null;
+};
+
+/**
+ * SubscriptionResponse
+ */
+export type SubscriptionResponse = {
+    /**
+     * Platform Name
+     */
+    platform_name: string;
+    /**
+     * Organization Id
+     */
+    organization_id: number;
+    /**
+     * Plan Code
+     */
+    plan_code: string;
+    /**
+     * Plan Name
+     */
+    plan_name: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Period Start
+     */
+    period_start: string;
+    /**
+     * Period End
+     */
+    period_end: string;
+    /**
+     * Trial Ends At
+     */
+    trial_ends_at: string | null;
+    /**
+     * Used Minutes
+     */
+    used_minutes: number;
+    /**
+     * Included Minutes
+     */
+    included_minutes: number | null;
+    /**
+     * Remaining Minutes
+     */
+    remaining_minutes: number | null;
+    /**
+     * Overage Minutes
+     */
+    overage_minutes: number;
+    /**
+     * Estimated Overage Cents
+     */
+    estimated_overage_cents: number;
+    /**
+     * Limits
+     */
+    limits: {
+        [key: string]: unknown;
+    };
+    /**
+     * Features
+     */
+    features: {
+        [key: string]: boolean;
+    };
+    /**
+     * Usable
+     */
+    usable: boolean;
+    /**
+     * Blocked Reason
+     */
+    blocked_reason: string | null;
+    /**
+     * Can Manage Billing
+     */
+    can_manage_billing: boolean;
 };
 
 /**
@@ -5604,6 +6666,124 @@ export type TelnyxConfigurationRequest = {
      * Webhook public key from Mission Control Portal → Keys & Credentials → Public Key. Used to verify Telnyx webhook signatures.
      */
     webhook_public_key?: string | null;
+};
+
+/**
+ * TenantListResponse
+ */
+export type TenantListResponse = {
+    /**
+     * Tenants
+     */
+    tenants: Array<TenantResponse>;
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Page
+     */
+    page: number;
+    /**
+     * Limit
+     */
+    limit: number;
+};
+
+/**
+ * TenantResponse
+ */
+export type TenantResponse = {
+    /**
+     * Organization Id
+     */
+    organization_id: number;
+    /**
+     * Company Name
+     */
+    company_name: string | null;
+    /**
+     * Billing Email
+     */
+    billing_email: string | null;
+    /**
+     * Member Emails
+     */
+    member_emails: Array<string>;
+    /**
+     * Plan Code
+     */
+    plan_code: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Current Period Start
+     */
+    current_period_start: string;
+    /**
+     * Current Period End
+     */
+    current_period_end: string;
+    /**
+     * Trial Ends At
+     */
+    trial_ends_at: string | null;
+    /**
+     * Limit Overrides
+     */
+    limit_overrides: {
+        [key: string]: unknown;
+    };
+    /**
+     * Stripe Customer Id
+     */
+    stripe_customer_id: string | null;
+    /**
+     * Notes
+     */
+    notes: string | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+};
+
+/**
+ * TenantUpdateRequest
+ */
+export type TenantUpdateRequest = {
+    /**
+     * Plan Code
+     */
+    plan_code?: string | null;
+    /**
+     * Status
+     */
+    status?: 'trialing' | 'active' | 'past_due' | 'suspended' | 'canceled' | null;
+    /**
+     * Trial Ends At
+     */
+    trial_ends_at?: string | null;
+    /**
+     * Limit Overrides
+     */
+    limit_overrides?: {
+        [key: string]: unknown;
+    } | null;
+    /**
+     * Company Name
+     */
+    company_name?: string | null;
+    /**
+     * Billing Email
+     */
+    billing_email?: string | null;
+    /**
+     * Notes
+     */
+    notes?: string | null;
 };
 
 /**
@@ -6466,6 +7646,48 @@ export type TwilioConfigurationRequest = {
 };
 
 /**
+ * UpdateCallbackRequest
+ */
+export type UpdateCallbackRequest = {
+    /**
+     * Customer Name
+     */
+    customer_name?: string | null;
+    /**
+     * Reason
+     */
+    reason?: string | null;
+    /**
+     * Scheduled At
+     */
+    scheduled_at?: string | null;
+    /**
+     * Assign To
+     */
+    assign_to?: 'human' | 'ai' | null;
+    /**
+     * Queue Slug
+     */
+    queue_slug?: string | null;
+    /**
+     * Workflow Id
+     */
+    workflow_id?: number | null;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Status
+     */
+    status?: 'pending' | 'done' | 'failed' | 'canceled' | null;
+    /**
+     * Outcome
+     */
+    outcome?: string | null;
+};
+
+/**
  * UpdateCampaignRequest
  */
 export type UpdateCampaignRequest = {
@@ -6556,6 +7778,8 @@ export type UpdateToolRequest = {
     } & TransferAgentToolDefinition) | ({
         type: 'calculator';
     } & CalculatorToolDefinition) | ({
+        type: 'schedule_callback';
+    } & ScheduleCallbackToolDefinition) | ({
         type: 'mcp';
     } & McpToolDefinition) | null;
     /**
@@ -6622,7 +7846,7 @@ export type UsageHistoryResponse = {
      */
     runs: Array<WorkflowRunUsageResponse>;
     /**
-     * Total NIMBORA Tokens
+     * Total Nimbora Tokens
      */
     total_nimbora_tokens: number;
     /**
@@ -6933,6 +8157,28 @@ export type VoiceInfo = {
      * Preview Url
      */
     preview_url?: string | null;
+};
+
+/**
+ * VoiceOut
+ */
+export type VoiceOut = {
+    /**
+     * Model
+     */
+    model: string;
+    /**
+     * Voice
+     */
+    voice: string;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Gender
+     */
+    gender: string;
 };
 
 /**
@@ -7681,7 +8927,7 @@ export type WorkflowRunUsageResponse = {
      */
     created_at: string;
     /**
-     * NIMBORA Token Usage
+     * Nimbora Token Usage
      */
     nimbora_token_usage: number;
     /**
@@ -17121,6 +18367,1537 @@ export type GetNodeTypeApiV1NodeTypesNameGetResponses = {
 
 export type GetNodeTypeApiV1NodeTypesNameGetResponse = GetNodeTypeApiV1NodeTypesNameGetResponses[keyof GetNodeTypeApiV1NodeTypesNameGetResponses];
 
+export type ListPublicPlansApiV1SaasPlansGetData = {
+    body?: never;
+    path?: never;
+    query?: never;
+    url: '/api/v1/saas/plans';
+};
+
+export type ListPublicPlansApiV1SaasPlansGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+};
+
+export type ListPublicPlansApiV1SaasPlansGetResponses = {
+    /**
+     * Response List Public Plans Api V1 Saas Plans Get
+     *
+     * Successful Response
+     */
+    200: Array<PlanResponse>;
+};
+
+export type ListPublicPlansApiV1SaasPlansGetResponse = ListPublicPlansApiV1SaasPlansGetResponses[keyof ListPublicPlansApiV1SaasPlansGetResponses];
+
+export type GetMySubscriptionApiV1SaasSubscriptionGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/saas/subscription';
+};
+
+export type GetMySubscriptionApiV1SaasSubscriptionGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetMySubscriptionApiV1SaasSubscriptionGetError = GetMySubscriptionApiV1SaasSubscriptionGetErrors[keyof GetMySubscriptionApiV1SaasSubscriptionGetErrors];
+
+export type GetMySubscriptionApiV1SaasSubscriptionGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubscriptionResponse;
+};
+
+export type GetMySubscriptionApiV1SaasSubscriptionGetResponse = GetMySubscriptionApiV1SaasSubscriptionGetResponses[keyof GetMySubscriptionApiV1SaasSubscriptionGetResponses];
+
+export type StartCheckoutApiV1SaasCheckoutPostData = {
+    body: CheckoutRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/saas/checkout';
+};
+
+export type StartCheckoutApiV1SaasCheckoutPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StartCheckoutApiV1SaasCheckoutPostError = StartCheckoutApiV1SaasCheckoutPostErrors[keyof StartCheckoutApiV1SaasCheckoutPostErrors];
+
+export type StartCheckoutApiV1SaasCheckoutPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RedirectResponse;
+};
+
+export type StartCheckoutApiV1SaasCheckoutPostResponse = StartCheckoutApiV1SaasCheckoutPostResponses[keyof StartCheckoutApiV1SaasCheckoutPostResponses];
+
+export type OpenBillingPortalApiV1SaasPortalPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/saas/portal';
+};
+
+export type OpenBillingPortalApiV1SaasPortalPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type OpenBillingPortalApiV1SaasPortalPostError = OpenBillingPortalApiV1SaasPortalPostErrors[keyof OpenBillingPortalApiV1SaasPortalPostErrors];
+
+export type OpenBillingPortalApiV1SaasPortalPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RedirectResponse;
+};
+
+export type OpenBillingPortalApiV1SaasPortalPostResponse = OpenBillingPortalApiV1SaasPortalPostResponses[keyof OpenBillingPortalApiV1SaasPortalPostResponses];
+
+export type AdminListPlansApiV1SaasAdminPlansGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/saas/admin/plans';
+};
+
+export type AdminListPlansApiV1SaasAdminPlansGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminListPlansApiV1SaasAdminPlansGetError = AdminListPlansApiV1SaasAdminPlansGetErrors[keyof AdminListPlansApiV1SaasAdminPlansGetErrors];
+
+export type AdminListPlansApiV1SaasAdminPlansGetResponses = {
+    /**
+     * Response Admin List Plans Api V1 Saas Admin Plans Get
+     *
+     * Successful Response
+     */
+    200: Array<PlanResponse>;
+};
+
+export type AdminListPlansApiV1SaasAdminPlansGetResponse = AdminListPlansApiV1SaasAdminPlansGetResponses[keyof AdminListPlansApiV1SaasAdminPlansGetResponses];
+
+export type AdminUpsertPlanApiV1SaasAdminPlansCodePutData = {
+    body: PlanUpdateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Code
+         */
+        code: string;
+    };
+    query?: never;
+    url: '/api/v1/saas/admin/plans/{code}';
+};
+
+export type AdminUpsertPlanApiV1SaasAdminPlansCodePutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminUpsertPlanApiV1SaasAdminPlansCodePutError = AdminUpsertPlanApiV1SaasAdminPlansCodePutErrors[keyof AdminUpsertPlanApiV1SaasAdminPlansCodePutErrors];
+
+export type AdminUpsertPlanApiV1SaasAdminPlansCodePutResponses = {
+    /**
+     * Successful Response
+     */
+    200: PlanResponse;
+};
+
+export type AdminUpsertPlanApiV1SaasAdminPlansCodePutResponse = AdminUpsertPlanApiV1SaasAdminPlansCodePutResponses[keyof AdminUpsertPlanApiV1SaasAdminPlansCodePutResponses];
+
+export type AdminListTenantsApiV1SaasAdminTenantsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Status
+         */
+        status?: string | null;
+    };
+    url: '/api/v1/saas/admin/tenants';
+};
+
+export type AdminListTenantsApiV1SaasAdminTenantsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminListTenantsApiV1SaasAdminTenantsGetError = AdminListTenantsApiV1SaasAdminTenantsGetErrors[keyof AdminListTenantsApiV1SaasAdminTenantsGetErrors];
+
+export type AdminListTenantsApiV1SaasAdminTenantsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: TenantListResponse;
+};
+
+export type AdminListTenantsApiV1SaasAdminTenantsGetResponse = AdminListTenantsApiV1SaasAdminTenantsGetResponses[keyof AdminListTenantsApiV1SaasAdminTenantsGetResponses];
+
+export type AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Organization Id
+         */
+        organization_id: number;
+    };
+    query?: never;
+    url: '/api/v1/saas/admin/tenants/{organization_id}/usage';
+};
+
+export type AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetError = AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetErrors[keyof AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetErrors];
+
+export type AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: SubscriptionResponse;
+};
+
+export type AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponse = AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses[keyof AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses];
+
+export type AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchData = {
+    body: TenantUpdateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Organization Id
+         */
+        organization_id: number;
+    };
+    query?: never;
+    url: '/api/v1/saas/admin/tenants/{organization_id}';
+};
+
+export type AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchError = AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchErrors[keyof AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchErrors];
+
+export type AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: TenantResponse;
+};
+
+export type AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchResponse = AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchResponses[keyof AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchResponses];
+
+export type ListLocalLanguagesApiV1LocalAiLanguagesGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/local-ai/languages';
+};
+
+export type ListLocalLanguagesApiV1LocalAiLanguagesGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListLocalLanguagesApiV1LocalAiLanguagesGetError = ListLocalLanguagesApiV1LocalAiLanguagesGetErrors[keyof ListLocalLanguagesApiV1LocalAiLanguagesGetErrors];
+
+export type ListLocalLanguagesApiV1LocalAiLanguagesGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: LocalAiInfo;
+};
+
+export type ListLocalLanguagesApiV1LocalAiLanguagesGetResponse = ListLocalLanguagesApiV1LocalAiLanguagesGetResponses[keyof ListLocalLanguagesApiV1LocalAiLanguagesGetResponses];
+
+export type ListCustomersApiV1CustomersGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Q
+         */
+        q?: string | null;
+        /**
+         * Page
+         */
+        page?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/customers';
+};
+
+export type ListCustomersApiV1CustomersGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListCustomersApiV1CustomersGetError = ListCustomersApiV1CustomersGetErrors[keyof ListCustomersApiV1CustomersGetErrors];
+
+export type ListCustomersApiV1CustomersGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CustomerListResponse;
+};
+
+export type ListCustomersApiV1CustomersGetResponse = ListCustomersApiV1CustomersGetResponses[keyof ListCustomersApiV1CustomersGetResponses];
+
+export type CreateCustomerApiV1CustomersPostData = {
+    body: CustomerCreateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/customers';
+};
+
+export type CreateCustomerApiV1CustomersPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateCustomerApiV1CustomersPostError = CreateCustomerApiV1CustomersPostErrors[keyof CreateCustomerApiV1CustomersPostErrors];
+
+export type CreateCustomerApiV1CustomersPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: CustomerResponse;
+};
+
+export type CreateCustomerApiV1CustomersPostResponse = CreateCustomerApiV1CustomersPostResponses[keyof CreateCustomerApiV1CustomersPostResponses];
+
+export type GetMemorySettingsApiV1CustomersSettingsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/customers/settings';
+};
+
+export type GetMemorySettingsApiV1CustomersSettingsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetMemorySettingsApiV1CustomersSettingsGetError = GetMemorySettingsApiV1CustomersSettingsGetErrors[keyof GetMemorySettingsApiV1CustomersSettingsGetErrors];
+
+export type GetMemorySettingsApiV1CustomersSettingsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: MemorySettings;
+};
+
+export type GetMemorySettingsApiV1CustomersSettingsGetResponse = GetMemorySettingsApiV1CustomersSettingsGetResponses[keyof GetMemorySettingsApiV1CustomersSettingsGetResponses];
+
+export type UpdateMemorySettingsApiV1CustomersSettingsPutData = {
+    body: MemorySettings;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/customers/settings';
+};
+
+export type UpdateMemorySettingsApiV1CustomersSettingsPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateMemorySettingsApiV1CustomersSettingsPutError = UpdateMemorySettingsApiV1CustomersSettingsPutErrors[keyof UpdateMemorySettingsApiV1CustomersSettingsPutErrors];
+
+export type UpdateMemorySettingsApiV1CustomersSettingsPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: MemorySettings;
+};
+
+export type UpdateMemorySettingsApiV1CustomersSettingsPutResponse = UpdateMemorySettingsApiV1CustomersSettingsPutResponses[keyof UpdateMemorySettingsApiV1CustomersSettingsPutResponses];
+
+export type ForgetCustomerApiV1CustomersCustomerIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Customer Id
+         */
+        customer_id: number;
+    };
+    query?: never;
+    url: '/api/v1/customers/{customer_id}';
+};
+
+export type ForgetCustomerApiV1CustomersCustomerIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ForgetCustomerApiV1CustomersCustomerIdDeleteError = ForgetCustomerApiV1CustomersCustomerIdDeleteErrors[keyof ForgetCustomerApiV1CustomersCustomerIdDeleteErrors];
+
+export type ForgetCustomerApiV1CustomersCustomerIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type ForgetCustomerApiV1CustomersCustomerIdDeleteResponse = ForgetCustomerApiV1CustomersCustomerIdDeleteResponses[keyof ForgetCustomerApiV1CustomersCustomerIdDeleteResponses];
+
+export type GetCustomerApiV1CustomersCustomerIdGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Customer Id
+         */
+        customer_id: number;
+    };
+    query?: never;
+    url: '/api/v1/customers/{customer_id}';
+};
+
+export type GetCustomerApiV1CustomersCustomerIdGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetCustomerApiV1CustomersCustomerIdGetError = GetCustomerApiV1CustomersCustomerIdGetErrors[keyof GetCustomerApiV1CustomersCustomerIdGetErrors];
+
+export type GetCustomerApiV1CustomersCustomerIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: CustomerDetailResponse;
+};
+
+export type GetCustomerApiV1CustomersCustomerIdGetResponse = GetCustomerApiV1CustomersCustomerIdGetResponses[keyof GetCustomerApiV1CustomersCustomerIdGetResponses];
+
+export type UpdateCustomerApiV1CustomersCustomerIdPatchData = {
+    body: CustomerUpdateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Customer Id
+         */
+        customer_id: number;
+    };
+    query?: never;
+    url: '/api/v1/customers/{customer_id}';
+};
+
+export type UpdateCustomerApiV1CustomersCustomerIdPatchErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateCustomerApiV1CustomersCustomerIdPatchError = UpdateCustomerApiV1CustomersCustomerIdPatchErrors[keyof UpdateCustomerApiV1CustomersCustomerIdPatchErrors];
+
+export type UpdateCustomerApiV1CustomersCustomerIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: CustomerResponse;
+};
+
+export type UpdateCustomerApiV1CustomersCustomerIdPatchResponse = UpdateCustomerApiV1CustomersCustomerIdPatchResponses[keyof UpdateCustomerApiV1CustomersCustomerIdPatchResponses];
+
+export type ListQueuesApiV1ContactCenterQueuesGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/contact-center/queues';
+};
+
+export type ListQueuesApiV1ContactCenterQueuesGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListQueuesApiV1ContactCenterQueuesGetError = ListQueuesApiV1ContactCenterQueuesGetErrors[keyof ListQueuesApiV1ContactCenterQueuesGetErrors];
+
+export type ListQueuesApiV1ContactCenterQueuesGetResponses = {
+    /**
+     * Response List Queues Api V1 Contact Center Queues Get
+     *
+     * Successful Response
+     */
+    200: Array<QueueResponse>;
+};
+
+export type ListQueuesApiV1ContactCenterQueuesGetResponse = ListQueuesApiV1ContactCenterQueuesGetResponses[keyof ListQueuesApiV1ContactCenterQueuesGetResponses];
+
+export type CreateQueueApiV1ContactCenterQueuesPostData = {
+    body: QueueCreateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/contact-center/queues';
+};
+
+export type CreateQueueApiV1ContactCenterQueuesPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateQueueApiV1ContactCenterQueuesPostError = CreateQueueApiV1ContactCenterQueuesPostErrors[keyof CreateQueueApiV1ContactCenterQueuesPostErrors];
+
+export type CreateQueueApiV1ContactCenterQueuesPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: QueueResponse;
+};
+
+export type CreateQueueApiV1ContactCenterQueuesPostResponse = CreateQueueApiV1ContactCenterQueuesPostResponses[keyof CreateQueueApiV1ContactCenterQueuesPostResponses];
+
+export type DeleteQueueApiV1ContactCenterQueuesQueueIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Queue Id
+         */
+        queue_id: number;
+    };
+    query?: never;
+    url: '/api/v1/contact-center/queues/{queue_id}';
+};
+
+export type DeleteQueueApiV1ContactCenterQueuesQueueIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteQueueApiV1ContactCenterQueuesQueueIdDeleteError = DeleteQueueApiV1ContactCenterQueuesQueueIdDeleteErrors[keyof DeleteQueueApiV1ContactCenterQueuesQueueIdDeleteErrors];
+
+export type DeleteQueueApiV1ContactCenterQueuesQueueIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteQueueApiV1ContactCenterQueuesQueueIdDeleteResponse = DeleteQueueApiV1ContactCenterQueuesQueueIdDeleteResponses[keyof DeleteQueueApiV1ContactCenterQueuesQueueIdDeleteResponses];
+
+export type UpdateQueueApiV1ContactCenterQueuesQueueIdPatchData = {
+    body: QueueUpdateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Queue Id
+         */
+        queue_id: number;
+    };
+    query?: never;
+    url: '/api/v1/contact-center/queues/{queue_id}';
+};
+
+export type UpdateQueueApiV1ContactCenterQueuesQueueIdPatchErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateQueueApiV1ContactCenterQueuesQueueIdPatchError = UpdateQueueApiV1ContactCenterQueuesQueueIdPatchErrors[keyof UpdateQueueApiV1ContactCenterQueuesQueueIdPatchErrors];
+
+export type UpdateQueueApiV1ContactCenterQueuesQueueIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: QueueResponse;
+};
+
+export type UpdateQueueApiV1ContactCenterQueuesQueueIdPatchResponse = UpdateQueueApiV1ContactCenterQueuesQueueIdPatchResponses[keyof UpdateQueueApiV1ContactCenterQueuesQueueIdPatchResponses];
+
+export type ListAgentsApiV1ContactCenterAgentsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/contact-center/agents';
+};
+
+export type ListAgentsApiV1ContactCenterAgentsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListAgentsApiV1ContactCenterAgentsGetError = ListAgentsApiV1ContactCenterAgentsGetErrors[keyof ListAgentsApiV1ContactCenterAgentsGetErrors];
+
+export type ListAgentsApiV1ContactCenterAgentsGetResponses = {
+    /**
+     * Response List Agents Api V1 Contact Center Agents Get
+     *
+     * Successful Response
+     */
+    200: Array<AgentResponse>;
+};
+
+export type ListAgentsApiV1ContactCenterAgentsGetResponse = ListAgentsApiV1ContactCenterAgentsGetResponses[keyof ListAgentsApiV1ContactCenterAgentsGetResponses];
+
+export type CreateAgentApiV1ContactCenterAgentsPostData = {
+    body: AgentCreateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/contact-center/agents';
+};
+
+export type CreateAgentApiV1ContactCenterAgentsPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateAgentApiV1ContactCenterAgentsPostError = CreateAgentApiV1ContactCenterAgentsPostErrors[keyof CreateAgentApiV1ContactCenterAgentsPostErrors];
+
+export type CreateAgentApiV1ContactCenterAgentsPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: SoftphoneCredentials;
+};
+
+export type CreateAgentApiV1ContactCenterAgentsPostResponse = CreateAgentApiV1ContactCenterAgentsPostResponses[keyof CreateAgentApiV1ContactCenterAgentsPostResponses];
+
+export type DeleteAgentApiV1ContactCenterAgentsAgentIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: number;
+    };
+    query?: never;
+    url: '/api/v1/contact-center/agents/{agent_id}';
+};
+
+export type DeleteAgentApiV1ContactCenterAgentsAgentIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteAgentApiV1ContactCenterAgentsAgentIdDeleteError = DeleteAgentApiV1ContactCenterAgentsAgentIdDeleteErrors[keyof DeleteAgentApiV1ContactCenterAgentsAgentIdDeleteErrors];
+
+export type DeleteAgentApiV1ContactCenterAgentsAgentIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteAgentApiV1ContactCenterAgentsAgentIdDeleteResponse = DeleteAgentApiV1ContactCenterAgentsAgentIdDeleteResponses[keyof DeleteAgentApiV1ContactCenterAgentsAgentIdDeleteResponses];
+
+export type UpdateAgentApiV1ContactCenterAgentsAgentIdPatchData = {
+    body: AgentUpdateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: number;
+    };
+    query?: never;
+    url: '/api/v1/contact-center/agents/{agent_id}';
+};
+
+export type UpdateAgentApiV1ContactCenterAgentsAgentIdPatchErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateAgentApiV1ContactCenterAgentsAgentIdPatchError = UpdateAgentApiV1ContactCenterAgentsAgentIdPatchErrors[keyof UpdateAgentApiV1ContactCenterAgentsAgentIdPatchErrors];
+
+export type UpdateAgentApiV1ContactCenterAgentsAgentIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: AgentResponse;
+};
+
+export type UpdateAgentApiV1ContactCenterAgentsAgentIdPatchResponse = UpdateAgentApiV1ContactCenterAgentsAgentIdPatchResponses[keyof UpdateAgentApiV1ContactCenterAgentsAgentIdPatchResponses];
+
+export type ResetAgentPasswordApiV1ContactCenterAgentsAgentIdResetPasswordPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: number;
+    };
+    query?: never;
+    url: '/api/v1/contact-center/agents/{agent_id}/reset-password';
+};
+
+export type ResetAgentPasswordApiV1ContactCenterAgentsAgentIdResetPasswordPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ResetAgentPasswordApiV1ContactCenterAgentsAgentIdResetPasswordPostError = ResetAgentPasswordApiV1ContactCenterAgentsAgentIdResetPasswordPostErrors[keyof ResetAgentPasswordApiV1ContactCenterAgentsAgentIdResetPasswordPostErrors];
+
+export type ResetAgentPasswordApiV1ContactCenterAgentsAgentIdResetPasswordPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SoftphoneCredentials;
+};
+
+export type ResetAgentPasswordApiV1ContactCenterAgentsAgentIdResetPasswordPostResponse = ResetAgentPasswordApiV1ContactCenterAgentsAgentIdResetPasswordPostResponses[keyof ResetAgentPasswordApiV1ContactCenterAgentsAgentIdResetPasswordPostResponses];
+
+export type ClaimAgentSeatApiV1ContactCenterAgentsAgentIdClaimPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Agent Id
+         */
+        agent_id: number;
+    };
+    query?: never;
+    url: '/api/v1/contact-center/agents/{agent_id}/claim';
+};
+
+export type ClaimAgentSeatApiV1ContactCenterAgentsAgentIdClaimPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ClaimAgentSeatApiV1ContactCenterAgentsAgentIdClaimPostError = ClaimAgentSeatApiV1ContactCenterAgentsAgentIdClaimPostErrors[keyof ClaimAgentSeatApiV1ContactCenterAgentsAgentIdClaimPostErrors];
+
+export type ClaimAgentSeatApiV1ContactCenterAgentsAgentIdClaimPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: AgentResponse;
+};
+
+export type ClaimAgentSeatApiV1ContactCenterAgentsAgentIdClaimPostResponse = ClaimAgentSeatApiV1ContactCenterAgentsAgentIdClaimPostResponses[keyof ClaimAgentSeatApiV1ContactCenterAgentsAgentIdClaimPostResponses];
+
+export type MyAgentSeatApiV1ContactCenterMeGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/contact-center/me';
+};
+
+export type MyAgentSeatApiV1ContactCenterMeGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MyAgentSeatApiV1ContactCenterMeGetError = MyAgentSeatApiV1ContactCenterMeGetErrors[keyof MyAgentSeatApiV1ContactCenterMeGetErrors];
+
+export type MyAgentSeatApiV1ContactCenterMeGetResponses = {
+    /**
+     * Response My Agent Seat Api V1 Contact Center Me Get
+     *
+     * Successful Response
+     */
+    200: AgentResponse | null;
+};
+
+export type MyAgentSeatApiV1ContactCenterMeGetResponse = MyAgentSeatApiV1ContactCenterMeGetResponses[keyof MyAgentSeatApiV1ContactCenterMeGetResponses];
+
+export type ListHandoffsApiV1ContactCenterHandoffsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Mine
+         */
+        mine?: boolean;
+        /**
+         * Status
+         */
+        status?: 'pending' | 'answered' | null;
+    };
+    url: '/api/v1/contact-center/handoffs';
+};
+
+export type ListHandoffsApiV1ContactCenterHandoffsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListHandoffsApiV1ContactCenterHandoffsGetError = ListHandoffsApiV1ContactCenterHandoffsGetErrors[keyof ListHandoffsApiV1ContactCenterHandoffsGetErrors];
+
+export type ListHandoffsApiV1ContactCenterHandoffsGetResponses = {
+    /**
+     * Response List Handoffs Api V1 Contact Center Handoffs Get
+     *
+     * Successful Response
+     */
+    200: Array<HandoffResponse>;
+};
+
+export type ListHandoffsApiV1ContactCenterHandoffsGetResponse = ListHandoffsApiV1ContactCenterHandoffsGetResponses[keyof ListHandoffsApiV1ContactCenterHandoffsGetResponses];
+
+export type GetHandoffApiV1ContactCenterHandoffsHandoffIdGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Handoff Id
+         */
+        handoff_id: string;
+    };
+    query?: never;
+    url: '/api/v1/contact-center/handoffs/{handoff_id}';
+};
+
+export type GetHandoffApiV1ContactCenterHandoffsHandoffIdGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetHandoffApiV1ContactCenterHandoffsHandoffIdGetError = GetHandoffApiV1ContactCenterHandoffsHandoffIdGetErrors[keyof GetHandoffApiV1ContactCenterHandoffsHandoffIdGetErrors];
+
+export type GetHandoffApiV1ContactCenterHandoffsHandoffIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: HandoffResponse;
+};
+
+export type GetHandoffApiV1ContactCenterHandoffsHandoffIdGetResponse = GetHandoffApiV1ContactCenterHandoffsHandoffIdGetResponses[keyof GetHandoffApiV1ContactCenterHandoffsHandoffIdGetResponses];
+
+export type AcceptHandoffApiV1ContactCenterHandoffsHandoffIdAcceptPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Handoff Id
+         */
+        handoff_id: string;
+    };
+    query?: never;
+    url: '/api/v1/contact-center/handoffs/{handoff_id}/accept';
+};
+
+export type AcceptHandoffApiV1ContactCenterHandoffsHandoffIdAcceptPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AcceptHandoffApiV1ContactCenterHandoffsHandoffIdAcceptPostError = AcceptHandoffApiV1ContactCenterHandoffsHandoffIdAcceptPostErrors[keyof AcceptHandoffApiV1ContactCenterHandoffsHandoffIdAcceptPostErrors];
+
+export type AcceptHandoffApiV1ContactCenterHandoffsHandoffIdAcceptPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: HandoffResponse;
+};
+
+export type AcceptHandoffApiV1ContactCenterHandoffsHandoffIdAcceptPostResponse = AcceptHandoffApiV1ContactCenterHandoffsHandoffIdAcceptPostResponses[keyof AcceptHandoffApiV1ContactCenterHandoffsHandoffIdAcceptPostResponses];
+
+export type ListCallbacksApiV1ContactCenterCallbacksGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * View
+         */
+        view?: 'open' | 'closed' | 'all';
+        /**
+         * Mine
+         */
+        mine?: boolean;
+    };
+    url: '/api/v1/contact-center/callbacks';
+};
+
+export type ListCallbacksApiV1ContactCenterCallbacksGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListCallbacksApiV1ContactCenterCallbacksGetError = ListCallbacksApiV1ContactCenterCallbacksGetErrors[keyof ListCallbacksApiV1ContactCenterCallbacksGetErrors];
+
+export type ListCallbacksApiV1ContactCenterCallbacksGetResponses = {
+    /**
+     * Response List Callbacks Api V1 Contact Center Callbacks Get
+     *
+     * Successful Response
+     */
+    200: Array<CallbackResponse>;
+};
+
+export type ListCallbacksApiV1ContactCenterCallbacksGetResponse = ListCallbacksApiV1ContactCenterCallbacksGetResponses[keyof ListCallbacksApiV1ContactCenterCallbacksGetResponses];
+
+export type CreateCallbackApiV1ContactCenterCallbacksPostData = {
+    body: CreateCallbackRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/contact-center/callbacks';
+};
+
+export type CreateCallbackApiV1ContactCenterCallbacksPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateCallbackApiV1ContactCenterCallbacksPostError = CreateCallbackApiV1ContactCenterCallbacksPostErrors[keyof CreateCallbackApiV1ContactCenterCallbacksPostErrors];
+
+export type CreateCallbackApiV1ContactCenterCallbacksPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: CallbackResponse;
+};
+
+export type CreateCallbackApiV1ContactCenterCallbacksPostResponse = CreateCallbackApiV1ContactCenterCallbacksPostResponses[keyof CreateCallbackApiV1ContactCenterCallbacksPostResponses];
+
+export type UpdateCallbackApiV1ContactCenterCallbacksCallbackIdPatchData = {
+    body: UpdateCallbackRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Callback Id
+         */
+        callback_id: number;
+    };
+    query?: never;
+    url: '/api/v1/contact-center/callbacks/{callback_id}';
+};
+
+export type UpdateCallbackApiV1ContactCenterCallbacksCallbackIdPatchErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateCallbackApiV1ContactCenterCallbacksCallbackIdPatchError = UpdateCallbackApiV1ContactCenterCallbacksCallbackIdPatchErrors[keyof UpdateCallbackApiV1ContactCenterCallbacksCallbackIdPatchErrors];
+
+export type UpdateCallbackApiV1ContactCenterCallbacksCallbackIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: CallbackResponse;
+};
+
+export type UpdateCallbackApiV1ContactCenterCallbacksCallbackIdPatchResponse = UpdateCallbackApiV1ContactCenterCallbacksCallbackIdPatchResponses[keyof UpdateCallbackApiV1ContactCenterCallbacksCallbackIdPatchResponses];
+
+export type DialCallbackApiV1ContactCenterCallbacksCallbackIdDialPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Callback Id
+         */
+        callback_id: number;
+    };
+    query?: never;
+    url: '/api/v1/contact-center/callbacks/{callback_id}/dial';
+};
+
+export type DialCallbackApiV1ContactCenterCallbacksCallbackIdDialPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DialCallbackApiV1ContactCenterCallbacksCallbackIdDialPostError = DialCallbackApiV1ContactCenterCallbacksCallbackIdDialPostErrors[keyof DialCallbackApiV1ContactCenterCallbacksCallbackIdDialPostErrors];
+
+export type DialCallbackApiV1ContactCenterCallbacksCallbackIdDialPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: CallbackResponse;
+};
+
+export type DialCallbackApiV1ContactCenterCallbacksCallbackIdDialPostResponse = DialCallbackApiV1ContactCenterCallbacksCallbackIdDialPostResponses[keyof DialCallbackApiV1ContactCenterCallbacksCallbackIdDialPostResponses];
+
+export type CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostData = {
+    body: CompleteCallbackRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Callback Id
+         */
+        callback_id: number;
+    };
+    query?: never;
+    url: '/api/v1/contact-center/callbacks/{callback_id}/complete';
+};
+
+export type CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostError = CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostErrors[keyof CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostErrors];
+
+export type CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: CallbackResponse;
+};
+
+export type CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostResponse = CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostResponses[keyof CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostResponses];
+
 export type HealthApiV1HealthGetData = {
     body?: never;
     path?: never;
@@ -17148,7 +19925,7 @@ export type ActiveCallsApiV1HealthActiveCallsGetData = {
     body?: never;
     headers?: {
         /**
-         * X-NIMBORA-Devops-Secret
+         * X-Nimbora-Devops-Secret
          */
         'X-NIMBORA-Devops-Secret'?: string | null;
     };
@@ -17183,7 +19960,7 @@ export type AutoscaleMetricApiV1HealthAutoscaleMetricGetData = {
     body?: never;
     headers?: {
         /**
-         * X-NIMBORA-Devops-Secret
+         * X-Nimbora-Devops-Secret
          */
         'X-NIMBORA-Devops-Secret'?: string | null;
     };

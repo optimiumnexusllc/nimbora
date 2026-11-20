@@ -233,6 +233,7 @@ class ToolCategory(Enum):
     TRANSFER_CALL = "transfer_call"  # Transfer call to phone number (Twilio only)
     TRANSFER_AGENT = "transfer_agent"  # Hand the live call to another NIMBORA agent
     CALCULATOR = "calculator"  # Built-in calculator tool
+    SCHEDULE_CALLBACK = "schedule_callback"  # Promise a callback (human team or AI)
     NATIVE = "native"  # Built-in integrations (future: dtmf_input)
     INTEGRATION = "integration"  # Third-party integrations (future: Google Calendar, Salesforce, etc.)
     MCP = "mcp"  # Customer-provided MCP server exposing a tool catalog

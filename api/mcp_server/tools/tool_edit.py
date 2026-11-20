@@ -65,7 +65,7 @@ async def update_tool(tool_uuid: str, request: UpdateToolRequest) -> dict[str, A
     - `category_mismatch` — the definition's `type` differs from the tool's
       category; create a new tool instead.
     - `credential_not_found` / `recording_not_found` / `destination_not_found`
-      — a referenced resource is not in this organization (same meaning as in
+      / `queue_not_found` — a referenced resource is not in this organization (same meaning as in
       `create_tool`).
     - `organization_required` — the API key user has no selected organization.
     - `update_failed` — unexpected persistence or backend failure; retry once,

@@ -406,20 +406,20 @@ async def my_agent_seat(user: UserModel = Depends(get_user)):
 # --------------------------------------------------------------- handoffs
 class HandoffResponse(BaseModel):
     id: str
-    queue_slug: Optional[str]
-    caller_number: Optional[str]
+    queue_slug: str | None
+    caller_number: str | None
     status: str
     summary_status: str
-    reason: Optional[str]
-    summary: Optional[str]
-    customer_name: Optional[str]
-    sentiment: Optional[str]
-    next_step: Optional[str]
+    reason: str | None
+    summary: str | None
+    customer_name: str | None
+    sentiment: str | None
+    next_step: str | None
     collected_data: dict[str, Any]
     transcript: list[dict[str, Any]]
-    workflow_run_id: Optional[int]
-    created_at: Optional[datetime]
-    answered_at: Optional[datetime]
+    workflow_run_id: int | None
+    created_at: datetime | None
+    answered_at: datetime | None
 
 
 def _handoff_response(handoff: CallHandoffModel) -> HandoffResponse:
@@ -445,7 +445,7 @@ def _handoff_response(handoff: CallHandoffModel) -> HandoffResponse:
 @router.get("/handoffs", response_model=list[HandoffResponse])
 async def list_handoffs(
     mine: bool = False,
-    status: Optional[Literal["pending", "answered"]] = None,
+    status: Literal["pending", "answered"] | None = None,
     user: UserModel = Depends(get_user),
 ):
     """Recent AI -> human handoffs. ``mine`` keeps those of my seat's queues."""
@@ -500,3 +500,291 @@ async def accept_handoff(handoff_id: str, user: UserModel = Depends(get_user)):
         },
     )
     return _handoff_response(handoff)
+
+
+# -------------------------------------------------------------- callbacks
+CallbackStatus = Literal["pending", "in_progress", "done", "failed", "canceled"]
+
+
+class CallbackResponse(BaseModel):
+    id: int
+    phone: str
+    customer_name: str | None
+    reason: str | None
+    source: str
+    assign_to: str
+    queue_slug: str | None
+    workflow_id: int | None
+    status: str
+    scheduled_at: datetime
+    attempts: int
+    max_attempts: int
+    last_attempt_at: datetime | None
+    origin_workflow_run_id: int | None
+    callback_workflow_run_id: int | None
+    handoff_id: str | None
+    assigned_agent_id: int | None
+    outcome: str | None
+    notes: str | None
+    created_at: datetime | None
+    completed_at: datetime | None
+
+
+def _callback_response(callback) -> CallbackResponse:
+    return CallbackResponse.model_validate(callback, from_attributes=True)
+
+
+class CreateCallbackRequest(BaseModel):
+    phone: str = Field(min_length=3, max_length=32)
+    customer_name: str | None = Field(default=None, max_length=128)
+    reason: str | None = Field(default=None, max_length=1000)
+    scheduled_at: datetime | None = None
+    assign_to: Literal["human", "ai"] = "human"
+    queue_slug: str | None = Field(default=None, max_length=48)
+    workflow_id: int | None = None
+    notes: str | None = Field(default=None, max_length=4000)
+
+
+class UpdateCallbackRequest(BaseModel):
+    customer_name: str | None = Field(default=None, max_length=128)
+    reason: str | None = Field(default=None, max_length=1000)
+    scheduled_at: datetime | None = None
+    assign_to: Literal["human", "ai"] | None = None
+    queue_slug: str | None = Field(default=None, max_length=48)
+    workflow_id: int | None = None
+    notes: str | None = Field(default=None, max_length=4000)
+    status: Literal["pending", "done", "failed", "canceled"] | None = None
+    outcome: str | None = Field(default=None, max_length=1000)
+
+
+async def _check_callback_targets(
+    organization_id: int, queue_slug: str | None, workflow_id: int | None
+) -> None:
+    if queue_slug and not await db_client.get_contact_center_queue_by_slug(
+        organization_id, queue_slug
+    ):
+        raise HTTPException(status_code=404, detail="Queue not found")
+    if workflow_id and not await db_client.get_workflow(
+        workflow_id, organization_id=organization_id
+    ):
+        raise HTTPException(status_code=404, detail="Agent not found")
+
+
+async def _get_callback_or_404(organization_id: int, callback_id: int):
+    callback = await db_client.get_callback_request(organization_id, callback_id)
+    if callback is None:
+        raise HTTPException(status_code=404, detail="Callback not found")
+    return callback
+
+
+@router.get("/callbacks", response_model=list[CallbackResponse])
+async def list_callbacks(
+    view: Literal["open", "closed", "all"] = "open",
+    mine: bool = False,
+    user: UserModel = Depends(get_user),
+):
+    """Callbacks to make (open) or made (closed).
+
+    ``mine`` keeps the human callbacks of my seat's queues (and unrouted ones).
+    """
+    organization_id = await _org(user)
+    statuses = {
+        "open": ["pending", "in_progress"],
+        "closed": ["done", "failed", "canceled"],
+        "all": None,
+    }[view]
+    callbacks = await db_client.list_callback_requests(
+        organization_id, statuses=statuses, limit=200
+    )
+    if mine:
+        seat = await db_client.get_contact_center_agent_for_user(
+            organization_id, user.id
+        )
+        slugs = (
+            set(await db_client.list_queue_slugs_for_agent(organization_id, seat.id))
+            if seat
+            else set()
+        )
+        callbacks = [
+            c
+            for c in callbacks
+            if c.assign_to == "human"
+            and (c.queue_slug is None or c.queue_slug in slugs)
+            and (c.assigned_agent_id in (None, seat.id if seat else None))
+        ]
+    return [_callback_response(c) for c in callbacks]
+
+
+@router.post("/callbacks", response_model=CallbackResponse, status_code=201)
+async def create_callback(
+    request: CreateCallbackRequest, user: UserModel = Depends(get_user)
+):
+    from api.services.contact_center.callbacks import (
+        CallbackError,
+        create_or_update_callback,
+    )
+
+    organization_id = await _org(user)
+    await _check_callback_targets(
+        organization_id, request.queue_slug, request.workflow_id
+    )
+    scheduled_at = request.scheduled_at or datetime.now(UTC)
+    if scheduled_at.tzinfo is None:
+        scheduled_at = scheduled_at.replace(tzinfo=UTC)
+    try:
+        callback = await create_or_update_callback(
+            organization_id,
+            phone=request.phone,
+            scheduled_at=scheduled_at,
+            source="manual",
+            assign_to=request.assign_to,
+            reason=request.reason,
+            customer_name=request.customer_name,
+            queue_slug=request.queue_slug,
+            workflow_id=request.workflow_id if request.assign_to == "ai" else None,
+            notes=request.notes,
+        )
+    except CallbackError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    return _callback_response(callback)
+
+
+@router.patch("/callbacks/{callback_id}", response_model=CallbackResponse)
+async def update_callback(
+    callback_id: int,
+    request: UpdateCallbackRequest,
+    user: UserModel = Depends(get_user),
+):
+    """Reschedule, reassign, annotate or close a callback."""
+    organization_id = await _org(user)
+    callback = await _get_callback_or_404(organization_id, callback_id)
+    fields = request.model_dump(exclude_unset=True)
+    await _check_callback_targets(
+        organization_id, fields.get("queue_slug"), fields.get("workflow_id")
+    )
+    assign_to = fields.get("assign_to", callback.assign_to)
+    workflow_id = fields.get("workflow_id", callback.workflow_id)
+    if assign_to == "ai" and not workflow_id:
+        raise HTTPException(
+            status_code=400, detail="An AI callback needs the agent that will call"
+        )
+    if fields.get("scheduled_at") and fields["scheduled_at"].tzinfo is None:
+        fields["scheduled_at"] = fields["scheduled_at"].replace(tzinfo=UTC)
+    status = fields.get("status")
+    if status in {"done", "failed", "canceled"}:
+        fields["completed_at"] = datetime.now(UTC)
+    elif status == "pending":
+        fields["completed_at"] = None
+        fields["assigned_agent_id"] = None
+        if callback.status in {"failed", "canceled", "done"}:
+            fields["attempts"] = 0
+    callback = await db_client.update_callback_request(
+        organization_id, callback_id, fields
+    )
+    return _callback_response(callback)
+
+
+@router.post("/callbacks/{callback_id}/dial", response_model=CallbackResponse)
+async def dial_callback(callback_id: int, user: UserModel = Depends(get_user)):
+    """Click-to-call: ring my softphone, then the customer once I answer."""
+    from api.services.contact_center.callbacks import (
+        CallbackError,
+        dial_callback_for_agent,
+    )
+
+    organization_id = await _org(user)
+    callback = await _get_callback_or_404(organization_id, callback_id)
+    seat = await db_client.get_contact_center_agent_for_user(organization_id, user.id)
+    if seat is None or not seat.is_active:
+        raise HTTPException(
+            status_code=403, detail="Claim a softphone seat to call customers back"
+        )
+    if callback.assign_to != "human":
+        raise HTTPException(status_code=409, detail="This callback is for an AI agent")
+    now = datetime.now(UTC)
+    claimed = await db_client.claim_callback_request(
+        organization_id,
+        callback_id,
+        fields={
+            "status": "in_progress",
+            "assigned_agent_id": seat.id,
+            "attempts": callback.attempts + 1,
+            "last_attempt_at": now,
+        },
+    )
+    if claimed is None:
+        raise HTTPException(
+            status_code=409, detail="Another agent is already calling this customer"
+        )
+    try:
+        await dial_callback_for_agent(claimed, seat)
+    except CallbackError as exc:
+        await db_client.update_callback_request(
+            organization_id,
+            callback_id,
+            {
+                "status": "pending",
+                "assigned_agent_id": None,
+                "attempts": callback.attempts,
+            },
+        )
+        raise HTTPException(status_code=503, detail=str(exc)) from exc
+    except Exception as exc:
+        await db_client.update_callback_request(
+            organization_id,
+            callback_id,
+            {
+                "status": "pending",
+                "assigned_agent_id": None,
+                "attempts": callback.attempts,
+            },
+        )
+        raise HTTPException(
+            status_code=503, detail="The telephony server could not be reached"
+        ) from exc
+    return _callback_response(claimed)
+
+
+class CompleteCallbackRequest(BaseModel):
+    result: Literal["reached", "no_answer", "wrong_number"]
+    outcome: str | None = Field(default=None, max_length=1000)
+    retry_in_minutes: int | None = Field(default=None, ge=5, le=10080)
+
+
+@router.post("/callbacks/{callback_id}/complete", response_model=CallbackResponse)
+async def complete_callback(
+    callback_id: int,
+    request: CompleteCallbackRequest,
+    user: UserModel = Depends(get_user),
+):
+    """The agent reports how the callback went."""
+    from datetime import timedelta
+
+    organization_id = await _org(user)
+    callback = await _get_callback_or_404(organization_id, callback_id)
+    now = datetime.now(UTC)
+    labels = {
+        "reached": "Client joint",
+        "no_answer": "Pas de réponse",
+        "wrong_number": "Mauvais numéro",
+    }
+    outcome = labels[request.result] + (
+        f" — {request.outcome}" if request.outcome else ""
+    )
+    if request.result == "no_answer" and callback.attempts < callback.max_attempts:
+        fields = {
+            "status": "pending",
+            "assigned_agent_id": None,
+            "outcome": outcome,
+            "scheduled_at": now + timedelta(minutes=request.retry_in_minutes or 60),
+        }
+    else:
+        fields = {
+            "status": "done" if request.result == "reached" else "failed",
+            "outcome": outcome,
+            "completed_at": now,
+        }
+    callback = await db_client.update_callback_request(
+        organization_id, callback_id, fields
+    )
+    return _callback_response(callback)

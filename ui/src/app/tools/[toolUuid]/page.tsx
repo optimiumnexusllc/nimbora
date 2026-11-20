@@ -14,6 +14,7 @@ import type {
     EndCallConfig,
     HttpApiToolDefinition,
     RecordingResponseSchema,
+    ScheduleCallbackConfig,
     ToolResponse,
     TransferAgentConfig,
     TransferCallConfig,
@@ -48,12 +49,14 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { TOOL_DOCUMENTATION_URLS } from "@/constants/documentation";
 import { detailFromError } from "@/lib/apiError";
 import { useAuth } from "@/lib/auth";
+import { enterpriseApi } from "@/lib/enterpriseApi";
 
 import {
     type ContextDestinationRuleRow,
     contextMappingToRuleRows,
     createContextDestinationRuleRow,
     createMcpDefinition,
+    createScheduleCallbackDefinition,
     createTransferAgentDefinition,
     DEFAULT_END_CALL_REASON_DESCRIPTION,
     DEFAULT_TRANSFER_AGENT_MESSAGE,
@@ -70,10 +73,13 @@ import {
 import {
     buildHttpToolTestSnapshot,
     BuiltinToolConfig,
+    type CallbackAssignee,
+    type CallbackQueueOption,
     EndCallToolConfig,
     HttpApiToolConfig,
     type HttpBodyFormat,
     HttpToolTestDialog,
+    ScheduleCallbackToolConfig,
     TransferAgentToolConfig,
     type TransferAgentWorkflowOption,
     TransferCallToolConfig,
@@ -155,6 +161,12 @@ export default function ToolDetailPage() {
     const [transferAgentIntroduction, setTransferAgentIntroduction] = useState("");
     const [agentOptions, setAgentOptions] = useState<TransferAgentWorkflowOption[]>([]);
     const [agentOptionsLoading, setAgentOptionsLoading] = useState(false);
+    // Schedule callback
+    const [callbackAssignTo, setCallbackAssignTo] = useState<CallbackAssignee>("human");
+    const [callbackQueueSlug, setCallbackQueueSlug] = useState("");
+    const [callbackWorkflowId, setCallbackWorkflowId] = useState("");
+    const [callbackDelayMinutes, setCallbackDelayMinutes] = useState(0);
+    const [callbackQueues, setCallbackQueues] = useState<CallbackQueueOption[] | null>(null);
 
     // Transfer Call form state
     const [transferDestinationSource, setTransferDestinationSource] =
@@ -313,6 +325,12 @@ export default function ToolDetailPage() {
                 setTransferContextDestinationRules([]);
                 setTransferFallbackDestination("");
             }
+        } else if (tool.category === "schedule_callback") {
+            const config = tool.definition?.config as ScheduleCallbackConfig | undefined;
+            setCallbackAssignTo(config?.assign_to ?? "human");
+            setCallbackQueueSlug(config?.queue_slug ?? "");
+            setCallbackWorkflowId(config?.workflow_id ? String(config.workflow_id) : "");
+            setCallbackDelayMinutes(config?.default_delay_minutes ?? 0);
         } else if (tool.category === "transfer_agent") {
             const config = tool.definition?.config as TransferAgentConfig | undefined;
             setTransferAgentWorkflowId(
@@ -460,8 +478,14 @@ export default function ToolDetailPage() {
     }, [fetchTool, fetchRecordings]);
 
     useEffect(() => {
-        if (tool?.category === "transfer_agent") {
+        if (tool?.category === "transfer_agent" || tool?.category === "schedule_callback") {
             fetchAgentOptions();
+        }
+        if (tool?.category === "schedule_callback") {
+            enterpriseApi
+                .listQueues()
+                .then((queues) => setCallbackQueues(queues.map((q) => ({ slug: q.slug, name: q.name }))))
+                .catch(() => setCallbackQueues(null));
         }
     }, [tool?.category, fetchAgentOptions]);
 
@@ -473,6 +497,11 @@ export default function ToolDetailPage() {
         // Validation based on tool type
         if (tool.category === "calculator") {
             // No validation needed for built-in tools
+        } else if (tool.category === "schedule_callback") {
+            if (callbackAssignTo === "ai" && !callbackWorkflowId) {
+                setError("Choose the agent that will call the customer back");
+                return;
+            }
         } else if (tool.category === "transfer_agent") {
             if (!transferAgentWorkflowId) {
                 setError("Choose the agent to transfer to");
@@ -631,6 +660,17 @@ export default function ToolDetailPage() {
                         schema_version: 1,
                         type: "calculator",
                     },
+                };
+            } else if (tool.category === "schedule_callback") {
+                requestBody = {
+                    name,
+                    description: description || undefined,
+                    definition: createScheduleCallbackDefinition({
+                        assign_to: callbackAssignTo,
+                        queue_slug: callbackAssignTo === "human" ? callbackQueueSlug || null : null,
+                        workflow_id: callbackAssignTo === "ai" ? Number(callbackWorkflowId) : null,
+                        default_delay_minutes: callbackDelayMinutes,
+                    }),
                 };
             } else if (tool.category === "end_call") {
                 // Build end call request body
@@ -915,6 +955,7 @@ const data = await response.json();`;
     const isTransferCallTool = tool.category === "transfer_call";
     const isTransferAgentTool = tool.category === "transfer_agent";
     const isBuiltinTool = tool.category === "calculator";
+    const isScheduleCallbackTool = tool.category === "schedule_callback";
     const isMcpTool = tool.category === "mcp";
     const isHttpApiTool = tool.category === "http_api";
     const hasUnsavedHttpChanges =
@@ -1000,6 +1041,23 @@ const data = await response.json();`;
                         onDescriptionChange={setDescription}
                         title="Calculator Configuration"
                         subtitle="Built-in calculator for arithmetic operations. No additional configuration needed."
+                    />
+                ) : isScheduleCallbackTool ? (
+                    <ScheduleCallbackToolConfig
+                        name={name}
+                        onNameChange={setName}
+                        description={description}
+                        onDescriptionChange={setDescription}
+                        assignTo={callbackAssignTo}
+                        onAssignToChange={setCallbackAssignTo}
+                        queueSlug={callbackQueueSlug}
+                        onQueueSlugChange={setCallbackQueueSlug}
+                        queues={callbackQueues}
+                        workflowId={callbackWorkflowId}
+                        onWorkflowIdChange={setCallbackWorkflowId}
+                        workflows={agentOptions}
+                        defaultDelayMinutes={callbackDelayMinutes}
+                        onDefaultDelayMinutesChange={setCallbackDelayMinutes}
                     />
                 ) : isEndCallTool ? (
                     <EndCallToolConfig

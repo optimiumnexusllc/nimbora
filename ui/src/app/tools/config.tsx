@@ -1,6 +1,16 @@
 "use client";
 
-import { ArrowLeftRight, Calculator, Cog, Globe, type LucideIcon, PhoneForwarded, PhoneOff, Puzzle } from "lucide-react";
+import {
+    ArrowLeftRight,
+    Calculator,
+    CalendarClock,
+    Cog,
+    Globe,
+    type LucideIcon,
+    PhoneForwarded,
+    PhoneOff,
+    Puzzle,
+} from "lucide-react";
 import { type ReactNode } from "react";
 
 import type {
@@ -12,6 +22,8 @@ import type {
     EndCallToolDefinition,
     HttpApiToolDefinition,
     McpToolDefinition,
+    ScheduleCallbackConfig,
+    ScheduleCallbackToolDefinition,
     TransferAgentConfig,
     TransferAgentToolDefinition,
     TransferCallConfig,
@@ -19,7 +31,17 @@ import type {
 } from "@/client/types.gen";
 import { createUuid } from "@/lib/uuid";
 
-export type ToolCategory = "http_api" | "end_call" | "transfer_call" | "transfer_agent" | "calculator" | "native" | "integration" | "mcp";
+export type ToolCategory =
+    | "http_api"
+    | "end_call"
+    | "transfer_call"
+    | "transfer_agent"
+    | "calculator"
+    | "schedule_callback"
+    | "native"
+    | "integration"
+    | "mcp";
+
 
 export type EndCallMessageType = "none" | "custom" | "audio";
 export type TransferDestinationSource = "static" | "dynamic" | "context_mapping";
@@ -151,6 +173,19 @@ export const TOOL_CATEGORIES: ToolCategoryConfig[] = [
         },
     },
     {
+        value: "schedule_callback",
+        label: "Schedule Callback",
+        description: "Promise a callback: your team or an AI agent calls the customer back at the time they choose",
+        icon: CalendarClock,
+        iconName: "calendar-clock",
+        iconColor: "#06B6D4",
+        autoFill: {
+            name: "Schedule Callback",
+            description:
+                "Schedule a callback when the customer would rather be called back later, or when nobody can help them right now. Ask for the preferred date and time first.",
+        },
+    },
+    {
         value: "mcp",
         label: "MCP Server",
         description: "Connect a customer MCP server; its tools become available to the agent",
@@ -209,6 +244,8 @@ export function getToolTypeLabel(category: string): string {
             return "HTTP API Tool";
         case "calculator":
             return "Calculator Tool";
+        case "schedule_callback":
+            return "Schedule Callback Tool";
         case "native":
             return "Native Tool";
         case "integration":
@@ -249,6 +286,7 @@ export type ToolDefinition =
     | TransferCallToolDefinition
     | TransferAgentToolDefinition
     | CalculatorToolDefinition
+    | ScheduleCallbackToolDefinition
     | McpToolDefinition;
 
 export function createEndCallDefinition(config: EndCallConfig): EndCallToolDefinition {
@@ -308,6 +346,17 @@ export function createCalculatorDefinition(): CalculatorToolDefinition {
     };
 }
 
+export function createScheduleCallbackDefinition(
+    config: ScheduleCallbackConfig = { assign_to: "human", default_delay_minutes: 0 },
+): ScheduleCallbackToolDefinition {
+    return {
+        schema_version: 1,
+        type: "schedule_callback",
+        messages: [],
+        config,
+    };
+}
+
 export const MCP_URL_PATTERN = /^https?:\/\//i;
 
 export function createMcpDefinition(
@@ -339,6 +388,8 @@ export function createToolDefinition(category: ToolCategory): ToolDefinition {
             return createTransferCallDefinition(DEFAULT_TRANSFER_CALL_CONFIG);
         case "calculator":
             return createCalculatorDefinition();
+        case "schedule_callback":
+            return createScheduleCallbackDefinition();
         case "http_api":
         default:
             return createHttpApiDefinition();

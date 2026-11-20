@@ -4,6 +4,7 @@ import { Copy, KeyRound, Plus, Trash2, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { CallbacksPanel } from "@/components/contact-center/CallbacksPanel";
 import { HandoffCard } from "@/components/contact-center/HandoffCard";
 import { Softphone } from "@/components/contact-center/Softphone";
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
@@ -364,6 +365,20 @@ export default function ContactCenterPage() {
         >
             {seat && <Softphone seat={seat} />}
 
+            {queues !== null && (
+                <PageSection
+                    title="Rappels"
+                    description="Aucun client perdu : demandes de rappel prises par les agents IA, appels restés sans réponse dans une file, et rappels planifiés à la main."
+                >
+                    <CallbacksPanel
+                        queues={queues}
+                        seatId={seat?.is_active ? seat.id : null}
+                        agentNames={Object.fromEntries(agents.map((a) => [a.id, a.display_name]))}
+                    />
+                </PageSection>
+            )}
+
+
             <PageSection
                 title="Files d'attente"
                 description="Dans un agent IA, ajoutez l'outil « Transférer l'appel » avec la destination indiquée."
@@ -515,7 +530,11 @@ export default function ContactCenterPage() {
                                     </span>
                                     {h.queue_slug && <Badge variant="secondary">{h.queue_slug}</Badge>}
                                     <Badge variant={h.status === "answered" ? "default" : "secondary"}>
-                                        {h.status === "answered" ? "Pris en charge" : "En attente"}
+                                        {h.status === "answered"
+                                            ? "Pris en charge"
+                                            : h.status === "abandoned"
+                                              ? "Sans réponse → rappel"
+                                              : "En attente"}
                                     </Badge>
                                     <span className="text-xs text-muted-foreground">
                                         {h.created_at ? new Date(h.created_at).toLocaleString("fr-FR") : ""}

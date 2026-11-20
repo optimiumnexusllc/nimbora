@@ -25,6 +25,18 @@ type Status = "disconnected" | "connecting" | "registered" | "error";
 
 const SESSION_KEY = "nimbora-softphone-password";
 const HANDOFF_HEADER = "X-Nimbora-Handoff";
+const CALLBACK_HEADER = "X-Nimbora-Callback";
+
+function inviteHeader(session: RTCSession, name: string): string | null {
+    try {
+        // JsSIP exposes the INVITE as `request` on incoming sessions.
+        const invite = (session as unknown as { request?: { getHeader?: (h: string) => string | undefined } })
+            .request;
+        return invite?.getHeader?.(name) || null;
+    } catch {
+        return null;
+    }
+}
 // The AI summary is generated after the card: refresh while it is pending.
 const HANDOFF_POLL_MS = 1500;
 const HANDOFF_POLL_MAX = 20;
@@ -43,6 +55,8 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
     const [paused, setPaused] = useState(false);
     const [peer, setPeer] = useState<string>("");
     const [handoff, setHandoff] = useState<Handoff | null>(null);
+    // Set when this ringing call is a click-to-call callback (our own originate).
+    const [callbackCall, setCallbackCall] = useState<string | null>(null);
     const handoffPoll = useRef<ReturnType<typeof setTimeout> | null>(null);
     const uaRef = useRef<UA | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -77,15 +91,7 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
     // the SIP header, otherwise the newest pending card of my queues.
     const loadHandoff = useCallback(async (session: RTCSession) => {
         stopHandoffPoll();
-        let id: string | null = null;
-        try {
-            // JsSIP exposes the INVITE as `request` on incoming sessions.
-            const invite = (session as unknown as { request?: { getHeader?: (name: string) => string | undefined } })
-                .request;
-            id = invite?.getHeader?.(HANDOFF_HEADER) || null;
-        } catch {
-            id = null;
-        }
+        const id = inviteHeader(session, HANDOFF_HEADER);
         try {
             let card: Handoff | null = null;
             if (id) card = await enterpriseApi.getHandoff(id);
@@ -151,19 +157,24 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
             if (data.originator !== "remote") return;
             setPeer(session.remote_identity?.display_name || session.remote_identity?.uri?.user || "Appelant");
             setIncoming(session);
-            void loadHandoff(session);
+            const callbackId = inviteHeader(session, CALLBACK_HEADER);
+            setCallbackCall(callbackId);
+            // A callback is not an AI transfer: never show a queue's handoff card.
+            if (!callbackId) void loadHandoff(session);
             session.on("ended", () => {
                 setActive(null);
                 setIncoming(null);
                 setMuted(false);
                 stopHandoffPoll();
                 setHandoff(null);
+                setCallbackCall(null);
             });
             session.on("failed", () => {
                 setActive(null);
                 setIncoming(null);
                 stopHandoffPoll();
                 setHandoff(null);
+                setCallbackCall(null);
             });
         });
         ua.start();
@@ -232,6 +243,13 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
             </CardHeader>
             <CardContent className="space-y-4">
                 <audio ref={audioRef} autoPlay />
+                {callbackCall && (incoming || active) && (
+                    <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm">
+                        <span className="font-medium">Rappel client</span> — décrochez : NIMBORA compose ensuite le
+                        numéro de {peer}. Indiquez le résultat dans la liste des rappels une fois l&apos;appel
+                        terminé.
+                    </div>
+                )}
                 {handoff && (incoming || active) && <HandoffCard handoff={handoff} />}
                 {status !== "registered" ? (
                     <div className="flex flex-wrap items-end gap-3">

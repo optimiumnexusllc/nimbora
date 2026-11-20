@@ -1994,3 +1994,63 @@ class CustomerInteractionModel(Base):
         UniqueConstraint("workflow_run_id", name="_customer_interaction_run_uc"),
         Index("ix_customer_interactions_customer", "customer_id", "created_at"),
     )
+
+
+CALLBACK_STATUSES = ("pending", "in_progress", "done", "failed", "canceled")
+
+
+class CallbackRequestModel(Base):
+    """A promise to call a customer back, by a human team or an AI agent.
+
+    Created by an AI agent's schedule_callback tool, automatically when a
+    caller leaves a contact-center queue unanswered, or by hand.
+    """
+
+    __tablename__ = "callback_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    phone = Column(String(32), nullable=False)
+    customer_name = Column(String(128), nullable=True)
+    reason = Column(Text, nullable=True)
+    source = Column(String(16), nullable=False, default="manual")
+    assign_to = Column(String(8), nullable=False, default="human")
+    queue_slug = Column(String(48), nullable=True)
+    workflow_id = Column(
+        Integer, ForeignKey("workflows.id", ondelete="SET NULL"), nullable=True
+    )
+    status = Column(
+        Enum(*CALLBACK_STATUSES, name="callback_status"),
+        nullable=False,
+        default="pending",
+    )
+    scheduled_at = Column(DateTime(timezone=True), nullable=False)
+    attempts = Column(Integer, nullable=False, default=0)
+    max_attempts = Column(Integer, nullable=False, default=3)
+    last_attempt_at = Column(DateTime(timezone=True), nullable=True)
+    origin_workflow_run_id = Column(
+        Integer, ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    callback_workflow_run_id = Column(
+        Integer, ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    handoff_id = Column(
+        String(36), ForeignKey("call_handoffs.id", ondelete="SET NULL"), nullable=True
+    )
+    assigned_agent_id = Column(
+        Integer,
+        ForeignKey("contact_center_agents.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    outcome = Column(Text, nullable=True)
+    notes = Column(Text, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_callback_requests_due", "status", "scheduled_at"),
+        Index("ix_callback_requests_org_status", "organization_id", "status"),
+        Index("ix_callback_requests_org_phone", "organization_id", "phone"),
+    )

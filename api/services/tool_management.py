@@ -142,6 +142,27 @@ async def validate_tool_references(
                 status_code=404,
             )
 
+    if definition.get("type") == ToolCategory.SCHEDULE_CALLBACK.value:
+        config = definition.get("config") or {}
+        workflow_id = config.get("workflow_id")
+        if workflow_id and not await db_client.get_workflow(
+            workflow_id, organization_id=organization_id
+        ):
+            raise ToolManagementError(
+                "destination_not_found",
+                f"Agent '{workflow_id}' was not found in this organization.",
+                status_code=404,
+            )
+        queue_slug = config.get("queue_slug")
+        if queue_slug and not await db_client.get_contact_center_queue_by_slug(
+            organization_id, queue_slug
+        ):
+            raise ToolManagementError(
+                "queue_not_found",
+                f"Queue '{queue_slug}' was not found in this organization.",
+                status_code=404,
+            )
+
     recording_ids = {
         message["recording_id"]
         for message in definition.get("messages", [])

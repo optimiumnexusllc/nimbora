@@ -58,6 +58,7 @@ REDIS_SETTINGS = RedisSettings(
     ssl_check_hostname=False if use_ssl else None,
 )
 
+from api.services.contact_center.callbacks import run_callback_scheduler
 from api.tasks.campaign_tasks import (
     process_campaign_batch,
     sync_campaign_source,
@@ -90,6 +91,14 @@ class WorkerSettings:
         finalize_completed_text_chat,
     ]
     cron_jobs = [
+        # Callbacks: abandoned queue calls become callbacks; due AI callbacks
+        # are placed. Claims are atomic, so several workers are safe.
+        cron(
+            run_callback_scheduler,
+            minute=set(range(60)),
+            second=20,
+            run_at_startup=False,
+        ),
         cron(sweep_builder_runs, minute=set(range(60)), second=45, run_at_startup=True),
         cron(
             sweep_workflow_completions,
