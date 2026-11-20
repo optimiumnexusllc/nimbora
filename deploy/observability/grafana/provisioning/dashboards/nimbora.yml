@@ -1,0 +1,7 @@
+apiVersion: 1
+providers:
+  - name: NIMBORA
+    folder: NIMBORA
+    type: file
+    options:
+      path: /var/lib/grafana/dashboards

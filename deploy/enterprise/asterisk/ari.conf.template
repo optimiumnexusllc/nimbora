@@ -1,0 +1,10 @@
+; Rendered by install.sh — the password comes from ASTERISK_ARI_PASSWORD in .env.
+[general]
+enabled = yes
+pretty = no
+allowed_origins = __PUBLIC_BASE_URL__
+
+[nimbora]
+type = user
+read_only = no
+password = __ASTERISK_ARI_PASSWORD__

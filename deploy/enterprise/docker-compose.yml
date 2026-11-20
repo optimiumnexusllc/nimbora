@@ -1,0 +1,301 @@
+# NIMBORA Enterprise — multi-tenant AI + human call center on one VPS.
+#
+# Start with ./install.sh (renders secrets and Asterisk config), then:
+#   docker compose up -d                       # CPU-only server
+#   docker compose --profile gpu up -d         # NVIDIA GPU server (local AI on GPU)
+#
+# Only Caddy (80/443), Asterisk SIP/RTP and TURN are reachable from the
+# internet. Postgres, Redis, MinIO, the API, Ollama and Speaches stay on the
+# private Docker network.
+
+name: nimbora-enterprise  # volume names depend on it: keep when upgrading
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "20m"
+    max-file: "5"
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg17
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:?run install.sh first}"
+      POSTGRES_DB: postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    logging: *logging
+    networks: [internal]
+
+  redis:
+    image: redis:7
+    restart: unless-stopped
+    command: ["redis-server", "--requirepass", "${REDIS_PASSWORD:?}", "--appendonly", "yes"]
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD:?}", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    logging: *logging
+    networks: [internal]
+
+  minio:
+    image: ${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z}
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: "${MINIO_ROOT_USER:?}"
+      MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?}"
+      MINIO_API_CORS_ALLOW_ORIGIN: "${PUBLIC_BASE_URL:?}"
+    volumes:
+      - minio_data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    logging: *logging
+    networks: [internal]
+
+  api:
+    build:
+      context: ../..
+      dockerfile: api/Dockerfile
+    image: nimbora-enterprise-api:local
+    restart: unless-stopped
+    environment:
+      ENVIRONMENT: production
+      LOG_LEVEL: INFO
+      DEPLOYMENT_MODE: oss
+      AUTH_PROVIDER: local
+      ENABLE_SIGNUP: "${ENABLE_SIGNUP:-true}"
+      PUBLIC_BASE_URL: "${PUBLIC_BASE_URL}"
+      PUBLIC_HOST: "${PUBLIC_HOST}"
+      UI_APP_URL: "${PUBLIC_BASE_URL}"
+      CORS_ALLOWED_ORIGINS: "${PUBLIC_BASE_URL}"
+      DATABASE_URL: "postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres"
+      REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
+      ENABLE_AWS_S3: "false"
+      MINIO_ENDPOINT: "minio:9000"
+      MINIO_PUBLIC_ENDPOINT: "${PUBLIC_BASE_URL}"
+      MINIO_ACCESS_KEY: "${MINIO_ROOT_USER}"
+      MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD}"
+      MINIO_BUCKET: voice-audio
+      MINIO_SECURE: "false"
+      FASTAPI_WORKERS: "${FASTAPI_WORKERS:-2}"
+      ENABLE_ARI_MANAGER: "true"
+      ENABLE_CAMPAIGN_ORCHESTRATOR: "true"
+      FORWARDED_ALLOW_IPS: "*"
+      OSS_JWT_SECRET: "${OSS_JWT_SECRET:?}"
+      TELEPHONY_WS_TOKEN_SECRET: "${TELEPHONY_WS_TOKEN_SECRET:-}"
+      TELEPHONY_WS_TOKEN_ENFORCE: "${TELEPHONY_WS_TOKEN_ENFORCE:-false}"
+      ENABLE_COTURN: "true"
+      TURN_HOST: "${PUBLIC_HOST}"
+      TURN_SECRET: "${TURN_SECRET:?}"
+      SERVER_IP: "${PUBLIC_IP:?}"
+      # Privacy: nothing leaves the platform.
+      ENABLE_TELEMETRY: "false"
+      # --- Multi-tenant SaaS operator mode ---
+      SAAS_MODE: "true"
+      SAAS_PLATFORM_NAME: "${SAAS_PLATFORM_NAME:-NIMBORA}"
+      SAAS_DEFAULT_PLAN: "${SAAS_DEFAULT_PLAN:-starter}"
+      SAAS_TRIAL_DAYS: "${SAAS_TRIAL_DAYS:-14}"
+      SAAS_GRACE_DAYS: "${SAAS_GRACE_DAYS:-3}"
+      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-}"
+      STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
+      # --- Self-hosted AI ---
+      LOCAL_AI_ENABLED: "true"
+      LOCAL_LLM_BASE_URL: "${LOCAL_LLM_BASE_URL:-http://ollama:11434/v1}"
+      LOCAL_LLM_MODEL: "${LOCAL_LLM_MODEL:-qwen2.5:7b-instruct}"
+      LOCAL_SPEECH_BASE_URL: "http://speaches:8000/v1"
+      LOCAL_STT_MODEL: "${LOCAL_STT_MODEL:-deepdml/faster-whisper-large-v3-turbo-ct2}"
+      LOCAL_DEFAULT_LANGUAGE: "${LOCAL_DEFAULT_LANGUAGE:-fr}"
+      SERVICE_URL_ALLOWED_HOSTS: "ollama,speaches,vllm"
+      # --- Human contact center (platform Asterisk) ---
+      CONTACT_CENTER_ENABLED: "true"
+      ASTERISK_GENERATED_CONFIG_DIR: /asterisk-generated
+      ASTERISK_SIP_REALM: "${ASTERISK_SIP_REALM:-nimbora}"
+      ASTERISK_WSS_URL: "wss://${PUBLIC_HOST}/sip"
+      ASTERISK_ARI_URL: "http://asterisk:8088/ari"
+      ASTERISK_ARI_USER: nimbora
+      ASTERISK_ARI_PASSWORD: "${ASTERISK_ARI_PASSWORD:?}"
+    volumes:
+      - asterisk_generated:/asterisk-generated
+    depends_on:
+      postgres: {condition: service_healthy}
+      redis: {condition: service_healthy}
+      minio: {condition: service_healthy}
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health').read()\""]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 90s
+    logging: *logging
+    networks: [internal]
+
+  ui:
+    build:
+      context: ../..
+      dockerfile: ui/Dockerfile
+    image: nimbora-enterprise-ui:local
+    restart: unless-stopped
+    environment:
+      HOSTNAME: "0.0.0.0"
+      BACKEND_URL: "http://api:8000"
+      NODE_ENV: oss
+      ENABLE_TELEMETRY: "false"
+    depends_on:
+      api: {condition: service_healthy}
+    logging: *logging
+    networks: [internal]
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    environment:
+      PUBLIC_HOST: "${PUBLIC_HOST}"
+      ACME_EMAIL: "${ACME_EMAIL:?}"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on: [ui, api]
+    logging: *logging
+    networks: [internal]
+
+  coturn:
+    image: coturn/coturn:4.8.0
+    restart: unless-stopped
+    command:
+      - -n
+      - --listening-port=3478
+      - --fingerprint
+      - --use-auth-secret
+      - --static-auth-secret=${TURN_SECRET}
+      - --realm=${PUBLIC_HOST}
+      - --external-ip=${PUBLIC_IP}
+      - --min-port=49152
+      - --max-port=49300
+      - --no-cli
+      - --no-multicast-peers
+      - --denied-peer-ip=10.0.0.0-10.255.255.255
+      - --denied-peer-ip=172.16.0.0-172.31.255.255
+      - --denied-peer-ip=192.168.0.0-192.168.255.255
+    ports:
+      - "3478:3478/udp"
+      - "3478:3478/tcp"
+      - "49152-49300:49152-49300/udp"
+    logging: *logging
+    networks: [internal]
+
+  asterisk:
+    image: ${ASTERISK_IMAGE:-andrius/asterisk:22}
+    restart: unless-stopped
+    ports:
+      - "5060:5060/udp"
+      - "5060:5060/tcp"
+      - "10000-10999:10000-10999/udp"
+    volumes:
+      - ./generated/asterisk/pjsip.conf:/etc/asterisk/pjsip.conf:ro
+      - ./generated/asterisk/ari.conf:/etc/asterisk/ari.conf:ro
+      - ./asterisk/http.conf:/etc/asterisk/http.conf:ro
+      - ./asterisk/rtp.conf:/etc/asterisk/rtp.conf:ro
+      - ./asterisk/extensions.conf:/etc/asterisk/extensions.conf:ro
+      - ./asterisk/queues.conf:/etc/asterisk/queues.conf:ro
+      - ./asterisk/extensions_custom.conf:/etc/asterisk/extensions_custom.conf:ro
+      - ./asterisk/pjsip_trunks.conf:/etc/asterisk/pjsip_trunks.conf:ro
+      - asterisk_generated:/etc/asterisk/nimbora:ro
+      - asterisk_spool:/var/spool/asterisk
+    logging: *logging
+    networks: [internal]
+
+  # ---------------------------------------------------------------- local AI
+  ollama:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    profiles: ["cpu"]
+    environment:
+      OLLAMA_KEEP_ALIVE: "24h"
+      OLLAMA_NUM_PARALLEL: "${OLLAMA_NUM_PARALLEL:-4}"
+    volumes:
+      - ollama_data:/root/.ollama
+    logging: *logging
+    networks: [internal]
+
+  speaches:
+    image: ghcr.io/speaches-ai/speaches:latest-cpu
+    restart: unless-stopped
+    profiles: ["cpu"]
+    environment:
+      WHISPER__COMPUTE_TYPE: int8
+      ENABLE_UI: "false"
+    volumes:
+      - hf_cache:/home/ubuntu/.cache/huggingface/hub
+    logging: *logging
+    networks: [internal]
+
+  ollama-gpu:
+    image: ollama/ollama:latest
+    restart: unless-stopped
+    profiles: ["gpu"]
+    hostname: ollama
+    networks:
+      internal:
+        aliases: [ollama]
+    environment:
+      OLLAMA_KEEP_ALIVE: "24h"
+      OLLAMA_NUM_PARALLEL: "${OLLAMA_NUM_PARALLEL:-8}"
+    volumes:
+      - ollama_data:/root/.ollama
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: all, capabilities: [gpu]}]
+    logging: *logging
+
+  speaches-gpu:
+    image: ghcr.io/speaches-ai/speaches:latest-cuda
+    restart: unless-stopped
+    profiles: ["gpu"]
+    hostname: speaches
+    networks:
+      internal:
+        aliases: [speaches]
+    environment:
+      ENABLE_UI: "false"
+    volumes:
+      - hf_cache:/home/ubuntu/.cache/huggingface/hub
+    deploy:
+      resources:
+        reservations:
+          devices: [{driver: nvidia, count: all, capabilities: [gpu]}]
+    logging: *logging
+
+volumes:
+  postgres_data:
+  redis_data:
+  minio_data:
+  caddy_data:
+  caddy_config:
+  asterisk_generated:
+  asterisk_spool:
+  ollama_data:
+  hf_cache:
+
+networks:
+  internal:
+    driver: bridge

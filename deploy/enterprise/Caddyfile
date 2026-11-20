@@ -1,0 +1,41 @@
+# Automatic HTTPS (Let's Encrypt) for the whole platform.
+{
+	email {$ACME_EMAIL}
+}
+
+{$PUBLIC_HOST} {
+	encode gzip zstd
+
+	# Security headers
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	# Agent softphones (SIP over secure WebSocket) -> Asterisk's /ws only.
+	# Asterisk ARI (/ari) is never exposed.
+	handle /sip {
+		rewrite * /ws
+		reverse_proxy asterisk:8088
+	}
+
+	# Call recordings / audio (MinIO bucket)
+	handle_path /voice-audio/* {
+		rewrite * /voice-audio{path}
+		reverse_proxy minio:9000
+	}
+
+	# REST API, websockets (media streams, signaling)
+	handle /api/v1/* {
+		reverse_proxy api:8000 {
+			flush_interval -1
+		}
+	}
+
+	# Web application
+	handle {
+		reverse_proxy ui:3010
+	}
+}

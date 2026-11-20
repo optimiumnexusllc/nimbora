@@ -1,0 +1,1106 @@
+import json
+from datetime import UTC, datetime
+from types import SimpleNamespace
+from unittest.mock import AsyncMock
+
+import httpx
+import pytest
+from fastapi import HTTPException
+
+from api.errors.failure import ErrorType
+from api.errors.mps import MPSUnavailableError
+from api.services import mps_service_key_client as mps_client_module
+from api.services.mps_service_key_client import MPSServiceKeyClient
+
+# MPS keys accounts by Stack team id; organization 42 is that team locally.
+TEAM_ID = "0f7e6977-e728-4368-9e5f-72c97b293cfc"
+DEPLOYMENT_ID = mps_client_module.NIMBORA_DEPLOYMENT_ID
+
+
+@pytest.fixture(autouse=True)
+def organization_team(monkeypatch):
+    lookup = AsyncMock(return_value=SimpleNamespace(id=42, provider_id=TEAM_ID))
+    monkeypatch.setattr(mps_client_module.db_client, "get_organization_by_id", lookup)
+    return lookup
+
+
+class _Response:
+    def __init__(self, status_code: int, payload: dict | None = None, text: str = ""):
+        self.status_code = status_code
+        self._payload = payload or {}
+        self.text = text
+        self.request = object()
+
+    def json(self):
+        return self._payload
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("deployment_mode", ["oss", "saas"])
+async def test_agent_builder_completion_owns_billing_and_model_selection(
+    monkeypatch, deployment_mode
+):
+    requests = []
+    response_body = {
+        "choices": [
+            {
+                "message": {
+                    "content": None,
+                    "reasoning_content": "Provider reasoning",
+                    "tool_calls": [
+                        {
+                            "id": "call-1",
+                            "provider_specific_fields": {"signature": "signature"},
+                        }
+                    ],
+                }
+            }
+        ],
+        "usage": {"total_tokens": 42},
+    }
+
+    def handle(request):
+        requests.append(request)
+        assert request.url.host == "mps.example"
+        assert request.headers["Authorization"] == "Bearer org-service-key"
+        assert "X-Secret-Key" not in request.headers
+        assert "X-Organization-Id" not in request.headers
+        assert request.url.path == "/api/v1/agent-builder/chat/completions"
+        assert request.extensions["timeout"] == {
+            "connect": 10,
+            "read": 290,
+            "write": 290,
+            "pool": 290,
+        }
+        return httpx.Response(200, json=response_body)
+
+    actual_client = httpx.AsyncClient
+    monkeypatch.setattr(mps_client_module, "DEPLOYMENT_MODE", deployment_mode)
+    monkeypatch.setattr(
+        mps_client_module, "NIMBORA_MPS_SECRET_KEY", "control-plane-secret"
+    )
+    monkeypatch.setattr(
+        mps_client_module.httpx,
+        "AsyncClient",
+        lambda **kwargs: actual_client(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    client = MPSServiceKeyClient()
+    client.base_url = "https://mps.example"
+    messages = [{"role": "user", "content": "Hello"}]
+    tools = [{"type": "function", "function": {"name": "list_node_types"}}]
+    metadata = {
+        "usage_context": "workflow_builder",
+        "correlation_id": "untrusted",
+        "mps_billing_version": "1",
+    }
+
+    result = await client.create_agent_builder_completion(
+        service_key="org-service-key",
+        messages=messages,
+        max_tokens=8000,
+        tools=tools,
+        tool_choice="auto",
+        metadata=metadata,
+    )
+    assert result == response_body
+    assert len(requests) == 1
+    assert json.loads(requests[-1].content) == {
+        "messages": messages,
+        "max_tokens": 8000,
+        "tools": tools,
+        "tool_choice": "auto",
+        "stream": False,
+        "metadata": {
+            "usage_context": "workflow_builder",
+        },
+    }
+    assert metadata["correlation_id"] == "untrusted"  # Caller input is not mutated.
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", [403, 503])
+async def test_chat_completion_propagates_billing_failure_without_fallback(
+    monkeypatch, status
+):
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        assert request.url.path == "/api/v1/agent-builder/chat/completions"
+        return httpx.Response(status, json={"detail": "Billing unavailable"})
+
+    actual_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        mps_client_module.httpx,
+        "AsyncClient",
+        lambda **kwargs: actual_client(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    with pytest.raises(httpx.HTTPStatusError) as error:
+        await MPSServiceKeyClient().create_agent_builder_completion(
+            service_key="org-service-key",
+            messages=[{"role": "user", "content": "Hello"}],
+            max_tokens=8000,
+        )
+    assert error.value.response.status_code == status
+    assert len(requests) == 1
+
+
+@pytest.mark.asyncio
+async def test_invoice_calls_name_the_team_and_acting_user(monkeypatch):
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        if request.url.path.endswith("/pdf"):
+            return httpx.Response(200, content=b"%PDF-1.4")
+        return httpx.Response(200, json={"payments": []})
+
+    async_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        mps_client_module.httpx,
+        "AsyncClient",
+        lambda **kwargs: async_client(
+            transport=httpx.MockTransport(handle),
+            **kwargs,
+        ),
+    )
+    monkeypatch.setattr(mps_client_module, "DEPLOYMENT_MODE", "saas")
+    monkeypatch.setattr(mps_client_module, "NIMBORA_MPS_SECRET_KEY", "mps-secret")
+    client = MPSServiceKeyClient()
+
+    payments = await client.list_payments(organization_id=42, created_by="stack-user")
+    pdf = await client.get_invoice_pdf(
+        organization_id=42, payment_order_id=200, created_by="stack-user"
+    )
+
+    assert payments == {"payments": []}
+    assert pdf.content == b"%PDF-1.4"
+    assert [request.url.path for request in requests] == [
+        f"/api/v1/billing/teams/{TEAM_ID}/payments",
+        f"/api/v1/billing/teams/{TEAM_ID}/invoices/200/pdf",
+    ]
+    for request in requests:
+        assert request.method == "GET"
+        assert request.headers["X-Stack-Team-Id"] == TEAM_ID
+        assert request.headers["X-Created-By"] == "stack-user"
+        assert request.headers["X-Secret-Key"] == "mps-secret"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("entry_type", [None, "purchase", "credit"])
+async def test_credit_ledger_forwards_filters_with_organization_auth(
+    monkeypatch, entry_type
+):
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        return httpx.Response(200, json={"ledger_entries": []})
+
+    async_client = httpx.AsyncClient
+    monkeypatch.setattr(
+        mps_client_module.httpx,
+        "AsyncClient",
+        lambda **kwargs: async_client(
+            transport=httpx.MockTransport(handle),
+            **kwargs,
+        ),
+    )
+    monkeypatch.setattr(mps_client_module, "DEPLOYMENT_MODE", "saas")
+    monkeypatch.setattr(mps_client_module, "NIMBORA_MPS_SECRET_KEY", "mps-secret")
+    filters = (
+        dict(
+            entry_type=entry_type,
+            start_date=datetime(2026, 6, 1, tzinfo=UTC),
+            end_date=datetime(2026, 7, 1, tzinfo=UTC),
+        )
+        if entry_type
+        else {}
+    )
+    client = MPSServiceKeyClient()
+    await client.get_credit_ledger(organization_id=42, page=2, limit=25, **filters)
+    assert requests[0].headers["X-Stack-Team-Id"] == TEAM_ID
+    assert "X-Organization-Id" not in requests[0].headers
+    assert requests[0].headers["X-Secret-Key"] == "mps-secret"
+    expected = {"page": "2", "limit": "25"}
+    if entry_type:
+        expected.update(
+            entry_type=entry_type,
+            start_date="2026-06-01T00:00:00+00:00",
+            end_date="2026-07-01T00:00:00+00:00",
+        )
+    assert dict(requests[0].url.params) == expected
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    (
+        "deployment_mode",
+        "organization_id",
+        "created_by",
+        "mps_secret",
+        "expected_headers",
+    ),
+    [
+        (
+            "oss",
+            None,
+            "oss_123_11111111-1111-4111-8111-111111111111",
+            None,
+            {
+                "Content-Type": "application/json",
+                "X-Created-By": ("oss_123_11111111-1111-4111-8111-111111111111"),
+            },
+        ),
+        (
+            "saas",
+            42,
+            "11111111-1111-4111-8111-111111111111",
+            "nimbora-mps-secret",
+            {
+                "Content-Type": "application/json",
+                "X-Secret-Key": "nimbora-mps-secret",
+                "X-Stack-Team-Id": TEAM_ID,
+                "X-Created-By": "11111111-1111-4111-8111-111111111111",
+            },
+        ),
+    ],
+)
+async def test_ensure_cloudonix_domain_uses_owner_scope_headers(
+    monkeypatch,
+    deployment_mode,
+    organization_id,
+    created_by,
+    mps_secret,
+    expected_headers,
+):
+    calls = []
+    payload = {
+        "provisioning_id": "11111111-1111-4111-8111-111111111111",
+        "domain_name": "oss-nimbora-11111111",
+        "domain_uuid": "22222222-2222-4222-8222-222222222222",
+        "bearer_token": "domain-bearer",
+        "status": "ready",
+    }
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def put(self, url, headers):
+            calls.append((url, headers))
+            return _Response(200, payload)
+
+    monkeypatch.setattr(mps_client_module.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(mps_client_module, "DEPLOYMENT_MODE", deployment_mode)
+    monkeypatch.setattr(mps_client_module, "NIMBORA_MPS_SECRET_KEY", mps_secret)
+    client = MPSServiceKeyClient()
+
+    assert (
+        await client.ensure_cloudonix_domain(
+            organization_id=organization_id,
+            created_by=created_by,
+        )
+        == payload
+    )
+    assert calls == [
+        (
+            f"{client.base_url}/api/v1/cloudonix/domains/self",
+            expected_headers,
+        )
+    ]
+
+
+def test_validate_service_key_uses_bearer_self_usage(monkeypatch):
+    calls = []
+
+    class FakeClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def get(self, url, headers):
+            calls.append(("GET", url, headers))
+            return _Response(200)
+
+    monkeypatch.setattr("api.services.mps_service_key_client.httpx.Client", FakeClient)
+
+    client = MPSServiceKeyClient()
+
+    assert client.validate_service_key("mps_sk_paid") is True
+    assert calls == [
+        (
+            "GET",
+            f"{client.base_url}/api/v1/service-keys/usage/self",
+            {
+                "Authorization": "Bearer mps_sk_paid",
+                "Content-Type": "application/json",
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize("status_code", [401, 403])
+def test_validate_service_key_returns_false_only_for_auth_rejection(
+    monkeypatch,
+    status_code,
+):
+    emitted = []
+
+    class FakeClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def get(self, url, headers):
+            return _Response(status_code)
+
+    monkeypatch.setattr(mps_client_module.httpx, "Client", FakeClient)
+    monkeypatch.setattr(
+        mps_client_module,
+        "log_failure",
+        lambda failure, **context: emitted.append((failure, context)),
+    )
+
+    assert MPSServiceKeyClient().validate_service_key("mps_sk_invalid") is False
+    assert emitted == []
+
+
+def test_validate_service_key_classifies_mps_http_failure(monkeypatch):
+    emitted = []
+
+    class FakeClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def get(self, url, headers):
+            return _Response(503, text="upstream unavailable")
+
+    monkeypatch.setattr(mps_client_module.httpx, "Client", FakeClient)
+    monkeypatch.setattr(
+        mps_client_module,
+        "log_failure",
+        lambda failure, **context: emitted.append((failure, context)),
+    )
+
+    with pytest.raises(MPSUnavailableError) as exc_info:
+        MPSServiceKeyClient().validate_service_key(
+            "mps_sk_secret",
+            organization_id=42,
+            created_by="provider-123",
+        )
+
+    assert exc_info.value.status_code == 503
+    assert len(emitted) == 1
+    failure, context = emitted[0]
+    assert failure.type == ErrorType.SYSTEM_ERROR
+    assert failure.code == "nimbora-503"
+    assert failure.provider == "nimbora"
+    assert failure.error_owner.value == "operator"
+    assert "mps_sk_secret" not in failure.internal_message
+    assert context == {
+        "organization_id": 42,
+        "operation": "validate_service_key",
+    }
+
+
+def test_validate_service_key_classifies_mps_connection_failure(monkeypatch):
+    emitted = []
+    request_error = httpx.ConnectError(
+        "All connection attempts failed",
+        request=httpx.Request("GET", "https://services.nimbora.example"),
+    )
+
+    class FakeClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return None
+
+        def get(self, url, headers):
+            raise request_error
+
+    monkeypatch.setattr(mps_client_module.httpx, "Client", FakeClient)
+    monkeypatch.setattr(
+        mps_client_module,
+        "log_failure",
+        lambda failure, **context: emitted.append((failure, context)),
+    )
+
+    with pytest.raises(MPSUnavailableError) as exc_info:
+        MPSServiceKeyClient().validate_service_key(
+            "mps_sk_secret",
+            organization_id=42,
+        )
+
+    assert exc_info.value.__cause__ is request_error
+    assert len(emitted) == 1
+    failure, context = emitted[0]
+    assert failure.type == ErrorType.SYSTEM_ERROR
+    assert failure.code == "nimbora-connection"
+    assert failure.retryable is True
+    assert context == {
+        "organization_id": 42,
+        "operation": "validate_service_key",
+    }
+
+
+@pytest.mark.asyncio
+async def test_pricing_and_voice_failures_each_emit_one_classified_record(monkeypatch):
+    emitted = []
+    responses = [_Response(502), _Response(503)]
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, url, headers, params=None):
+            return responses.pop(0)
+
+    monkeypatch.setattr(mps_client_module, "DEPLOYMENT_MODE", "saas")
+    monkeypatch.setattr(mps_client_module.httpx, "AsyncClient", FakeAsyncClient)
+    monkeypatch.setattr(
+        mps_client_module,
+        "log_failure",
+        lambda failure, **context: emitted.append((failure, context)),
+    )
+    client = MPSServiceKeyClient()
+
+    with pytest.raises(MPSUnavailableError):
+        await client.get_billing_pricing(42)
+    with pytest.raises(MPSUnavailableError):
+        await client.get_voices(provider="cartesia", organization_id=42)
+
+    assert len(emitted) == 2
+    pricing_failure, pricing_context = emitted[0]
+    voice_failure, voice_context = emitted[1]
+    assert pricing_failure.code == "nimbora-502"
+    assert pricing_context == {
+        "organization_id": 42,
+        "operation": "get_billing_pricing",
+    }
+    assert voice_failure.code == "nimbora-503"
+    assert voice_context == {
+        "organization_id": 42,
+        "operation": "get_voices",
+        "requested_provider": "cartesia",
+    }
+
+
+@pytest.mark.asyncio
+async def test_check_service_key_usage_uses_bearer_self_usage(monkeypatch):
+    calls = []
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, url, headers):
+            calls.append(("GET", url, headers))
+            return _Response(
+                200,
+                {"total_credits_used": 12.5, "remaining_credits": 87.5},
+            )
+
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.httpx.AsyncClient", FakeAsyncClient
+    )
+
+    client = MPSServiceKeyClient()
+
+    assert await client.check_service_key_usage("mps_sk_paid") == {
+        "total_credits_used": 12.5,
+        "remaining_credits": 87.5,
+    }
+    assert calls[0] == (
+        "GET",
+        f"{client.base_url}/api/v1/service-keys/usage/self",
+        {
+            "Authorization": "Bearer mps_sk_paid",
+            "Content-Type": "application/json",
+        },
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_correlation_id_uses_bearer_auth(monkeypatch):
+    calls = []
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def post(self, url, json, headers):
+            calls.append(("POST", url, json, headers))
+            return _Response(200, {"correlation_id": "mps-corr-123"})
+
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.httpx.AsyncClient", FakeAsyncClient
+    )
+
+    client = MPSServiceKeyClient()
+
+    assert await client.create_correlation_id(
+        service_key="mps_sk_paid",
+        workflow_run_id=42,
+    ) == {"correlation_id": "mps-corr-123"}
+    assert calls == [
+        (
+            "POST",
+            f"{client.base_url}/api/v1/service-keys/correlation-id/self",
+            {"deployment_id": DEPLOYMENT_ID, "workflow_run_id": 42},
+            {
+                "Authorization": "Bearer mps_sk_paid",
+                "Content-Type": "application/json",
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_authorize_workflow_run_start_uses_hosted_org_auth(monkeypatch):
+    calls = []
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def post(self, url, json, headers):
+            calls.append(("POST", url, json, headers))
+            return _Response(
+                200,
+                {
+                    "allowed": True,
+                    "billing_mode": "v2",
+                    "remaining_credits": "25.0000",
+                    "correlation_id": "mps-corr-123",
+                },
+            )
+
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.httpx.AsyncClient", FakeAsyncClient
+    )
+    monkeypatch.setattr("api.services.mps_service_key_client.DEPLOYMENT_MODE", "saas")
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.NIMBORA_MPS_SECRET_KEY", "mps-secret"
+    )
+
+    client = MPSServiceKeyClient()
+
+    assert await client.authorize_workflow_run_start(
+        organization_id=42,
+        workflow_run_id=88,
+        service_key="mps_sk_paid",
+        require_correlation_id=True,
+        minimum_credits=0.1,
+        metadata={"workflow_id": 7},
+        created_by="provider-123",
+    ) == {
+        "allowed": True,
+        "billing_mode": "v2",
+        "remaining_credits": "25.0000",
+        "correlation_id": "mps-corr-123",
+    }
+    assert calls == [
+        (
+            "POST",
+            f"{client.base_url}/api/v1/billing/teams/{TEAM_ID}/run-authorization",
+            {
+                "workflow_run_id": 88,
+                "deployment_id": DEPLOYMENT_ID,
+                "service_key": "mps_sk_paid",
+                "require_correlation_id": True,
+                "minimum_credits": 0.1,
+                "metadata": {"workflow_id": 7},
+            },
+            {
+                "Content-Type": "application/json",
+                "X-Secret-Key": "mps-secret",
+                "X-Stack-Team-Id": TEAM_ID,
+                "X-Created-By": "provider-123",
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("provider_id", [None, "org_oss_old", "invalid-team"])
+@pytest.mark.parametrize("operation", ["balance", "create", "list", "get", "archive"])
+async def test_hosted_calls_reject_missing_stack_team_before_sending(
+    monkeypatch, organization_team, provider_id, operation
+):
+    organization_team.return_value = SimpleNamespace(id=42, provider_id=provider_id)
+    monkeypatch.setattr(mps_client_module, "DEPLOYMENT_MODE", "saas")
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        return httpx.Response(200, json={})
+
+    original = httpx.AsyncClient
+    monkeypatch.setattr(
+        mps_client_module.httpx,
+        "AsyncClient",
+        lambda **kwargs: original(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    client = MPSServiceKeyClient()
+    operations = {
+        "balance": lambda: client.ensure_billing_account_v2(organization_id=42),
+        "create": lambda: client.create_service_key(
+            "test", organization_id=42, created_by="actor"
+        ),
+        "list": lambda: client.get_service_keys(organization_id=42),
+        "get": lambda: client.get_service_key_by_id(1, organization_id=42),
+        "archive": lambda: client.archive_service_key(1, organization_id=42),
+    }
+    with pytest.raises(HTTPException) as error:
+        await operations[operation]()
+    assert error.value.status_code == 400
+    assert "Stack team" in error.value.detail
+    assert requests == []
+
+
+@pytest.mark.asyncio
+async def test_missing_organization_can_be_resolved_on_retry(
+    monkeypatch, organization_team
+):
+    monkeypatch.setattr(mps_client_module, "DEPLOYMENT_MODE", "saas")
+    organization_team.side_effect = [None, SimpleNamespace(id=42, provider_id=TEAM_ID)]
+    client = MPSServiceKeyClient()
+    with pytest.raises(HTTPException) as error:
+        await client._stack_team_id(42)
+    assert error.value.status_code == 404
+    assert await client._stack_team_id(42) == TEAM_ID
+    assert await client._stack_team_id(42) == TEAM_ID
+    assert organization_team.await_count == 2
+
+
+@pytest.mark.asyncio
+async def test_hosted_management_requires_selected_organization(monkeypatch):
+    monkeypatch.setattr(mps_client_module, "DEPLOYMENT_MODE", "saas")
+    with pytest.raises(HTTPException) as error:
+        await MPSServiceKeyClient().get_service_keys()
+    assert error.value.status_code == 400
+    assert error.value.detail == "No organization selected"
+
+
+@pytest.mark.asyncio
+async def test_hosted_key_requests_only_send_stack_team_identity(monkeypatch):
+    monkeypatch.setattr(mps_client_module, "DEPLOYMENT_MODE", "saas")
+    monkeypatch.setattr(mps_client_module, "NIMBORA_MPS_SECRET_KEY", "test-secret")
+    requests = []
+
+    def handle(request):
+        requests.append(request)
+        return httpx.Response(200, json=[] if request.method == "GET" else {"id": 1})
+
+    original = httpx.AsyncClient
+    monkeypatch.setattr(
+        mps_client_module.httpx,
+        "AsyncClient",
+        lambda **kwargs: original(transport=httpx.MockTransport(handle), **kwargs),
+    )
+    client = MPSServiceKeyClient()
+    await client.create_service_key("test", organization_id=42, created_by="actor")
+    await client.get_service_keys(organization_id=42)
+    payload = json.loads(requests[0].content)
+    assert payload["stack_team_id"] == TEAM_ID
+    assert "organization_id" not in payload
+    assert dict(requests[1].url.params) == {"stack_team_id": TEAM_ID}
+    assert all(request.headers["X-Stack-Team-Id"] == TEAM_ID for request in requests)
+    assert all("X-Organization-Id" not in request.headers for request in requests)
+
+
+@pytest.mark.asyncio
+async def test_authorize_service_key_run_start_uses_bearer_auth(monkeypatch):
+    calls = []
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def post(self, url, json, headers):
+            calls.append(("POST", url, json, headers))
+            return _Response(
+                200,
+                {
+                    "allowed": True,
+                    "remaining_credits": "25.0000",
+                    "correlation_id": "mps-corr-123",
+                },
+            )
+
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.httpx.AsyncClient", FakeAsyncClient
+    )
+
+    client = MPSServiceKeyClient()
+
+    assert await client.authorize_service_key_run_start(
+        service_key="mps_sk_paid",
+        workflow_run_id=88,
+        require_correlation_id=True,
+        minimum_credits=0.1,
+        metadata={"workflow_id": 7},
+    ) == {
+        "allowed": True,
+        "remaining_credits": "25.0000",
+        "correlation_id": "mps-corr-123",
+    }
+    assert calls == [
+        (
+            "POST",
+            f"{client.base_url}/api/v1/service-keys/run-authorization/self",
+            {
+                "workflow_run_id": 88,
+                "deployment_id": DEPLOYMENT_ID,
+                "require_correlation_id": True,
+                "minimum_credits": 0.1,
+                "metadata": {"workflow_id": 7},
+            },
+            {
+                "Authorization": "Bearer mps_sk_paid",
+                "Content-Type": "application/json",
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_ensure_billing_account_v2_uses_balance_endpoint(monkeypatch):
+    calls = []
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, url, headers):
+            calls.append(("GET", url, headers))
+            return _Response(
+                200,
+                {
+                    "id": 7,
+                    "organization_id": 42,
+                    "billing_mode": "v2",
+                    "cached_balance_credits": "0.0000",
+                    "currency": "USD",
+                },
+            )
+
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.httpx.AsyncClient", FakeAsyncClient
+    )
+    monkeypatch.setattr("api.services.mps_service_key_client.DEPLOYMENT_MODE", "saas")
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.NIMBORA_MPS_SECRET_KEY", "mps-secret"
+    )
+
+    client = MPSServiceKeyClient()
+
+    assert await client.ensure_billing_account_v2(
+        organization_id=42,
+        created_by="provider-123",
+    ) == {
+        "id": 7,
+        "organization_id": 42,
+        "billing_mode": "v2",
+        "cached_balance_credits": "0.0000",
+        "currency": "USD",
+    }
+    assert calls == [
+        (
+            "GET",
+            f"{client.base_url}/api/v1/billing/teams/{TEAM_ID}/balance",
+            {
+                "Content-Type": "application/json",
+                "X-Secret-Key": "mps-secret",
+                "X-Stack-Team-Id": TEAM_ID,
+                "X-Created-By": "provider-123",
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_billing_pricing_uses_hosted_organization_auth(monkeypatch):
+    calls = []
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, url, headers):
+            calls.append(("GET", url, headers))
+            return _Response(
+                200,
+                {
+                    "organization_id": 42,
+                    "platform_usage": {"price_per_minute": 0.01},
+                    "nimbora_model": {"price_per_minute": 0.07},
+                },
+            )
+
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.httpx.AsyncClient", FakeAsyncClient
+    )
+    monkeypatch.setattr("api.services.mps_service_key_client.DEPLOYMENT_MODE", "saas")
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.NIMBORA_MPS_SECRET_KEY", "mps-secret"
+    )
+
+    client = MPSServiceKeyClient()
+
+    assert await client.get_billing_pricing(42) == {
+        "organization_id": 42,
+        "platform_usage": {"price_per_minute": 0.01},
+        "nimbora_model": {"price_per_minute": 0.07},
+    }
+    assert calls == [
+        (
+            "GET",
+            f"{client.base_url}/api/v1/billing/teams/{TEAM_ID}/pricing",
+            {
+                "Content-Type": "application/json",
+                "X-Secret-Key": "mps-secret",
+                "X-Stack-Team-Id": TEAM_ID,
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_get_credit_ledger_sends_page_and_limit(monkeypatch):
+    calls = []
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def get(self, url, params, headers):
+            calls.append(("GET", url, params, headers))
+            return _Response(
+                200,
+                {
+                    "account": {"organization_id": 42},
+                    "ledger_entries": [],
+                    "total_count": 0,
+                    "page": 3,
+                    "limit": 25,
+                    "total_pages": 0,
+                },
+            )
+
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.httpx.AsyncClient", FakeAsyncClient
+    )
+    monkeypatch.setattr("api.services.mps_service_key_client.DEPLOYMENT_MODE", "saas")
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.NIMBORA_MPS_SECRET_KEY", "mps-secret"
+    )
+
+    client = MPSServiceKeyClient()
+
+    assert await client.get_credit_ledger(
+        organization_id=42,
+        page=3,
+        limit=25,
+    ) == {
+        "account": {"organization_id": 42},
+        "ledger_entries": [],
+        "total_count": 0,
+        "page": 3,
+        "limit": 25,
+        "total_pages": 0,
+    }
+    assert calls == [
+        (
+            "GET",
+            f"{client.base_url}/api/v1/billing/teams/{TEAM_ID}/ledger",
+            {"page": 3, "limit": 25},
+            {
+                "Content-Type": "application/json",
+                "X-Secret-Key": "mps-secret",
+                "X-Stack-Team-Id": TEAM_ID,
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_report_platform_usage_uses_hosted_secret_auth(monkeypatch):
+    calls = []
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def post(self, url, json, headers):
+            calls.append(("POST", url, json, headers))
+            return _Response(200, {"metered": True})
+
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.httpx.AsyncClient", FakeAsyncClient
+    )
+    monkeypatch.setattr("api.services.mps_service_key_client.DEPLOYMENT_MODE", "saas")
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.NIMBORA_MPS_SECRET_KEY", "mps-secret"
+    )
+
+    client = MPSServiceKeyClient()
+
+    assert await client.report_platform_usage(
+        organization_id=42,
+        correlation_id="mps-corr-123",
+        workflow_run_id=123,
+        metadata={"source": "workflow_run_completion"},
+    ) == {"metered": True}
+    assert calls == [
+        (
+            "POST",
+            f"{client.base_url}/api/v1/billing/teams/{TEAM_ID}/platform-usage",
+            {
+                "deployment_id": DEPLOYMENT_ID,
+                "correlation_id": "mps-corr-123",
+                "workflow_run_id": 123,
+                "metadata": {"source": "workflow_run_completion"},
+            },
+            {
+                "Content-Type": "application/json",
+                "X-Secret-Key": "mps-secret",
+                "X-Stack-Team-Id": TEAM_ID,
+            },
+        )
+    ]
+
+
+@pytest.mark.asyncio
+async def test_report_platform_usage_sends_duration_without_correlation(monkeypatch):
+    calls = []
+
+    class FakeAsyncClient:
+        def __init__(self, timeout):
+            self.timeout = timeout
+
+        async def __aenter__(self):
+            return self
+
+        async def __aexit__(self, exc_type, exc, tb):
+            return None
+
+        async def post(self, url, json, headers):
+            calls.append(("POST", url, json, headers))
+            return _Response(200, {"metered": True})
+
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.httpx.AsyncClient", FakeAsyncClient
+    )
+    monkeypatch.setattr("api.services.mps_service_key_client.DEPLOYMENT_MODE", "saas")
+    monkeypatch.setattr(
+        "api.services.mps_service_key_client.NIMBORA_MPS_SECRET_KEY", "mps-secret"
+    )
+
+    client = MPSServiceKeyClient()
+
+    assert await client.report_platform_usage(
+        organization_id=42,
+        duration_seconds=87.0,
+        workflow_run_id=123,
+        metadata={"source": "workflow_run_completion"},
+    ) == {"metered": True}
+    assert calls == [
+        (
+            "POST",
+            f"{client.base_url}/api/v1/billing/teams/{TEAM_ID}/platform-usage",
+            {
+                "deployment_id": DEPLOYMENT_ID,
+                "duration_seconds": 87.0,
+                "workflow_run_id": 123,
+                "metadata": {"source": "workflow_run_completion"},
+            },
+            {
+                "Content-Type": "application/json",
+                "X-Secret-Key": "mps-secret",
+                "X-Stack-Team-Id": TEAM_ID,
+            },
+        )
+    ]

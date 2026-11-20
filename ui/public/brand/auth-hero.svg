@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 600" fill="none" role="img" aria-label="Orbites des agents IA autour d'un cœur vocal">
+  <defs>
+    <radialGradient id="hero-core" cx="0.5" cy="0.5" r="0.5">
+      <stop offset="0" stop-color="#7C5CFF" stop-opacity="0.55"/>
+      <stop offset="0.6" stop-color="#22E5FF" stop-opacity="0.12"/>
+      <stop offset="1" stop-color="#060814" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="hero-ring" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#22E5FF"/>
+      <stop offset="0.6" stop-color="#7C5CFF"/>
+      <stop offset="1" stop-color="#FF4FD8"/>
+    </linearGradient>
+    <linearGradient id="hero-bars" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#22E5FF"/>
+      <stop offset="1" stop-color="#7C5CFF"/>
+    </linearGradient>
+  </defs>
+  <circle cx="300" cy="300" r="200" fill="url(#hero-core)">
+    <animate attributeName="r" values="190;215;190" dur="6s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="300" cy="300" r="150" stroke="url(#hero-ring)" stroke-width="1.2" opacity="0.5"/>
+  <circle cx="300" cy="300" r="210" stroke="url(#hero-ring)" stroke-width="1" stroke-dasharray="3 9" opacity="0.45">
+    <animateTransform attributeName="transform" type="rotate" from="0 300 300" to="360 300 300" dur="90s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="300" cy="300" r="270" stroke="url(#hero-ring)" stroke-width="0.8" opacity="0.25"/>
+  
+    <g>
+      <animateTransform attributeName="transform" type="rotate" from="0 300 300" to="360 300 300" dur="26s" repeatCount="indefinite"/>
+      <circle cx="441.0" cy="351.3" r="16" fill="#22E5FF" opacity="0.12"/>
+      <circle cx="441.0" cy="351.3" r="6" fill="#22E5FF"/>
+    </g>
+    <g>
+      <animateTransform attributeName="transform" type="rotate" from="0 300 300" to="-360 300 300" dur="26s" repeatCount="indefinite"/>
+      <circle cx="159.0" cy="248.7" r="16" fill="#7C5CFF" opacity="0.12"/>
+      <circle cx="159.0" cy="248.7" r="6" fill="#7C5CFF"/>
+    </g>
+    <g>
+      <animateTransform attributeName="transform" type="rotate" from="0 300 300" to="360 300 300" dur="40s" repeatCount="indefinite"/>
+      <circle cx="195.0" cy="481.9" r="16" fill="#FF4FD8" opacity="0.12"/>
+      <circle cx="195.0" cy="481.9" r="6" fill="#FF4FD8"/>
+    </g>
+    <g>
+      <animateTransform attributeName="transform" type="rotate" from="0 300 300" to="-360 300 300" dur="40s" repeatCount="indefinite"/>
+      <circle cx="405.0" cy="118.1" r="16" fill="#34F5C5" opacity="0.12"/>
+      <circle cx="405.0" cy="118.1" r="6" fill="#34F5C5"/>
+    </g>
+    <g>
+      <animateTransform attributeName="transform" type="rotate" from="0 300 300" to="360 300 300" dur="60s" repeatCount="indefinite"/>
+      <circle cx="435.0" cy="533.8" r="16" fill="#22E5FF" opacity="0.12"/>
+      <circle cx="435.0" cy="533.8" r="6" fill="#22E5FF"/>
+    </g>
+  <rect x="237" y="288.0" width="6" height="24" rx="3" fill="url(#hero-bars)"><animate attributeName="height" values="24;11;24" dur="1.10s" repeatCount="indefinite"/><animate attributeName="y" values="288.0;294.6;288.0" dur="1.10s" repeatCount="indefinite"/></rect><rect x="252" y="276.0" width="6" height="48" rx="3" fill="url(#hero-bars)"><animate attributeName="height" values="48;22;48" dur="1.27s" repeatCount="indefinite"/><animate attributeName="y" values="276.0;289.2;276.0" dur="1.27s" repeatCount="indefinite"/></rect><rect x="267" y="265.0" width="6" height="70" rx="3" fill="url(#hero-bars)"><animate attributeName="height" values="70;32;70" dur="1.44s" repeatCount="indefinite"/><animate attributeName="y" values="265.0;284.2;265.0" dur="1.44s" repeatCount="indefinite"/></rect><rect x="282" y="252.0" width="6" height="96" rx="3" fill="url(#hero-bars)"><animate attributeName="height" values="96;43;96" dur="1.61s" repeatCount="indefinite"/><animate attributeName="y" values="252.0;278.4;252.0" dur="1.61s" repeatCount="indefinite"/></rect><rect x="297" y="240.0" width="6" height="120" rx="3" fill="url(#hero-bars)"><animate attributeName="height" values="120;54;120" dur="1.10s" repeatCount="indefinite"/><animate attributeName="y" values="240.0;273.0;240.0" dur="1.10s" repeatCount="indefinite"/></rect><rect x="312" y="252.0" width="6" height="96" rx="3" fill="url(#hero-bars)"><animate attributeName="height" values="96;43;96" dur="1.27s" repeatCount="indefinite"/><animate attributeName="y" values="252.0;278.4;252.0" dur="1.27s" repeatCount="indefinite"/></rect><rect x="327" y="265.0" width="6" height="70" rx="3" fill="url(#hero-bars)"><animate attributeName="height" values="70;32;70" dur="1.44s" repeatCount="indefinite"/><animate attributeName="y" values="265.0;284.2;265.0" dur="1.44s" repeatCount="indefinite"/></rect><rect x="342" y="276.0" width="6" height="48" rx="3" fill="url(#hero-bars)"><animate attributeName="height" values="48;22;48" dur="1.61s" repeatCount="indefinite"/><animate attributeName="y" values="276.0;289.2;276.0" dur="1.61s" repeatCount="indefinite"/></rect><rect x="357" y="288.0" width="6" height="24" rx="3" fill="url(#hero-bars)"><animate attributeName="height" values="24;11;24" dur="1.10s" repeatCount="indefinite"/><animate attributeName="y" values="288.0;294.6;288.0" dur="1.10s" repeatCount="indefinite"/></rect>
+</svg>

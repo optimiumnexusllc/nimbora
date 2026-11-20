@@ -1,0 +1,129 @@
+"""Python-side bridge to the Node TS validator.
+
+Spawns `node api/mcp_server/ts_validator/src/index.ts` as a short-lived
+subprocess per call, streams a JSON request on stdin, reads a JSON
+response from stdout. The validator never executes LLM code — it either
+emits TypeScript from a workflow JSON (`generate`), parses LLM-authored
+TS back into a workflow JSON via AST walking (`parse`), or computes
+canvas positions for a node/edge list (`layout`).
+
+The subprocess startup cost is ~100-200ms per call. Fine for MCP tool
+rates; if it ever matters, the validator can be promoted to a long-lived
+worker over a unix socket without changing this interface.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+from pathlib import Path
+from typing import Any
+
+from api.services.workflow.dto import EdgeDataDTO
+from api.services.workflow.node_specs import all_specs
+
+_VALIDATOR_ENTRY = Path(__file__).resolve().parent / "ts_validator" / "src" / "index.ts"
+
+
+class TsBridgeError(Exception):
+    """The Node subprocess failed before producing a JSON response."""
+
+
+def _specs_payload() -> list[dict[str, Any]]:
+    return [s.model_dump(mode="json") for s in all_specs()]
+
+
+def _edge_field_names() -> list[str]:
+    return list(EdgeDataDTO.model_fields.keys())
+
+
+async def _invoke(request: dict[str, Any]) -> dict[str, Any]:
+    try:
+        proc = await asyncio.create_subprocess_exec(
+            "node",
+            str(_VALIDATOR_ENTRY),
+            stdin=asyncio.subprocess.PIPE,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE,
+        )
+    except OSError as exc:
+        raise TsBridgeError("Workflow validator could not be started") from exc
+    stdout, stderr = await proc.communicate(json.dumps(request).encode("utf-8"))
+    if proc.returncode != 0 and not stdout:
+        raise TsBridgeError(
+            f"ts_validator exited {proc.returncode}: "
+            f"{stderr.decode('utf-8', errors='replace')}"
+        )
+    try:
+        return json.loads(stdout.decode("utf-8"))
+    except json.JSONDecodeError as e:
+        raise TsBridgeError(
+            f"ts_validator emitted non-JSON: {stdout!r} (stderr: {stderr!r})"
+        ) from e
+
+
+async def generate_code(workflow: dict[str, Any], *, workflow_name: str = "") -> str:
+    """Emit SDK TypeScript source from a workflow JSON payload.
+
+    Raises `TsBridgeError` if the validator can't produce code (unknown
+    node type, dangling edge reference, etc.) — these are bugs at the
+    caller layer, not user input, so we fail loudly.
+    """
+    result = await _invoke(
+        {
+            "command": "generate",
+            "workflow": workflow,
+            "specs": _specs_payload(),
+            "edgeFieldNames": _edge_field_names(),
+            "workflowName": workflow_name,
+        }
+    )
+    if not result.get("ok"):
+        errs = result.get("errors") or [{"message": "unknown failure"}]
+        raise TsBridgeError(
+            "generate_code failed: " + "; ".join(e.get("message", "") for e in errs)
+        )
+    return result["code"]
+
+
+async def parse_code(code: str, *, tidy: bool = False) -> dict[str, Any]:
+    """Parse LLM-authored TS back into a workflow JSON.
+
+    Set `tidy` only for initial creation to apply the UI's Tidy Up layout.
+    Updates leave it off so position reconciliation preserves the canvas.
+
+    Returns the raw validator response — `{"ok": True, "workflow": {...}}`
+    on success, `{"ok": False, "stage": "parse" | "validate", "errors": [...]}`
+    on author-side failure. Author-side failures are surfaced to the LLM
+    verbatim so it can iterate; callers should not re-wrap them.
+    """
+    return await _invoke(
+        {
+            "command": "parse",
+            "tidy": tidy,
+            "code": code,
+            "specs": _specs_payload(),
+            "edgeFieldNames": _edge_field_names(),
+        }
+    )
+
+
+async def layout_nodes(
+    nodes: list[dict[str, Any]], edges: list[dict[str, Any]], *, rankdir: str = "TB"
+) -> list[dict[str, Any]]:
+    """Compute Tidy Up canvas positions for `nodes`.
+
+    Each node needs `id` and `type`; each edge needs `source` and `target`.
+    Returns `[{"id", "x", "y"}]` in input order, or `[]` when there are no
+    conversation nodes to anchor a layout on, so callers can leave the
+    canvas untouched.
+    """
+    result = await _invoke(
+        {"command": "layout", "nodes": nodes, "edges": edges, "rankdir": rankdir}
+    )
+    if not result.get("ok"):
+        errs = result.get("errors") or [{"message": "unknown failure"}]
+        raise TsBridgeError(
+            "layout_nodes failed: " + "; ".join(e.get("message", "") for e in errs)
+        )
+    return result["positions"]
