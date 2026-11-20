@@ -182,9 +182,9 @@ def test_rendered_config_isolates_tenants_and_sanitizes_values():
     extensions = render_extensions([queue], [alice, bob])
     assert "exten => t1-support,1" in extensions
     assert "[nimbora-agents-t1]" in extensions and "[nimbora-agents-t2]" in extensions
-    t1_context = extensions.split("[nimbora-agents-t1]")[1].split("[nimbora-agents-t2]")[
-        0
-    ]
+    t1_context = extensions.split("[nimbora-agents-t1]")[1].split(
+        "[nimbora-agents-t2]"
+    )[0]
     assert "t2_" not in t1_context
 
 
@@ -196,7 +196,8 @@ def test_queue_destinations_and_raw_channel_guard(monkeypatch):
     with pytest.raises(destinations.ContactCenterDestinationError):
         destinations.parse_queue_destination("queue:../../etc")
     assert (
-        destinations.queue_dial_string(12, "ventes") == "Local/t12-ventes@nimbora-queues"
+        destinations.queue_dial_string(12, "ventes")
+        == "Local/t12-ventes@nimbora-queues"
     )
 
     monkeypatch.setattr(destinations, "SAAS_MODE", True)
@@ -544,3 +545,196 @@ async def test_bootstrap_uses_local_ai_without_cloud_calls(db_session, monkeypat
     )
     default = await get_default_model_configuration(org.id)
     assert default is not None
+
+
+# ------------------------------------------------------------ F1 handoffs
+def test_handoff_summary_parsing_is_strict():
+    from api.services.contact_center.handoff import parse_summary
+
+    card = parse_summary(
+        'Voici: {"reason": "Colis non reçu", "summary": "Commande 42 en retard.",'
+        ' "customer_name": "null", "sentiment": "Frustrated", "next_step": "Vérifier"}'
+    )
+    assert card == {
+        "reason": "Colis non reçu",
+        "summary": "Commande 42 en retard.",
+        "customer_name": None,
+        "sentiment": "frustrated",
+        "next_step": "Vérifier",
+    }
+    assert parse_summary("pas de json") is None
+    assert parse_summary('{"sentiment": "happy"}') is None
+    assert (
+        parse_summary('{"summary": "ok", "sentiment": "ecstatic"}')["sentiment"] is None
+    )
+
+
+def test_handoff_transcript_and_collected_data_filtering():
+    from api.services.contact_center.handoff import (
+        collected_data,
+        conversation_transcript,
+    )
+
+    turns = conversation_transcript(
+        [
+            {"role": "system", "content": "secret prompt"},
+            {"role": "user", "content": "  Bonjour,   je   suis Awa "},
+            {"role": "assistant", "content": "", "tool_calls": [{"id": 1}]},
+            {"role": "assistant", "content": "Bonjour Awa"},
+            {"role": "tool", "content": "{}"},
+        ]
+    )
+    assert turns == [
+        {"speaker": "client", "text": "Bonjour, je suis Awa"},
+        {"speaker": "agent_ia", "text": "Bonjour Awa"},
+    ]
+    data = collected_data(
+        {
+            "order_id": "42",
+            "mps_correlation_id": "x",
+            "_internal": 1,
+            "empty": "",
+            "call_id": "c1",
+            "items": ["a", "b"],
+        }
+    )
+    assert data == {"order_id": "42", "items": ["a", "b"]}
+
+
+class _FakeLLM:
+    def __init__(self, reply):
+        self.reply = reply
+        self.calls = 0
+
+    async def run_inference(self, context, system_instruction=None):
+        self.calls += 1
+        return self.reply
+
+
+class _FakeEngine:
+    def __init__(self, reply):
+        from types import SimpleNamespace
+
+        self.active_agent = SimpleNamespace(inference_llm=_FakeLLM(reply))
+        self.context = SimpleNamespace(
+            messages=[
+                {"role": "user", "content": "Mon colis n'est pas arrivé, commande 42"},
+                {"role": "assistant", "content": "Je vous passe un conseiller."},
+            ]
+        )
+        self._gathered_context = {"order_id": "42"}
+
+
+async def test_handoff_card_created_and_summarized_in_background(db_session):
+    import asyncio
+    from types import SimpleNamespace
+
+    from api.services.contact_center import handoff as handoff_service
+
+    _, org = await _new_org(db_session)
+    engine = _FakeEngine(
+        '{"reason": "Colis non reçu", "summary": "Commande 42 non livrée.",'
+        ' "customer_name": null, "sentiment": "frustrated",'
+        ' "next_step": "Ouvrir une enquête transporteur"}'
+    )
+    run = SimpleNamespace(id=None, initial_context={"caller_number": "+22790000000"})
+    handoff_id = await handoff_service.create_handoff_for_transfer(
+        engine, organization_id=org.id, workflow_run=run, queue_slug="support"
+    )
+    assert handoff_id
+    created = await db_session.get_call_handoff(org.id, handoff_id)
+    assert created.status == "pending" and created.caller_number == "+22790000000"
+    assert created.collected_data == {"order_id": "42"}
+    assert len(created.transcript) == 2
+    await asyncio.gather(*list(handoff_service._background))
+    card = await db_session.get_call_handoff(org.id, handoff_id)
+    assert card.summary_status == "ready"
+    assert card.reason == "Colis non reçu" and card.sentiment == "frustrated"
+
+
+async def test_handoff_summary_failure_never_blocks(db_session):
+    import asyncio
+    from types import SimpleNamespace
+
+    from api.services.contact_center import handoff as handoff_service
+
+    _, org = await _new_org(db_session)
+    engine = _FakeEngine("désolé, je ne peux pas")
+    handoff_id = await handoff_service.create_handoff_for_transfer(
+        engine,
+        organization_id=org.id,
+        workflow_run=SimpleNamespace(id=None, initial_context={}),
+        queue_slug="support",
+    )
+    await asyncio.gather(*list(handoff_service._background))
+    card = await db_session.get_call_handoff(org.id, handoff_id)
+    assert card.summary_status == "failed" and card.status == "pending"
+
+
+async def test_handoff_routes_scope_to_tenant_and_seat_queues(
+    db_session, test_client_factory, monkeypatch, tmp_path
+):
+    from api.routes import contact_center as cc_routes
+    from api.services.contact_center import asterisk_config
+
+    monkeypatch.setattr(cc_routes, "CONTACT_CENTER_ENABLED", True)
+    monkeypatch.setattr(asterisk_config, "ASTERISK_GENERATED_CONFIG_DIR", str(tmp_path))
+    monkeypatch.setattr(asterisk_config, "ASTERISK_ARI_PASSWORD", None)
+
+    user, org = await _new_org(db_session)
+    other_user, other_org = await _new_org(db_session)
+    agent = await db_session.create_contact_center_agent(
+        org.id,
+        display_name="Awa",
+        extension="2001",
+        sip_username=f"t{org.id}_2001",
+        sip_md5_cred="0" * 32,
+        user_id=user.id,
+    )
+    support = await db_session.create_contact_center_queue(
+        org.id, "support", {"name": "S"}
+    )
+    await db_session.create_contact_center_queue(org.id, "ventes", {"name": "V"})
+    await db_session.set_contact_center_queue_members(org.id, support.id, [agent.id])
+    mine = await db_session.create_call_handoff(
+        organization_id=org.id,
+        queue_slug="support",
+        status="pending",
+        collected_data={},
+        transcript=[],
+        summary_status="skipped",
+    )
+    await db_session.create_call_handoff(
+        organization_id=org.id,
+        queue_slug="ventes",
+        status="pending",
+        collected_data={},
+        transcript=[],
+        summary_status="skipped",
+    )
+
+    async with test_client_factory(user) as client:
+        listed = (await client.get("/api/v1/contact-center/handoffs?mine=true")).json()
+        assert [h["id"] for h in listed] == [mine.id]
+        accepted = await client.post(
+            f"/api/v1/contact-center/handoffs/{mine.id}/accept"
+        )
+        assert accepted.json()["status"] == "answered"
+    stored = await db_session.get_call_handoff(org.id, mine.id)
+    assert stored.answered_by_agent_id == agent.id
+
+    async with test_client_factory(other_user) as client:
+        assert (
+            await client.get(f"/api/v1/contact-center/handoffs/{mine.id}")
+        ).status_code == 404
+        assert (
+            await client.post(f"/api/v1/contact-center/handoffs/{mine.id}/accept")
+        ).status_code == 404
+
+
+def test_queue_dialplan_attaches_handoff_header():
+    from api.services.contact_center.asterisk_config import render_extensions
+
+    extensions = render_extensions([_Queue(4, "support", [])], [])
+    assert "Queue(t4-support,tb(nimbora-handoff^s^1),,,300)" in extensions
+    assert "PJSIP_HEADER(add,X-Nimbora-Handoff)=${NIMBORA_HANDOFF}" in extensions

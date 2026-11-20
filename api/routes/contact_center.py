@@ -5,7 +5,8 @@ regenerates the shared Asterisk configuration in the background-safe,
 serialized way implemented by ``regenerate_asterisk_config``.
 """
 
-from typing import Literal, Optional
+from datetime import UTC, datetime
+from typing import Any, Literal, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field, field_validator
@@ -13,7 +14,12 @@ from pydantic import BaseModel, Field, field_validator
 from api.constants import ASTERISK_SIP_REALM, ASTERISK_WSS_URL, CONTACT_CENTER_ENABLED
 from api.db import db_client
 from api.db.contact_center_client import ContactCenterConflict
-from api.db.models import ContactCenterAgentModel, ContactCenterQueueModel, UserModel
+from api.db.models import (
+    CallHandoffModel,
+    ContactCenterAgentModel,
+    ContactCenterQueueModel,
+    UserModel,
+)
 from api.services.auth.depends import get_user
 from api.services.contact_center.asterisk_config import (
     ALLOWED_STRATEGIES,
@@ -395,3 +401,102 @@ async def my_agent_seat(user: UserModel = Depends(get_user)):
     organization_id = await _org(user)
     agent = await db_client.get_contact_center_agent_for_user(organization_id, user.id)
     return _agent_response(agent) if agent else None
+
+
+# --------------------------------------------------------------- handoffs
+class HandoffResponse(BaseModel):
+    id: str
+    queue_slug: Optional[str]
+    caller_number: Optional[str]
+    status: str
+    summary_status: str
+    reason: Optional[str]
+    summary: Optional[str]
+    customer_name: Optional[str]
+    sentiment: Optional[str]
+    next_step: Optional[str]
+    collected_data: dict[str, Any]
+    transcript: list[dict[str, Any]]
+    workflow_run_id: Optional[int]
+    created_at: Optional[datetime]
+    answered_at: Optional[datetime]
+
+
+def _handoff_response(handoff: CallHandoffModel) -> HandoffResponse:
+    return HandoffResponse(
+        id=handoff.id,
+        queue_slug=handoff.queue_slug,
+        caller_number=handoff.caller_number,
+        status=handoff.status,
+        summary_status=handoff.summary_status,
+        reason=handoff.reason,
+        summary=handoff.summary,
+        customer_name=handoff.customer_name,
+        sentiment=handoff.sentiment,
+        next_step=handoff.next_step,
+        collected_data=handoff.collected_data or {},
+        transcript=handoff.transcript or [],
+        workflow_run_id=handoff.workflow_run_id,
+        created_at=handoff.created_at,
+        answered_at=handoff.answered_at,
+    )
+
+
+@router.get("/handoffs", response_model=list[HandoffResponse])
+async def list_handoffs(
+    mine: bool = False,
+    status: Optional[Literal["pending", "answered"]] = None,
+    user: UserModel = Depends(get_user),
+):
+    """Recent AI -> human handoffs. ``mine`` keeps those of my seat's queues."""
+    from api.services.contact_center.handoff import recent_cutoff
+
+    organization_id = await _org(user)
+    queue_slugs = None
+    if mine:
+        seat = await db_client.get_contact_center_agent_for_user(
+            organization_id, user.id
+        )
+        queue_slugs = (
+            await db_client.list_queue_slugs_for_agent(organization_id, seat.id)
+            if seat
+            else []
+        )
+    handoffs = await db_client.list_call_handoffs(
+        organization_id,
+        queue_slugs=queue_slugs,
+        status=status,
+        since=recent_cutoff() if mine else None,
+    )
+    return [_handoff_response(h) for h in handoffs]
+
+
+@router.get("/handoffs/{handoff_id}", response_model=HandoffResponse)
+async def get_handoff(handoff_id: str, user: UserModel = Depends(get_user)):
+    organization_id = await _org(user)
+    handoff = await db_client.get_call_handoff(organization_id, handoff_id)
+    if handoff is None:
+        raise HTTPException(status_code=404, detail="Handoff not found")
+    return _handoff_response(handoff)
+
+
+@router.post("/handoffs/{handoff_id}/accept", response_model=HandoffResponse)
+async def accept_handoff(handoff_id: str, user: UserModel = Depends(get_user)):
+    """The human agent picked up the call this card describes."""
+    organization_id = await _org(user)
+    handoff = await db_client.get_call_handoff(organization_id, handoff_id)
+    if handoff is None:
+        raise HTTPException(status_code=404, detail="Handoff not found")
+    if handoff.status != "pending":
+        return _handoff_response(handoff)
+    seat = await db_client.get_contact_center_agent_for_user(organization_id, user.id)
+    handoff = await db_client.update_call_handoff(
+        organization_id,
+        handoff_id,
+        {
+            "status": "answered",
+            "answered_at": datetime.now(UTC),
+            "answered_by_agent_id": seat.id if seat else None,
+        },
+    )
+    return _handoff_response(handoff)

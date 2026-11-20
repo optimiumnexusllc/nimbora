@@ -4,6 +4,7 @@ import { Copy, KeyRound, Plus, Trash2, Users } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
+import { HandoffCard } from "@/components/contact-center/HandoffCard";
 import { Softphone } from "@/components/contact-center/Softphone";
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
@@ -28,6 +29,7 @@ import {
     type Agent,
     ApiError,
     enterpriseApi,
+    type Handoff,
     type Queue,
     type SoftphoneCredentials,
 } from "@/lib/enterpriseApi";
@@ -244,6 +246,8 @@ export default function ContactCenterPage() {
     const [queues, setQueues] = useState<Queue[] | null>(null);
     const [agents, setAgents] = useState<Agent[]>([]);
     const [seat, setSeat] = useState<Agent | null>(null);
+    const [handoffs, setHandoffs] = useState<Handoff[]>([]);
+    const [openHandoff, setOpenHandoff] = useState<string | null>(null);
     const [unavailable, setUnavailable] = useState<string | null>(null);
     const [credentials, setCredentials] = useState<SoftphoneCredentials | null>(null);
     const [queueDialog, setQueueDialog] = useState<{ open: boolean; queue: Queue | null }>({
@@ -263,6 +267,7 @@ export default function ContactCenterPage() {
             setQueues(q);
             setAgents(a);
             setSeat(me);
+            enterpriseApi.listHandoffs().then(setHandoffs).catch(() => undefined);
         } catch (e) {
             if (e instanceof ApiError && (e.status === 404 || e.status === 402)) {
                 setUnavailable(
@@ -483,6 +488,47 @@ export default function ContactCenterPage() {
                             ))}
                         </TableBody>
                     </Table>
+                )}
+            </PageSection>
+
+            <PageSection
+                title="Passations récentes"
+                description="Ce que les agents IA ont transmis à vos équipes au moment du transfert."
+            >
+                {handoffs.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
+                        Aucune passation pour l&apos;instant. Elles apparaissent dès qu&apos;un agent IA transfère un
+                        appel vers une file (destination <code>queue:…</code>).
+                    </p>
+                ) : (
+                    <div className="space-y-2">
+                        {handoffs.map((h) => (
+                            <div key={h.id} className="rounded-lg border border-border/60">
+                                <button
+                                    type="button"
+                                    onClick={() => setOpenHandoff(openHandoff === h.id ? null : h.id)}
+                                    className="flex w-full flex-wrap items-center gap-3 px-4 py-3 text-left text-sm hover:bg-accent/40"
+                                >
+                                    <span className="font-medium">{h.customer_name || h.caller_number || "Client"}</span>
+                                    <span className="min-w-0 flex-1 truncate text-muted-foreground">
+                                        {h.reason || "Résumé indisponible"}
+                                    </span>
+                                    {h.queue_slug && <Badge variant="secondary">{h.queue_slug}</Badge>}
+                                    <Badge variant={h.status === "answered" ? "default" : "secondary"}>
+                                        {h.status === "answered" ? "Pris en charge" : "En attente"}
+                                    </Badge>
+                                    <span className="text-xs text-muted-foreground">
+                                        {h.created_at ? new Date(h.created_at).toLocaleString("fr-FR") : ""}
+                                    </span>
+                                </button>
+                                {openHandoff === h.id && (
+                                    <div className="border-t border-border/60 p-3">
+                                        <HandoffCard handoff={h} />
+                                    </div>
+                                )}
+                            </div>
+                        ))}
+                    </div>
                 )}
             </PageSection>
 

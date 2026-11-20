@@ -830,6 +830,29 @@ class CustomToolManager:
                         # A retry must never rejoin a previous transfer attempt.
                         conference_name = f"transfer-{transfer_id}"
 
+                # Human contact-center queue: hand the conversation over with a
+                # context card for the agent who picks up (never blocks).
+                handoff_id = None
+                try:
+                    from api.services.contact_center.destinations import (
+                        parse_queue_destination,
+                    )
+
+                    queue_slug = parse_queue_destination(destination)
+                except ValueError:
+                    queue_slug = None
+                if queue_slug:
+                    from api.services.contact_center.handoff import (
+                        create_handoff_for_transfer,
+                    )
+
+                    handoff_id = await create_handoff_for_transfer(
+                        self._engine,
+                        organization_id=organization_id,
+                        workflow_run=workflow_run,
+                        queue_slug=queue_slug,
+                    )
+
                 transfer_context = TransferContext(
                     transfer_id=transfer_id,
                     call_sid=None,  # Will be updated after provider response
@@ -867,6 +890,7 @@ class CustomToolManager:
                             if introduction_audio_url
                             else {}
                         ),
+                        **({"handoff_id": handoff_id} if handoff_id else {}),
                     )
                 except Exception as e:
                     logger.error(f"Transfer provider failed: {e}")

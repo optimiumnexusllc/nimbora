@@ -42,6 +42,12 @@ from api.services.contact_center.destinations import (
     QUEUE_DIALPLAN_CONTEXT,
     queue_asterisk_name,
 )
+from api.services.contact_center.handoff import (
+    CHANNEL_VARIABLE as HANDOFF_CHANNEL_VARIABLE,
+)
+from api.services.contact_center.handoff import (
+    HEADER_NAME as HANDOFF_HEADER,
+)
 
 PJSIP_FILE = "pjsip_nimbora_agents.conf"
 QUEUES_FILE = "queues_nimbora.conf"
@@ -60,6 +66,8 @@ EXTENSION_RE = re.compile(r"^[0-9]{2,6}$")
 # Overflow targets: an E.164-ish number or a colleague extension.
 OVERFLOW_NUMBER_RE = re.compile(r"^\+?[0-9]{2,15}$")
 _SAFE_TEXT_RE = re.compile(r"[^\w \-\.'À-ÿ]", re.UNICODE)
+
+HANDOFF_GOSUB_CONTEXT = "nimbora-handoff"
 
 _reload_lock = asyncio.Lock()
 
@@ -209,11 +217,20 @@ def render_extensions(
         lines += [
             f"exten => {name},1,NoOp(NIMBORA queue {name})",
             " same => n,Answer()",
-            f" same => n,Queue({name},t,,,{max_wait})",
+            # b(): on each agent leg, attach the AI handoff card id (if any).
+            f" same => n,Queue({name},tb({HANDOFF_GOSUB_CONTEXT}^s^1),,,{max_wait})",
             *_overflow_steps(queue),
             " same => n,Hangup()",
         ]
-    lines.append("")
+    lines += [
+        "",
+        f"[{HANDOFF_GOSUB_CONTEXT}]",
+        "; Runs on each agent leg before it rings: the softphone reads the",
+        "; header and shows the AI agent's handoff card.",
+        f'exten => s,1,ExecIf($["${{{HANDOFF_CHANNEL_VARIABLE}}}" != ""]?Set(PJSIP_HEADER(add,{HANDOFF_HEADER})=${{{HANDOFF_CHANNEL_VARIABLE}}}))',
+        " same => n,Return()",
+        "",
+    ]
 
     by_org: dict[int, list[ContactCenterAgentModel]] = {}
     for agent in agents:

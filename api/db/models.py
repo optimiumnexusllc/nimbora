@@ -1894,3 +1894,44 @@ class ContactCenterAgentModel(Base):
             "organization_id", "extension", name="_cc_agent_org_extension_uc"
         ),
     )
+
+
+class CallHandoffModel(Base):
+    """Context handed from an AI agent to the human who takes over the call.
+
+    Created when an AI agent transfers a caller to a contact-center queue; the
+    agent's softphone shows it as soon as the call rings. ``summary`` and the
+    other AI fields are filled asynchronously so the transfer never waits.
+    """
+
+    __tablename__ = "call_handoffs"
+
+    id = Column(String(36), primary_key=True, default=lambda: str(uuid.uuid4()))
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    workflow_run_id = Column(
+        Integer, ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    queue_slug = Column(String(48), nullable=True)
+    caller_number = Column(String(64), nullable=True)
+    status = Column(String(16), nullable=False, default="pending")
+    reason = Column(Text, nullable=True)
+    summary = Column(Text, nullable=True)
+    customer_name = Column(String(128), nullable=True)
+    sentiment = Column(String(16), nullable=True)
+    next_step = Column(Text, nullable=True)
+    collected_data = Column(JSON, nullable=False, default=dict)
+    transcript = Column(JSON, nullable=False, default=list)
+    summary_status = Column(String(16), nullable=False, default="pending")
+    answered_by_agent_id = Column(
+        Integer,
+        ForeignKey("contact_center_agents.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    answered_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_call_handoffs_org_created", "organization_id", "created_at"),
+    )

@@ -27,6 +27,9 @@ from api.services.telephony.providers.ari.channel_registry import (
     register_channel,
     unregister_channel,
 )
+from api.services.contact_center.handoff import (
+    CHANNEL_VARIABLE as HANDOFF_CHANNEL_VARIABLE,
+)
 from api.services.telephony.providers.ari.dial_string import (
     DEFAULT_DIAL_STRING_TEMPLATE,
     build_dial_string,
@@ -546,10 +549,21 @@ class ARIProvider(TelephonyProvider):
                 "timeout": timeout,  # Keep timeout for transfer calls
             }
 
+            # A queue handoff travels with the call: inheritable variable on
+            # the Local channel, turned into a SIP header for the agent's
+            # softphone by the generated dialplan.
+            handoff_id = kwargs.get("handoff_id")
+            body = (
+                {"variables": {f"__{HANDOFF_CHANNEL_VARIABLE}": str(handoff_id)}}
+                if handoff_id
+                else None
+            )
+
             async with aiohttp.ClientSession() as session:
                 async with session.post(
                     endpoint,
                     params=params,
+                    json=body,
                     auth=self._get_auth(),
                 ) as response:
                     response_text = await response.text()

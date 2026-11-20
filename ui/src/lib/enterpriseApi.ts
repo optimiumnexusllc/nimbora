@@ -118,6 +118,24 @@ export type SoftphoneCredentials = {
     wss_url: string | null;
 };
 
+export type Handoff = {
+    id: string;
+    queue_slug: string | null;
+    caller_number: string | null;
+    status: "pending" | "answered";
+    summary_status: "pending" | "ready" | "failed" | "skipped";
+    reason: string | null;
+    summary: string | null;
+    customer_name: string | null;
+    sentiment: "positive" | "neutral" | "frustrated" | "angry" | null;
+    next_step: string | null;
+    collected_data: Record<string, unknown>;
+    transcript: { speaker: "client" | "agent_ia"; text: string }[];
+    workflow_run_id: number | null;
+    created_at: string | null;
+    answered_at: string | null;
+};
+
 export type LocalLanguage = {
     code: string;
     name: string;
@@ -208,6 +226,11 @@ export const enterpriseApi = {
         call<SoftphoneCredentials>("post", `${BASE}/contact-center/agents/${id}/reset-password`),
     deleteAgent: (id: number) => call<void>("delete", `${BASE}/contact-center/agents/${id}`),
     claimSeat: (id: number) => call<Agent>("post", `${BASE}/contact-center/agents/${id}/claim`),
+    getHandoff: (id: string) => call<Handoff>("get", `${BASE}/contact-center/handoffs/${encodeURIComponent(id)}`),
+    myPendingHandoffs: () => call<Handoff[]>("get", `${BASE}/contact-center/handoffs?mine=true&status=pending`),
+    listHandoffs: () => call<Handoff[]>("get", `${BASE}/contact-center/handoffs`),
+    acceptHandoff: (id: string) =>
+        call<Handoff>("post", `${BASE}/contact-center/handoffs/${encodeURIComponent(id)}/accept`),
     mySeat: () => call<Agent | null>("get", `${BASE}/contact-center/me`),
 
     // Local AI

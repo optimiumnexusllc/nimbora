@@ -9,12 +9,13 @@ import { Headphones, Mic, MicOff, Pause, Phone, PhoneOff, Play } from "lucide-re
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { HandoffCard } from "@/components/contact-center/HandoffCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import type { Agent } from "@/lib/enterpriseApi";
+import { type Agent, enterpriseApi, type Handoff } from "@/lib/enterpriseApi";
 
 type JsSIPModule = typeof import("jssip");
 type UA = InstanceType<JsSIPModule["UA"]>;
@@ -23,6 +24,10 @@ type RTCSession = import("jssip/lib/RTCSession").RTCSession;
 type Status = "disconnected" | "connecting" | "registered" | "error";
 
 const SESSION_KEY = "nimbora-softphone-password";
+const HANDOFF_HEADER = "X-Nimbora-Handoff";
+// The AI summary is generated after the card: refresh while it is pending.
+const HANDOFF_POLL_MS = 1500;
+const HANDOFF_POLL_MAX = 20;
 
 function wssUrlFromLocation(): string {
     if (typeof window === "undefined") return "";
@@ -37,6 +42,8 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
     const [muted, setMuted] = useState(false);
     const [paused, setPaused] = useState(false);
     const [peer, setPeer] = useState<string>("");
+    const [handoff, setHandoff] = useState<Handoff | null>(null);
+    const handoffPoll = useRef<ReturnType<typeof setTimeout> | null>(null);
     const uaRef = useRef<UA | null>(null);
     const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -60,6 +67,53 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
             }
         });
     }, []);
+
+    const stopHandoffPoll = () => {
+        if (handoffPoll.current) clearTimeout(handoffPoll.current);
+        handoffPoll.current = null;
+    };
+
+    // Load the AI handoff card for a ringing call: by the id Asterisk put in
+    // the SIP header, otherwise the newest pending card of my queues.
+    const loadHandoff = useCallback(async (session: RTCSession) => {
+        stopHandoffPoll();
+        let id: string | null = null;
+        try {
+            // JsSIP exposes the INVITE as `request` on incoming sessions.
+            const invite = (session as unknown as { request?: { getHeader?: (name: string) => string | undefined } })
+                .request;
+            id = invite?.getHeader?.(HANDOFF_HEADER) || null;
+        } catch {
+            id = null;
+        }
+        try {
+            let card: Handoff | null = null;
+            if (id) card = await enterpriseApi.getHandoff(id);
+            else card = (await enterpriseApi.myPendingHandoffs())[0] ?? null;
+            if (!card) return;
+            setHandoff(card);
+            let attempts = 0;
+            const refresh = async () => {
+                attempts += 1;
+                try {
+                    const latest = await enterpriseApi.getHandoff(card!.id);
+                    setHandoff(latest);
+                    if (latest.summary_status === "pending" && attempts < HANDOFF_POLL_MAX) {
+                        handoffPoll.current = setTimeout(refresh, HANDOFF_POLL_MS);
+                    }
+                } catch {
+                    // Keep the card we have.
+                }
+            };
+            if (card.summary_status === "pending") {
+                handoffPoll.current = setTimeout(refresh, HANDOFF_POLL_MS);
+            }
+        } catch {
+            // No card (direct call between colleagues, or not an AI transfer).
+        }
+    }, []);
+
+    useEffect(() => stopHandoffPoll, []);
 
     const connect = async () => {
         if (!password) {
@@ -97,14 +151,19 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
             if (data.originator !== "remote") return;
             setPeer(session.remote_identity?.display_name || session.remote_identity?.uri?.user || "Appelant");
             setIncoming(session);
+            void loadHandoff(session);
             session.on("ended", () => {
                 setActive(null);
                 setIncoming(null);
                 setMuted(false);
+                stopHandoffPoll();
+                setHandoff(null);
             });
             session.on("failed", () => {
                 setActive(null);
                 setIncoming(null);
+                stopHandoffPoll();
+                setHandoff(null);
             });
         });
         ua.start();
@@ -123,6 +182,9 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
         attachRemoteAudio(incoming);
         setActive(incoming);
         setIncoming(null);
+        if (handoff) {
+            enterpriseApi.acceptHandoff(handoff.id).then(setHandoff).catch(() => undefined);
+        }
     };
 
     const hangup = () => {
@@ -170,6 +232,7 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
             </CardHeader>
             <CardContent className="space-y-4">
                 <audio ref={audioRef} autoPlay />
+                {handoff && (incoming || active) && <HandoffCard handoff={handoff} />}
                 {status !== "registered" ? (
                     <div className="flex flex-wrap items-end gap-3">
                         <div className="space-y-1">

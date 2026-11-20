@@ -13,6 +13,7 @@ from sqlalchemy.future import select
 
 from api.db.base_client import BaseDBClient
 from api.db.models import (
+    CallHandoffModel,
     ContactCenterAgentModel,
     ContactCenterQueueModel,
     contact_center_queue_members,
@@ -310,3 +311,85 @@ class ContactCenterClient(BaseDBClient):
                 )
             )
             return list(queues.scalars().all()), list(agents.scalars().all())
+
+    # --------------------------------------------------------------- handoffs
+    async def create_call_handoff(self, **fields: Any) -> CallHandoffModel:
+        async with self.async_session() as session:
+            handoff = CallHandoffModel(**fields)
+            session.add(handoff)
+            await session.flush()
+            handoff_id = handoff.id
+            await session.commit()
+        created = await self.get_call_handoff(fields["organization_id"], handoff_id)
+        assert created is not None
+        return created
+
+    async def get_call_handoff(
+        self, organization_id: int, handoff_id: str
+    ) -> CallHandoffModel | None:
+        async with self.async_session() as session:
+            result = await session.execute(
+                select(CallHandoffModel).where(
+                    CallHandoffModel.organization_id == organization_id,
+                    CallHandoffModel.id == handoff_id,
+                )
+            )
+            return result.scalars().first()
+
+    async def update_call_handoff(
+        self, organization_id: int, handoff_id: str, fields: dict[str, Any]
+    ) -> CallHandoffModel | None:
+        if fields:
+            async with self.async_session() as session:
+                await session.execute(
+                    update(CallHandoffModel)
+                    .where(
+                        CallHandoffModel.organization_id == organization_id,
+                        CallHandoffModel.id == handoff_id,
+                    )
+                    .values(**fields)
+                )
+                await session.commit()
+        return await self.get_call_handoff(organization_id, handoff_id)
+
+    async def list_call_handoffs(
+        self,
+        organization_id: int,
+        *,
+        queue_slugs: list[str] | None = None,
+        status: str | None = None,
+        since: Any | None = None,
+        limit: int = 20,
+    ) -> list[CallHandoffModel]:
+        async with self.async_session() as session:
+            query = select(CallHandoffModel).where(
+                CallHandoffModel.organization_id == organization_id
+            )
+            if queue_slugs is not None:
+                query = query.where(CallHandoffModel.queue_slug.in_(queue_slugs))
+            if status:
+                query = query.where(CallHandoffModel.status == status)
+            if since is not None:
+                query = query.where(CallHandoffModel.created_at >= since)
+            query = query.order_by(CallHandoffModel.created_at.desc()).limit(limit)
+            result = await session.execute(query)
+            return list(result.scalars().all())
+
+    async def list_queue_slugs_for_agent(
+        self, organization_id: int, agent_id: int
+    ) -> list[str]:
+        """Slugs of the tenant queues this agent is a member of (fresh query)."""
+        async with self.async_session() as session:
+            result = await session.execute(
+                select(ContactCenterQueueModel.slug)
+                .join(
+                    contact_center_queue_members,
+                    contact_center_queue_members.c.queue_id
+                    == ContactCenterQueueModel.id,
+                )
+                .where(
+                    ContactCenterQueueModel.organization_id == organization_id,
+                    contact_center_queue_members.c.agent_id == agent_id,
+                )
+            )
+            return sorted(row[0] for row in result.all())
