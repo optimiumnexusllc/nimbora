@@ -2349,7 +2349,7 @@ SPEACHES_STT_MODELS = [
     "Systran/faster-whisper-small",
 ]
 # Every language Whisper understands (incl. sw, ha, yo, ln, am, so, sn, mg).
-SPEACHES_STT_LANGUAGES = list(_WHISPER_LANGUAGES)
+SPEACHES_STT_LANGUAGES = ["auto", *_WHISPER_LANGUAGES]
 
 
 @register_stt(provider=SPEACHES_PROVIDER)
@@ -2365,7 +2365,10 @@ class SpeachesSTTConfiguration(BaseSTTConfiguration):
     )
     language: str = Field(
         default="en",
-        description="ISO 639-1 language code.",
+        description=(
+            "ISO 639-1 language code, or 'auto' to let Whisper detect the "
+            "caller's language (needed for automatic language switching)."
+        ),
         json_schema_extra={
             "examples": SPEACHES_STT_LANGUAGES,
             "allow_custom_input": True,

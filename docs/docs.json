@@ -78,6 +78,7 @@
                     "pages": [
                       "voice-agent/tools/call-transfer",
                       "voice-agent/tools/transfer-agent",
+                      "voice-agent/tools/schedule-callback",
                       "voice-agent/tools/end-call"
                     ]
                   },
@@ -91,6 +92,7 @@
                 ]
               },
               "voice-agent/knowledge-base",
+              "voice-agent/languages",
               {
                 "group": "Nodes",
                 "pages": [

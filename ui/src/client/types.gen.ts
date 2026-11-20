@@ -3417,6 +3417,47 @@ export type LangfuseCredentialsResponse = {
 };
 
 /**
+ * LanguageDetectionConfiguration
+ *
+ * Follow the caller's language: reply language and voice switch together.
+ *
+ * Needs a speech recognizer that understands several languages (Whisper /
+ * Speaches with language 'auto', Deepgram 'multi', …).
+ */
+export type LanguageDetectionConfiguration = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Default Language
+     *
+     * Language the agent starts in (defaults to the STT language).
+     */
+    default_language?: string | null;
+    /**
+     * Languages
+     *
+     * Languages the agent may switch to. Empty: any language.
+     */
+    languages?: Array<string>;
+    /**
+     * Voices
+     *
+     * Voice per language; otherwise the language pack's voice.
+     */
+    voices?: {
+        [key: string]: LanguageVoiceOverride;
+    };
+    /**
+     * Remember Caller Language
+     *
+     * Greet known callers in the language they used last time.
+     */
+    remember_caller_language?: boolean;
+};
+
+/**
  * LanguageOut
  */
 export type LanguageOut = {
@@ -3440,6 +3481,20 @@ export type LanguageOut = {
      * Note
      */
     note: string;
+};
+
+/**
+ * LanguageVoiceOverride
+ */
+export type LanguageVoiceOverride = {
+    /**
+     * Voice
+     */
+    voice: string;
+    /**
+     * Model
+     */
+    model?: string | null;
 };
 
 /**
@@ -8420,6 +8475,7 @@ export type WorkflowConfigurationDefaults = {
      * Context Compaction Enabled
      */
     context_compaction_enabled?: boolean;
+    language_detection?: LanguageDetectionConfiguration;
     /**
      * Tts Cache Enabled
      *

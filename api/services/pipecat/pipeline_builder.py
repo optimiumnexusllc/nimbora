@@ -45,6 +45,7 @@ def build_pipeline(
     termination_funnel,
     answer_supervisor=None,
     opening_input=None,
+    language_detector=None,
 ):
     """Build the call pipeline: everything that lives for the whole call.
 
@@ -73,6 +74,8 @@ def build_pipeline(
         transport.input(),  # Transport user input
         termination_funnel,
         stt,
+        # Follows the caller's language; before the turn reaches the LLM.
+        language_detector,
     ]
 
     if answer_supervisor is not None:

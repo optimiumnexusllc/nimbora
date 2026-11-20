@@ -326,7 +326,9 @@ def stt_uses_external_turns(user_config) -> bool:
     if user_config.stt.provider == ServiceProviders.DEEPGRAM.value:
         return user_config.stt.model in DEEPGRAM_FLUX_MODELS
     if user_config.stt.provider == ServiceProviders.NIMBORA.value:
-        return nimbora_stt_uses_flux_language(getattr(user_config.stt, "language", None))
+        return nimbora_stt_uses_flux_language(
+            getattr(user_config.stt, "language", None)
+        )
     if user_config.stt.provider == ServiceProviders.CARTESIA.value:
         return user_config.stt.model == "ink-2"
     return False
@@ -774,6 +776,19 @@ def create_stt_service(
         )
     elif user_config.stt.provider == ServiceProviders.SPEACHES.value:
         _validate_runtime_service_url(user_config.stt.base_url, "base_url")
+        from api.services.pipecat.speaches_stt import (
+            AutoLanguageSpeachesSTTService,
+            is_auto_language,
+        )
+
+        if is_auto_language(getattr(user_config.stt, "language", None)):
+            # Whisper detects the language of each segment (multilingual calls).
+            return AutoLanguageSpeachesSTTService(
+                base_url=user_config.stt.base_url,
+                api_key=user_config.stt.api_key or "none",
+                settings=SpeachesSTTSettings(model=user_config.stt.model),
+                sample_rate=audio_config.transport_in_sample_rate,
+            )
         return SpeachesSTTService(
             base_url=user_config.stt.base_url,
             api_key=user_config.stt.api_key or "none",

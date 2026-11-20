@@ -1,3 +1,4 @@
+import re
 from typing import Annotated, Literal
 
 from pydantic import (
@@ -139,6 +140,61 @@ class PromptVariablesConfiguration(BaseModel):
         return None if isinstance(value, str) and not value.strip() else value
 
 
+class LanguageVoiceOverride(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    voice: str = Field(min_length=1, max_length=200)
+    model: str | None = Field(default=None, max_length=200)
+
+
+class LanguageDetectionConfiguration(BaseModel):
+    """Follow the caller's language: reply language and voice switch together.
+
+    Needs a speech recognizer that understands several languages (Whisper /
+    Speaches with language 'auto', Deepgram 'multi', …).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+    enabled: bool = False
+    default_language: str | None = Field(
+        default=None,
+        pattern=r"^[a-z]{2,3}$",
+        description="Language the agent starts in (defaults to the STT language).",
+    )
+    languages: list[str] = Field(
+        default_factory=list,
+        max_length=30,
+        description="Languages the agent may switch to. Empty: any language.",
+    )
+    voices: dict[str, LanguageVoiceOverride] = Field(
+        default_factory=dict,
+        description="Voice per language; otherwise the language pack's voice.",
+    )
+    remember_caller_language: bool = Field(
+        default=True,
+        description="Greet known callers in the language they used last time.",
+    )
+
+    @field_validator("languages")
+    @classmethod
+    def _codes(cls, value: list[str]) -> list[str]:
+        cleaned: list[str] = []
+        for code in value:
+            code = code.strip().lower()
+            if not re.fullmatch(r"[a-z]{2,3}", code):
+                raise ValueError(f"'{code}' is not an ISO 639-1 language code")
+            if code not in cleaned:
+                cleaned.append(code)
+        return cleaned
+
+    @field_validator("voices")
+    @classmethod
+    def _voice_codes(cls, value: dict) -> dict:
+        for code in value:
+            if not re.fullmatch(r"[a-z]{2,3}", code):
+                raise ValueError(f"'{code}' is not an ISO 639-1 language code")
+        return value
+
+
 class WorkflowConfigurationDefaults(BaseModel):
     model_config = ConfigDict(extra="allow")
     model_configuration_override: ModelConfigurationOverride | None = None
@@ -177,6 +233,9 @@ class WorkflowConfigurationDefaults(BaseModel):
     )
     dictionary: str = ""
     context_compaction_enabled: bool = DEFAULT_CONTEXT_COMPACTION_ENABLED
+    language_detection: LanguageDetectionConfiguration = Field(
+        default_factory=LanguageDetectionConfiguration
+    )
     tts_cache_enabled: bool = Field(
         default=False,
         description="Reuse generated speech for repeated phrases. Supports MiniMax TTS.",

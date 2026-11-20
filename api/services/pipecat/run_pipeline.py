@@ -966,6 +966,24 @@ async def _run_pipeline_impl(
         defer_final_extraction=True,
     )
 
+    # Follow the caller's language (reply language + voice), when enabled.
+    from api.services.language.controller import build_controller
+    from api.services.pipecat.processors.language_detection import (
+        LanguageDetectionProcessor,
+    )
+
+    language_controller = (
+        build_controller(engine, run_configs, user_config)
+        if not is_realtime and stt is not None
+        else None
+    )
+    engine.language_controller = language_controller
+    language_detector = (
+        LanguageDetectionProcessor(language_controller, name="LanguageDetection")
+        if language_controller is not None
+        else None
+    )
+
     # Create pipeline components
     audio_buffer, context = create_pipeline_components(audio_config)
 
@@ -1173,6 +1191,7 @@ async def _run_pipeline_impl(
             termination_funnel,
             answer_supervisor=answer_supervisor,
             opening_input=engine.opening.input_gate,
+            language_detector=language_detector,
         )
 
     # Create pipeline task with audio configuration
@@ -1285,6 +1304,16 @@ async def _run_pipeline_impl(
     # Initialize the engine to set the initial context with
     # System Prompt and Tools
     await engine.initialize()
+
+    # A known caller who spoke another language last time is greeted in it.
+    if language_controller is not None and (
+        (run_configs.get("language_detection") or {}).get(
+            "remember_caller_language", True
+        )
+    ):
+        await language_controller.start_in(
+            merged_call_context_vars.get("customer_language"), reason="remembered"
+        )
 
     # Register latency observer to log user-to-bot response latency
     if task.user_bot_latency_observer:

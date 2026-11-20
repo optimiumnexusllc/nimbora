@@ -306,6 +306,8 @@ class PipecatEngine:
 
         # Background context summarization on node transitions
         self._context_compaction_enabled: bool = context_compaction_enabled
+        # Set by run_pipeline when the agent follows the caller's language.
+        self.language_controller = None
         self._context_summarization_manager: Optional[ContextSummarizationManager] = (
             None
         )
@@ -1013,6 +1015,9 @@ class PipecatEngine:
             customer_memory=(getattr(self, "_call_context_vars", None) or {}).get(
                 "customer_memory"
             ),
+            language_directive=(getattr(self, "_call_context_vars", None) or {}).get(
+                "call_language_directive"
+            ),
         )
         functions = await compose_functions_for_node(
             node=node, custom_tool_manager=manager
@@ -1071,9 +1076,12 @@ class PipecatEngine:
                     format_prompt=self._format_prompt,
                     has_recordings=self._has_recordings,
                     prompt_variables=agent.prompt_variables,
-                    customer_memory=(getattr(self, "_call_context_vars", None) or {}).get(
-                "customer_memory"
-            ),
+                    customer_memory=(
+                        getattr(self, "_call_context_vars", None) or {}
+                    ).get("customer_memory"),
+                    language_directive=(
+                        getattr(self, "_call_context_vars", None) or {}
+                    ).get("call_language_directive"),
                 )
                 functions = await compose_functions_for_node(
                     node=target, custom_tool_manager=manager
@@ -1100,6 +1108,10 @@ class PipecatEngine:
             await self._update_llm_context(
                 agent.system_prompt, agent.tools.standard_tools
             )
+            # After a transfer the new agent speaks in the caller's language too.
+            controller = getattr(self, "language_controller", None)
+            if controller is not None:
+                await controller.ensure_voice(agent)
 
     async def set_node(
         self,

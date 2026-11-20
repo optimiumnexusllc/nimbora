@@ -1,0 +1,21 @@
+---
+title: "Schedule Callback"
+description: "Let the agent promise a callback, made by your team or by an AI agent at the time the customer chooses."
+---
+
+The Schedule Callback tool records a promise to call the customer back. The agent asks when and why, then calls the tool with:
+
+- `preferred_time`: an ISO 8601 local time such as `2026-11-21T10:00`, or `asap`;
+- `reason`: one sentence;
+- optionally `customer_name` and `phone_number`. By default, the number of the current call is used.
+
+Times without a time zone are read in the organization's time zone. Callbacks are limited to 30 days ahead.
+
+## Who calls back
+
+- **Your team**: the callback appears in **Centre d'appels → Rappels**, optionally routed to a queue. One click on **Appeler** rings the agent's softphone. Once the agent answers, NIMBORA dials the customer. The agent then records the result: reached, no answer (rescheduled) or wrong number.
+- **An AI agent**: at the scheduled time, the chosen agent places the call. The reason is passed in `{{callback_reason}}` and the name in `{{customer_name}}`. There are up to 3 attempts, 15 minutes apart.
+
+Callers who give up waiting in a contact-center queue also become team callbacks automatically, with the AI's handoff summary.
+
+There is one open callback per customer number: a new request updates it instead of creating a duplicate.

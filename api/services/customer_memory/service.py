@@ -162,6 +162,10 @@ async def load_memory_context(
             "customer_name": profile.name or "",
             "customer_total_calls": profile.total_calls,
             "customer_last_summary": profile.last_summary or "",
+            # Language of the last call (automatic language detection).
+            "customer_language": str(
+                (profile.attributes or {}).get("call_language") or ""
+            ),
             MEMORY_PROMPT_KEY: render_memory_prompt(profile, interactions),
         }
     except Exception:

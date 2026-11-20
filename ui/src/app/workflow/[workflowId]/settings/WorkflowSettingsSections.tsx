@@ -1,7 +1,7 @@
 "use client";
 
 import { format } from "date-fns";
-import { BookA, Brain, CalendarIcon, Clipboard, Download, ExternalLink, FileDown, Fingerprint, Loader2, Pause, PhoneOff, Play, Plus, Rocket, Settings, Trash2Icon, Upload, Variable, X } from "lucide-react";
+import { BookA, Brain, CalendarIcon, Clipboard, Download, ExternalLink, FileDown, Fingerprint, Languages, Loader2, Pause, PhoneOff, Play, Plus, Rocket, Settings, Trash2Icon, Upload, Variable, X } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -51,6 +51,7 @@ import {
     normalizeCallDispositions,
     validateCallDispositionRows,
 } from "./components/CallDispositionEditor";
+import { LanguageDetectionSection } from "./components/LanguageDetectionSection";
 import { PromptCachingSection } from "./components/PromptCachingSection";
 
 // ---------------------------------------------------------------------------
@@ -65,6 +66,7 @@ const NAV_ITEMS = [
     { id: "models", label: "Model Configuration", icon: Brain },
     { id: "variables", label: "Template Variables", icon: Variable },
     { id: "dictionary", label: "Dictionary", icon: BookA },
+    { id: "languages", label: "Languages", icon: Languages },
     { id: "prompt-caching", label: "Prompt Caching", icon: Brain },
     { id: "voicemail", label: "Voicemail & Screening", icon: PhoneOff },
     { id: "deployment", label: "Add to Website", icon: Rocket },
@@ -1509,6 +1511,12 @@ export function WorkflowSettingsSections({
                             )}
 
                             {show("dictionary") && <DictionarySection dictionary={dictionary} onSave={saveDictionary} />}
+                            {show("languages") && (
+                                <LanguageDetectionSection
+                                    workflowConfigurations={resolved}
+                                    onSave={(value) => saveWorkflowConfigurations(value, workflowName)}
+                                />
+                            )}
                             {show("prompt-caching") && <PromptCachingSection workflowConfigurations={resolved} onSave={value => saveWorkflowConfigurations(value, workflowName)} />}
 
                             {show("voicemail") && (

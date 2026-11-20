@@ -1,0 +1,39 @@
+---
+title: "Automatic Language Detection"
+description: "Follow the caller's language: the agent replies in it, with a matching voice, and remembers it for the next call."
+---
+
+When a caller switches language, the agent switches with them. It replies in the caller's language and speaks with a voice made for it. Each customer's language is also remembered for their next call.
+
+## Turn it on
+
+1. Use a speech recognizer that understands several languages:
+   - **Self-hosted Whisper (Speaches)**: set the transcriber language to `auto`. Whisper then detects the language of every segment.
+   - **Deepgram**: use the `multi` language.
+   - Other multilingual recognizers work too. NIMBORA falls back to its own text detector when the recognizer does not report a language.
+2. In the agent's **Settings → Languages**, enable **Detect the caller's language automatically**.
+3. Optionally:
+   - choose the **starting language**;
+   - restrict the **languages the agent may switch to**;
+   - pick a **voice per language**.
+4. Publish the agent.
+
+## How a switch is decided
+
+A single word never switches the conversation, whether it is "OK", a brand name or a foreign surname:
+
+- utterances of one word are ignored;
+- a language reported by the recognizer on an utterance of five words or more switches at once;
+- otherwise the same new language must be heard on **two consecutive turns**;
+- languages outside the allowed list are ignored.
+
+## What changes on a switch
+
+| | |
+|---|---|
+| Reply language | A *Conversation language* section is added at the end of the system prompt. It is kept across nodes and agent transfers. |
+| Voice | Your choice for that language, or the language pack's Kokoro or Piper voice on the self-hosted stack. Multilingual cloud voices (ElevenLabs, Cartesia, Azure…) keep the same voice in the new language. |
+| Call data | `call_language` and `languages_spoken` are added to the call's gathered context. They are available in webhooks, reports and QA. |
+| Customer memory | The last language is stored on the customer profile. Known callers are greeted in it next time. You can turn this off with **Remember each caller's language**. |
+
+Languages without a self-hosted voice yet (Hausa, Yoruba, Lingala…) still switch the reply language and keep the current voice.

@@ -69,6 +69,7 @@ def compose_system_prompt_for_node(
     has_recordings: bool,
     prompt_variables: PromptVariablesConfiguration | None = None,
     customer_memory: str | None = None,
+    language_directive: str | None = None,
 ) -> ComposedNodePrompt:
     """Compose the full system prompt text for a workflow node.
 
@@ -126,6 +127,10 @@ def compose_system_prompt_for_node(
     )
     if memory:
         parts.append(memory)
+    # The caller's language (automatic language detection) comes last, so it
+    # wins over any language the prompts were written in.
+    if language_directive:
+        parts.append(language_directive)
 
     return ComposedNodePrompt(
         text="\n\n".join(parts), recording_enabled=recording_enabled
