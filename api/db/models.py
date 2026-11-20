@@ -1935,3 +1935,62 @@ class CallHandoffModel(Base):
     __table_args__ = (
         Index("ix_call_handoffs_org_created", "organization_id", "created_at"),
     )
+
+
+class CustomerProfileModel(Base):
+    """What an organization's agents remember about one caller (by phone)."""
+
+    __tablename__ = "customer_profiles"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    phone = Column(String(32), nullable=False)
+    # Last 9 digits: matches local and international spellings of a number.
+    phone_suffix = Column(String(16), nullable=False)
+    name = Column(String(128), nullable=True)
+    notes = Column(Text, nullable=True)
+    tags = Column(JSON, nullable=False, default=list)
+    attributes = Column(JSON, nullable=False, default=dict)
+    last_summary = Column(Text, nullable=True)
+    last_sentiment = Column(String(16), nullable=True)
+    total_calls = Column(Integer, nullable=False, default=0)
+    first_seen_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    last_seen_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    __table_args__ = (
+        UniqueConstraint("organization_id", "phone", name="_customer_org_phone_uc"),
+        Index("ix_customer_profiles_org_suffix", "organization_id", "phone_suffix"),
+        Index("ix_customer_profiles_org_last_seen", "organization_id", "last_seen_at"),
+    )
+
+
+class CustomerInteractionModel(Base):
+    """One call with a known customer, summarized for the next agent."""
+
+    __tablename__ = "customer_interactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    customer_id = Column(
+        Integer, ForeignKey("customer_profiles.id", ondelete="CASCADE"), nullable=False
+    )
+    workflow_run_id = Column(
+        Integer, ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    direction = Column(String(16), nullable=True)
+    agent_name = Column(String(255), nullable=True)
+    summary = Column(Text, nullable=True)
+    sentiment = Column(String(16), nullable=True)
+    outcome = Column(String(64), nullable=True)
+    transferred_to_queue = Column(String(48), nullable=True)
+    duration_seconds = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    __table_args__ = (
+        UniqueConstraint("workflow_run_id", name="_customer_interaction_run_uc"),
+        Index("ix_customer_interactions_customer", "customer_id", "created_at"),
+    )

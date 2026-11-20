@@ -13,6 +13,7 @@ from api.routes.credentials import router as credentials_router
 from api.routes.folder import router as folder_router
 from api.routes.knowledge_base import router as knowledge_base_router
 from api.routes.local_ai import router as local_ai_router
+from api.routes.customers import router as customers_router
 from api.routes.model_connections import router as model_connections_router
 from api.routes.node_types import router as node_types_router
 from api.routes.organization import router as organization_router
@@ -75,6 +76,7 @@ router.include_router(node_types_router)
 router.include_router(agent_stream_router)
 router.include_router(saas_router)
 router.include_router(local_ai_router)
+router.include_router(customers_router)
 router.include_router(contact_center_router)
 
 for _integration_router in all_routers():

@@ -21,6 +21,7 @@ import {
   Settings,
   ShieldCheck,
   TrendingUp,
+  Users,
   Workflow,
   Wrench,
 } from "lucide-react";
@@ -149,6 +150,11 @@ const NAV_SECTIONS: SidebarNavSection[] = [
         title: "Historique des appels",
         url: "/usage",
         icon: TrendingUp,
+      },
+      {
+        title: "Clients",
+        url: "/customers",
+        icon: Users,
       },
       {
         title: "Centre d'appels",

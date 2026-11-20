@@ -136,6 +136,35 @@ export type Handoff = {
     answered_at: string | null;
 };
 
+export type Customer = {
+    id: number;
+    phone: string;
+    name: string | null;
+    notes: string | null;
+    tags: string[];
+    attributes: Record<string, unknown>;
+    last_summary: string | null;
+    last_sentiment: string | null;
+    total_calls: number;
+    first_seen_at: string | null;
+    last_seen_at: string | null;
+};
+
+export type CustomerInteraction = {
+    id: number;
+    workflow_run_id: number | null;
+    direction: string | null;
+    agent_name: string | null;
+    summary: string | null;
+    sentiment: string | null;
+    outcome: string | null;
+    transferred_to_queue: string | null;
+    duration_seconds: number | null;
+    created_at: string | null;
+};
+
+export type CustomerDetail = Customer & { interactions: CustomerInteraction[] };
+
 export type LocalLanguage = {
     code: string;
     name: string;
@@ -232,6 +261,21 @@ export const enterpriseApi = {
     acceptHandoff: (id: string) =>
         call<Handoff>("post", `${BASE}/contact-center/handoffs/${encodeURIComponent(id)}/accept`),
     mySeat: () => call<Agent | null>("get", `${BASE}/contact-center/me`),
+
+    // Customer memory
+    listCustomers: (q = "", page = 1) =>
+        call<{ customers: Customer[]; total: number; memory_enabled: boolean }>(
+            "get",
+            `${BASE}/customers?page=${page}&limit=50${q ? `&q=${encodeURIComponent(q)}` : ""}`,
+        ),
+    getCustomer: (id: number) => call<CustomerDetail>("get", `${BASE}/customers/${id}`),
+    createCustomer: (input: { phone: string; name?: string; notes?: string; tags?: string[] }) =>
+        call<Customer>("post", `${BASE}/customers`, input),
+    updateCustomer: (id: number, input: Partial<Pick<Customer, "name" | "notes" | "tags">>) =>
+        call<Customer>("patch", `${BASE}/customers/${id}`, input),
+    forgetCustomer: (id: number) => call<void>("delete", `${BASE}/customers/${id}`),
+    setMemoryEnabled: (enabled: boolean) =>
+        call<{ enabled: boolean }>("put", `${BASE}/customers/settings`, { enabled }),
 
     // Local AI
     localLanguages: () => call<LocalAIInfo>("get", `${BASE}/local-ai/languages`),

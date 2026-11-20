@@ -393,3 +393,18 @@ class ContactCenterClient(BaseDBClient):
                 )
             )
             return sorted(row[0] for row in result.all())
+
+    async def get_call_handoff_for_run(
+        self, organization_id: int, workflow_run_id: int
+    ) -> CallHandoffModel | None:
+        async with self.async_session() as session:
+            result = await session.execute(
+                select(CallHandoffModel)
+                .where(
+                    CallHandoffModel.organization_id == organization_id,
+                    CallHandoffModel.workflow_run_id == workflow_run_id,
+                )
+                .order_by(CallHandoffModel.created_at.desc())
+                .limit(1)
+            )
+            return result.scalars().first()

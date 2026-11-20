@@ -181,6 +181,7 @@ class OrganizationConfigurationKey(Enum):
         "ORGANIZATION_BOOTSTRAP"  # Single-winner lease for post-signup provisioning
     )
     MPS_SIGNUP_GRANT = "MPS_SIGNUP_GRANT"  # Team grant / per-actor claim results
+    CUSTOMER_MEMORY = "CUSTOMER_MEMORY"  # {"enabled": bool}: remember callers
 
 
 class UserConfigurationKey(Enum):

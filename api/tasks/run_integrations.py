@@ -171,6 +171,13 @@ async def _update_usage_info_with_qa_tokens(
         logger.error(f"Failed to update usage_info with QA tokens: {e}")
 
 
+async def _remember_customer(workflow_run, organization_id: int) -> None:
+    """Update the caller's profile and history (customer memory)."""
+    from api.services.customer_memory.service import record_call_in_memory
+
+    await record_call_in_memory(workflow_run, organization_id)
+
+
 async def run_integrations_post_workflow_run(_ctx, workflow_run_id: int):
     """
     Run integrations after a workflow run completes.
@@ -238,6 +245,7 @@ async def run_integrations_post_workflow_run(_ctx, workflow_run_id: int):
             and not has_registered_integrations
             and not has_campaign
         ):
+            await _remember_customer(workflow_run, organization_id)
             logger.info("No integration nodes and no campaign, skipping")
             return
 
@@ -280,6 +288,9 @@ async def run_integrations_post_workflow_run(_ctx, workflow_run_id: int):
                 workflow_run, _ = await db_client.get_workflow_run_with_context(
                     workflow_run_id
                 )
+
+        # Customer memory reuses the QA summary when there is one.
+        await _remember_customer(workflow_run, organization_id)
 
         # Step 6: Run registered third-party integrations after uploads are complete
         integration_results = await run_completion_handlers(

@@ -3,6 +3,7 @@ from api.db.api_key_client import APIKeyClient
 from api.db.builder_run_client import BuilderRunClient
 from api.db.campaign_client import CampaignClient
 from api.db.contact_center_client import ContactCenterClient
+from api.db.customer_memory_client import CustomerMemoryClient
 from api.db.embed_token_client import EmbedTokenClient
 from api.db.folder_client import FolderClient
 from api.db.integration_client import IntegrationClient
@@ -59,6 +60,7 @@ class DBClient(
     FolderClient,
     SaasClient,
     ContactCenterClient,
+    CustomerMemoryClient,
 ):
     """
     Unified database client that combines all specialized database operations.

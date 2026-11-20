@@ -704,6 +704,20 @@ async def _run_pipeline_impl(
     if not workflow:
         raise HTTPException(status_code=404, detail="Workflow not found")
 
+    # Customer memory: a known caller brings their profile and recent history
+    # (variables + an automatic prompt section). Bounded, never fails the call.
+    from api.services.customer_memory.service import load_memory_context
+
+    try:
+        async with asyncio.timeout(2):
+            merged_call_context_vars.update(
+                await load_memory_context(
+                    workflow.organization_id, merged_call_context_vars
+                )
+            )
+    except TimeoutError:
+        logger.warning("Customer memory lookup timed out; continuing without it")
+
     # Use the run's pinned definition for graph + configs (not the workflow's current)
     run_definition = workflow_run.definition
     run_workflow_json = run_definition.workflow_json

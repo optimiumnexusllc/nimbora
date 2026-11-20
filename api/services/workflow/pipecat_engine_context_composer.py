@@ -68,6 +68,7 @@ def compose_system_prompt_for_node(
     format_prompt: Callable[[str], str],
     has_recordings: bool,
     prompt_variables: PromptVariablesConfiguration | None = None,
+    customer_memory: str | None = None,
 ) -> ComposedNodePrompt:
     """Compose the full system prompt text for a workflow node.
 
@@ -112,6 +113,19 @@ def compose_system_prompt_for_node(
         parts.append(RECORDING_RESPONSE_MODE_INSTRUCTIONS)
     if prompt_variables and prompt_variables.mode == "call_context":
         parts.append(call_context_note(prompt_variables))
+    # Known caller: append what the organization remembers, unless the prompt
+    # already places {{customer_memory}} itself.
+    from api.services.customer_memory.service import memory_section_for_prompt
+
+    memory = memory_section_for_prompt(
+        {"customer_memory": customer_memory},
+        node.prompt,
+        workflow.nodes[workflow.global_node_id].prompt
+        if workflow.global_node_id and node.add_global_prompt
+        else None,
+    )
+    if memory:
+        parts.append(memory)
 
     return ComposedNodePrompt(
         text="\n\n".join(parts), recording_enabled=recording_enabled

@@ -1010,6 +1010,9 @@ class PipecatEngine:
             format_prompt=self._format_prompt,
             has_recordings=self._has_recordings,
             prompt_variables=agent.prompt_variables,
+            customer_memory=(getattr(self, "_call_context_vars", None) or {}).get(
+                "customer_memory"
+            ),
         )
         functions = await compose_functions_for_node(
             node=node, custom_tool_manager=manager
@@ -1068,6 +1071,9 @@ class PipecatEngine:
                     format_prompt=self._format_prompt,
                     has_recordings=self._has_recordings,
                     prompt_variables=agent.prompt_variables,
+                    customer_memory=(getattr(self, "_call_context_vars", None) or {}).get(
+                "customer_memory"
+            ),
                 )
                 functions = await compose_functions_for_node(
                     node=target, custom_tool_manager=manager
