@@ -188,7 +188,17 @@ async def create_handoff_for_transfer(
     from api.db import db_client
 
     try:
-        transcript = conversation_transcript(engine.context.messages)
+        from api.services.privacy.service import (
+            get_privacy_settings,
+            redact_gathered_context,
+            redact_value_for_storage,
+        )
+
+        privacy = await get_privacy_settings(organization_id)
+        # Masked before storing and before the summarizer sees it.
+        transcript = redact_value_for_storage(
+            conversation_transcript(engine.context.messages), privacy
+        )
         initial = getattr(workflow_run, "initial_context", None) or {}
         handoff = await db_client.create_call_handoff(
             organization_id=organization_id,
@@ -199,7 +209,9 @@ async def create_handoff_for_transfer(
             )[:64]
             or None,
             status="pending",
-            collected_data=collected_data(engine._gathered_context),
+            collected_data=redact_gathered_context(
+                collected_data(engine._gathered_context), privacy
+            ),
             transcript=transcript,
             summary_status="pending" if transcript else "skipped",
         )

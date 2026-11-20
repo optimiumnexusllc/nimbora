@@ -93,3 +93,16 @@ class LocalFileSystem(BaseFileSystem):
             return f"/files/{temp_filename}"
         except Exception:
             return None
+
+    async def adelete_file(self, file_path: str) -> bool:
+        """Delete a local file (missing files count as deleted)."""
+        full_path = os.path.realpath(self._get_full_path(file_path))
+        if not full_path.startswith(os.path.realpath(self.base_path) + os.sep):
+            return False
+        try:
+            os.remove(full_path)
+        except FileNotFoundError:
+            pass
+        except OSError:
+            return False
+        return True

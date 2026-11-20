@@ -558,6 +558,21 @@ def register_event_handlers(
             logger.info("Logs buffer is empty, skipping save")
 
         logs_update.update(integration_logs)
+
+        # Privacy: mask personal data before anything is persisted.
+        from api.services.privacy.service import (
+            get_privacy_settings,
+            redact_for_storage,
+            redact_gathered_context,
+            redact_run_logs,
+        )
+
+        privacy_settings = await get_privacy_settings(
+            getattr(getattr(workflow_run, "workflow", None), "organization_id", None)
+        )
+        logs_update, _ = redact_run_logs(logs_update, privacy_settings)
+        gathered_context = redact_gathered_context(gathered_context, privacy_settings)
+
         completion: dict[str, object] = {
             "status": "pending",
             "created_at": time.time(),
@@ -593,7 +608,12 @@ def register_event_handlers(
             user_audio_wav = None
             bot_audio_wav = None
 
-            if not ENABLE_CALL_RECORDING_UPLOAD:
+            if not privacy_settings.store_recordings:
+                logger.info(
+                    "Recordings disabled by the organization's privacy policy, "
+                    "skipping audio upload"
+                )
+            elif not ENABLE_CALL_RECORDING_UPLOAD:
                 logger.info(
                     "Call recording upload is disabled "
                     "(ENABLE_CALL_RECORDING_UPLOAD=false), skipping audio upload"
@@ -614,8 +634,11 @@ def register_event_handlers(
                 else:
                     logger.info("Bot audio buffer is empty, skipping upload")
 
-            transcript_text = in_memory_logs_buffer.generate_transcript_text(
-                include_end_timestamps=include_transcript_end_timestamps
+            transcript_text = redact_for_storage(
+                in_memory_logs_buffer.generate_transcript_text(
+                    include_end_timestamps=include_transcript_end_timestamps
+                ),
+                privacy_settings,
             )
             if not transcript_text:
                 logger.info("No transcript events in logs buffer, skipping upload")

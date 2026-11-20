@@ -12,6 +12,7 @@ import {
   Headphones,
   Home,
   Key,
+  LockKeyhole,
   LogOut,
   type LucideIcon,
   Megaphone,
@@ -155,6 +156,11 @@ const NAV_SECTIONS: SidebarNavSection[] = [
         title: "Clients",
         url: "/customers",
         icon: Users,
+      },
+      {
+        title: "Confidentialité",
+        url: "/privacy",
+        icon: LockKeyhole,
       },
       {
         title: "Centre d'appels",

@@ -4738,6 +4738,130 @@ export type PresignedUploadUrlResponse = {
 };
 
 /**
+ * PrivacyRequestResponse
+ */
+export type PrivacyRequestResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Kind
+     */
+    kind: 'erasure' | 'export';
+    /**
+     * Subject Hint
+     */
+    subject_hint: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Counts
+     */
+    counts: {
+        [key: string]: unknown;
+    };
+    /**
+     * Error
+     */
+    error: string | null;
+    /**
+     * Requested By
+     */
+    requested_by: number | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+    /**
+     * Completed At
+     */
+    completed_at: string | null;
+};
+
+/**
+ * PrivacySettings
+ */
+export type PrivacySettings = {
+    /**
+     * Redaction Enabled
+     */
+    redaction_enabled?: boolean;
+    /**
+     * Categories
+     */
+    categories?: Array<string>;
+    /**
+     * Mask In Conversation
+     */
+    mask_in_conversation?: boolean;
+    /**
+     * Redact Extracted Data
+     */
+    redact_extracted_data?: boolean;
+    /**
+     * Store Recordings
+     */
+    store_recordings?: boolean;
+    /**
+     * Recording Retention Days
+     */
+    recording_retention_days?: number | null;
+    /**
+     * Transcript Retention Days
+     */
+    transcript_retention_days?: number | null;
+    /**
+     * Customer Memory Retention Days
+     */
+    customer_memory_retention_days?: number | null;
+};
+
+/**
+ * PrivacySettingsResponse
+ */
+export type PrivacySettingsResponse = {
+    /**
+     * Redaction Enabled
+     */
+    redaction_enabled?: boolean;
+    /**
+     * Categories
+     */
+    categories?: Array<string>;
+    /**
+     * Mask In Conversation
+     */
+    mask_in_conversation?: boolean;
+    /**
+     * Redact Extracted Data
+     */
+    redact_extracted_data?: boolean;
+    /**
+     * Store Recordings
+     */
+    store_recordings?: boolean;
+    /**
+     * Recording Retention Days
+     */
+    recording_retention_days?: number | null;
+    /**
+     * Transcript Retention Days
+     */
+    transcript_retention_days?: number | null;
+    /**
+     * Customer Memory Retention Days
+     */
+    customer_memory_retention_days?: number | null;
+    /**
+     * Available Categories
+     */
+    available_categories?: Array<string>;
+};
+
+/**
  * ProcessDocumentRequestSchema
  *
  * Request schema for triggering document processing.
@@ -5647,6 +5771,36 @@ export type RecordingUploadResponseSchema = {
 };
 
 /**
+ * RedactionPreviewRequest
+ */
+export type RedactionPreviewRequest = {
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Categories
+     */
+    categories?: Array<string> | null;
+};
+
+/**
+ * RedactionPreviewResponse
+ */
+export type RedactionPreviewResponse = {
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * Counts
+     */
+    counts: {
+        [key: string]: number;
+    };
+};
+
+/**
  * RedialCampaignRequest
  */
 export type RedialCampaignRequest = {
@@ -6077,6 +6231,16 @@ export type SoftphoneCredentials = {
      * Wss Url
      */
     wss_url: string | null;
+};
+
+/**
+ * SubjectRequest
+ */
+export type SubjectRequest = {
+    /**
+     * Phone
+     */
+    phone: string;
 };
 
 /**
@@ -19129,6 +19293,246 @@ export type UpdateCustomerApiV1CustomersCustomerIdPatchResponses = {
 };
 
 export type UpdateCustomerApiV1CustomersCustomerIdPatchResponse = UpdateCustomerApiV1CustomersCustomerIdPatchResponses[keyof UpdateCustomerApiV1CustomersCustomerIdPatchResponses];
+
+export type ReadSettingsApiV1PrivacySettingsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/privacy/settings';
+};
+
+export type ReadSettingsApiV1PrivacySettingsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadSettingsApiV1PrivacySettingsGetError = ReadSettingsApiV1PrivacySettingsGetErrors[keyof ReadSettingsApiV1PrivacySettingsGetErrors];
+
+export type ReadSettingsApiV1PrivacySettingsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PrivacySettingsResponse;
+};
+
+export type ReadSettingsApiV1PrivacySettingsGetResponse = ReadSettingsApiV1PrivacySettingsGetResponses[keyof ReadSettingsApiV1PrivacySettingsGetResponses];
+
+export type UpdateSettingsApiV1PrivacySettingsPutData = {
+    body: PrivacySettings;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/privacy/settings';
+};
+
+export type UpdateSettingsApiV1PrivacySettingsPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateSettingsApiV1PrivacySettingsPutError = UpdateSettingsApiV1PrivacySettingsPutErrors[keyof UpdateSettingsApiV1PrivacySettingsPutErrors];
+
+export type UpdateSettingsApiV1PrivacySettingsPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: PrivacySettingsResponse;
+};
+
+export type UpdateSettingsApiV1PrivacySettingsPutResponse = UpdateSettingsApiV1PrivacySettingsPutResponses[keyof UpdateSettingsApiV1PrivacySettingsPutResponses];
+
+export type PreviewRedactionApiV1PrivacyPreviewPostData = {
+    body: RedactionPreviewRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/privacy/preview';
+};
+
+export type PreviewRedactionApiV1PrivacyPreviewPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PreviewRedactionApiV1PrivacyPreviewPostError = PreviewRedactionApiV1PrivacyPreviewPostErrors[keyof PreviewRedactionApiV1PrivacyPreviewPostErrors];
+
+export type PreviewRedactionApiV1PrivacyPreviewPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RedactionPreviewResponse;
+};
+
+export type PreviewRedactionApiV1PrivacyPreviewPostResponse = PreviewRedactionApiV1PrivacyPreviewPostResponses[keyof PreviewRedactionApiV1PrivacyPreviewPostResponses];
+
+export type EraseApiV1PrivacyErasurePostData = {
+    body: SubjectRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/privacy/erasure';
+};
+
+export type EraseApiV1PrivacyErasurePostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type EraseApiV1PrivacyErasurePostError = EraseApiV1PrivacyErasurePostErrors[keyof EraseApiV1PrivacyErasurePostErrors];
+
+export type EraseApiV1PrivacyErasurePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: PrivacyRequestResponse;
+};
+
+export type EraseApiV1PrivacyErasurePostResponse = EraseApiV1PrivacyErasurePostResponses[keyof EraseApiV1PrivacyErasurePostResponses];
+
+export type ExportApiV1PrivacyExportPostData = {
+    body: SubjectRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/privacy/export';
+};
+
+export type ExportApiV1PrivacyExportPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ExportApiV1PrivacyExportPostError = ExportApiV1PrivacyExportPostErrors[keyof ExportApiV1PrivacyExportPostErrors];
+
+export type ExportApiV1PrivacyExportPostResponses = {
+    /**
+     * Response Export Api V1 Privacy Export Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ExportApiV1PrivacyExportPostResponse = ExportApiV1PrivacyExportPostResponses[keyof ExportApiV1PrivacyExportPostResponses];
+
+export type ListRequestsApiV1PrivacyRequestsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/privacy/requests';
+};
+
+export type ListRequestsApiV1PrivacyRequestsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListRequestsApiV1PrivacyRequestsGetError = ListRequestsApiV1PrivacyRequestsGetErrors[keyof ListRequestsApiV1PrivacyRequestsGetErrors];
+
+export type ListRequestsApiV1PrivacyRequestsGetResponses = {
+    /**
+     * Response List Requests Api V1 Privacy Requests Get
+     *
+     * Successful Response
+     */
+    200: Array<PrivacyRequestResponse>;
+};
+
+export type ListRequestsApiV1PrivacyRequestsGetResponse = ListRequestsApiV1PrivacyRequestsGetResponses[keyof ListRequestsApiV1PrivacyRequestsGetResponses];
 
 export type ListQueuesApiV1ContactCenterQueuesGetData = {
     body?: never;

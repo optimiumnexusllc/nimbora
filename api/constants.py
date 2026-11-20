@@ -319,6 +319,12 @@ STRIPE_API_BASE = os.getenv("STRIPE_API_BASE", "https://api.stripe.com")
 # Self-hosted AI stack. When enabled, every new organization is provisioned
 # with local models instead of NIMBORA-managed (cloud) ones.
 LOCAL_AI_ENABLED = _env_bool("LOCAL_AI_ENABLED")
+# Mask card numbers, IBANs, e-mails, phone numbers… in application logs.
+PRIVACY_REDACT_LOGS = os.getenv("PRIVACY_REDACT_LOGS", "true").lower() not in {
+    "0",
+    "false",
+    "no",
+}
 LOCAL_LLM_BASE_URL = os.getenv("LOCAL_LLM_BASE_URL", "http://ollama:11434/v1")
 LOCAL_LLM_MODEL = os.getenv("LOCAL_LLM_MODEL", "qwen2.5:7b-instruct")
 LOCAL_SPEECH_BASE_URL = os.getenv("LOCAL_SPEECH_BASE_URL", "http://speaches:8000/v1")

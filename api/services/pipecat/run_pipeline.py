@@ -984,6 +984,15 @@ async def _run_pipeline_impl(
         else None
     )
 
+    # Privacy (PCI): mask card/CVV/IBAN/SSN as the STT emits them, so the
+    # agent, the live transcript and storage never see the numbers.
+    from api.services.pipecat.processors.pii_masking import mask_stt_output
+    from api.services.privacy.service import get_privacy_settings
+
+    privacy_settings = await get_privacy_settings(workflow.organization_id)
+    if privacy_settings.mask_in_conversation and stt is not None:
+        mask_stt_output(stt, privacy_settings.conversation_categories)
+
     # Create pipeline components
     audio_buffer, context = create_pipeline_components(audio_config)
 

@@ -299,6 +299,15 @@ async def record_call_in_memory(workflow_run, organization_id: int) -> bool:
         if card and card.get("summary"):
             summary = summary or card["summary"]
 
+        # Privacy policy: the memory keeps no card numbers, e-mails…
+        from api.services.privacy.service import (
+            get_privacy_settings,
+            redact_for_storage,
+        )
+
+        privacy = await get_privacy_settings(organization_id)
+        summary = redact_for_storage(summary, privacy)
+
         profile = await db_client.get_or_create_customer_profile(
             organization_id, phone, phone_suffix(phone)
         )

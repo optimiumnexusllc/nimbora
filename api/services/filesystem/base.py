@@ -139,3 +139,11 @@ class BaseFileSystem(ABC):
             bool: True if file was copied successfully, False otherwise
         """
         pass
+
+    async def adelete_file(self, file_path: str) -> bool:
+        """Delete a stored object (GDPR erasure, retention).
+
+        Returns True when the object is gone, including when it never
+        existed. Backends that cannot delete return False.
+        """
+        return False

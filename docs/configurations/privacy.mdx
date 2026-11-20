@@ -1,0 +1,57 @@
+---
+title: "Privacy (GDPR & PCI)"
+description: "Mask personal data, keep payment numbers away from the AI, set retention periods and answer access and erasure requests."
+---
+
+**Confidentialité** in the sidebar holds the organization's privacy policy. It applies to every agent and every channel.
+
+## Masking personal data
+
+When **Mask stored personal data** is on, NIMBORA replaces personal data with tokens before storing anything. That covers the transcript file, the call logs, AI handoff cards, customer memory summaries and QA analyses.
+
+| Category | Token | Detection |
+|---|---|---|
+| Payment cards | `[CARD]` | 13–19 digits, any spacing, **Luhn-checked** |
+| CVV | `[CVV]` | 3–4 digits after "CVV", "CVC", "cryptogramme", "security code"… |
+| IBAN | `[IBAN]` | ISO 7064 **mod-97 checked** |
+| Social security | `[SSN]` | French NIR (key checked), US SSN |
+| E-mails | `[EMAIL]` | Written, or dictated ("jean point dupont arobase gmail point com") |
+| Phones | `[PHONE]` | International, or local with separators / leading 0 |
+| IP addresses | `[IP]` | IPv4 |
+
+Checksums keep false positives low. An order number, an amount or a date is not masked. Use **Essayer le masquage** to test a sentence.
+
+Data extracted by agents (variables) is masked only if **Also mask extracted data** is on. Leave it off if your webhooks need the values.
+
+## PCI mode: the AI never hears card numbers
+
+With **Mode PCI** on, card numbers, CVV, IBAN and social security numbers are masked **as the speech recognizer produces them**. The LLM, the live supervision view, transcripts and logs only ever see `[CARD]`.
+
+Collect payments on a PCI-compliant channel instead, such as a secure IVR or a payment link sent by SMS.
+
+Application logs are masked platform-wide by default. Set `PRIVACY_REDACT_LOGS=false` to disable this.
+
+## Retention
+
+| Setting | What is purged |
+|---|---|
+| Record call audio | Off: no audio is ever stored |
+| Audio recordings (days) | Recording files after N days |
+| Transcripts (days) | Transcript file and conversation logs after N days |
+| Customer memory (days) | Interaction history older than N days, and profiles inactive since then |
+
+A purge runs every day at 03:17 (worker time). Call metadata (date, duration, cost, agent) is kept for billing and statistics.
+
+## Data subject requests
+
+Both requests start from the person's phone number. Formats are matched on the last 9 digits, so `+33 6 12 34 56 78` and `06 12 34 56 78` are the same person.
+
+- **Export their data** (right of access, art. 15) downloads a JSON file. It contains the customer profile and history, calls with collected data, handoffs and callbacks.
+- **Erase their data** (right to erasure, art. 17) does the following:
+  - deletes recordings and transcripts;
+  - anonymizes their call records (kept for billing);
+  - deletes their customer profile, handoff cards and callbacks.
+
+Every request is listed in the **register**. The register keeps a keyed hash and the last three digits only, never the full number.
+
+The same actions are available through the API: `GET/PUT /api/v1/privacy/settings`, `POST /api/v1/privacy/export`, `POST /api/v1/privacy/erasure`, `GET /api/v1/privacy/requests`.

@@ -58,7 +58,8 @@
               "configurations/agent-uuid",
               "configurations/interruption",
               "configurations/tracing",
-              "configurations/call-events"
+              "configurations/call-events",
+              "configurations/privacy"
             ]
           },
           {

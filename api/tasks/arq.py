@@ -59,6 +59,7 @@ REDIS_SETTINGS = RedisSettings(
 )
 
 from api.services.contact_center.callbacks import run_callback_scheduler
+from api.services.privacy.service import run_retention_sweep
 from api.tasks.campaign_tasks import (
     process_campaign_batch,
     sync_campaign_source,
@@ -91,6 +92,9 @@ class WorkerSettings:
         finalize_completed_text_chat,
     ]
     cron_jobs = [
+        # GDPR retention: purge recordings, transcripts and customer memory
+        # older than each organization's policy (daily, off-peak).
+        cron(run_retention_sweep, hour={3}, minute={17}, second=0),
         # Callbacks: abandoned queue calls become callbacks; due AI callbacks
         # are placed. Claims are atomic, so several workers are safe.
         cron(

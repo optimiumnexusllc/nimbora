@@ -208,3 +208,16 @@ class MinioFileSystem(BaseFileSystem):
             return True
         except S3Error:
             return False
+
+    async def adelete_file(self, file_path: str) -> bool:
+        """Delete an object from MinIO (missing objects count as deleted)."""
+        try:
+            await asyncio.to_thread(
+                self.client.remove_object, self.bucket_name, file_path
+            )
+            return True
+        except S3Error as error:
+            if getattr(error, "code", "") in {"NoSuchKey", "NoSuchObject"}:
+                return True
+            logger.warning(f"MinIO delete failed for {file_path}: {error}")
+            return False

@@ -71,6 +71,25 @@ def enrich_log_record(record):
     extra["classification_mode"] = "fallback"
 
 
+def _log_patcher():
+    """Enrich every record; mask personal data in messages (GDPR/PCI)."""
+    from api.constants import PRIVACY_REDACT_LOGS
+
+    if not PRIVACY_REDACT_LOGS:
+        return enrich_log_record
+
+    from api.services.privacy.service import redact_log_record
+
+    def patch(record):
+        enrich_log_record(record)
+        try:
+            redact_log_record(record)
+        except Exception:
+            pass  # never lose a log line over masking
+
+    return patch
+
+
 def setup_logging():
     """Set up logging for the main application"""
     global _logging_initialized
@@ -96,7 +115,7 @@ def setup_logging():
     # before this runs) get the same run and ownership metadata.
     loguru.logger.configure(
         extra={"run_id": None},
-        patcher=enrich_log_record,
+        patcher=_log_patcher(),
     )
     patched = loguru.logger
 

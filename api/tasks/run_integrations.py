@@ -228,6 +228,17 @@ async def run_integrations_post_workflow_run(_ctx, workflow_run_id: int):
                 traces_public=langfuse_config.get("traces_public", False),
             )
 
+        # Privacy: mask personal data left by any channel (voice is already
+        # masked at the source; idempotent) before QA, memory and webhooks.
+        from api.services.privacy.service import (
+            apply_privacy_to_completed_run,
+            get_privacy_settings,
+            redact_value_for_storage,
+        )
+
+        await apply_privacy_to_completed_run(workflow_run, organization_id)
+        privacy_settings = await get_privacy_settings(organization_id)
+
         # Step 2: Get workflow definition from the run's pinned version
         workflow_definition = workflow_run.definition.workflow_json
         definition_id = workflow_run.definition.id
@@ -284,6 +295,8 @@ async def run_integrations_post_workflow_run(_ctx, workflow_run_id: int):
                                 all_tags.add(tag["tag"])
                 if all_tags:
                     qa_results["tags"] = sorted(all_tags)
+                # QA is written by an LLM from the transcript: mask it too.
+                qa_results = redact_value_for_storage(qa_results, privacy_settings)
 
                 await db_client.update_workflow_run(
                     workflow_run_id, annotations=qa_results

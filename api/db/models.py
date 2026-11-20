@@ -841,6 +841,8 @@ class WorkflowRunModel(Base):
             postgresql_where=text("gathered_context->>'call_id' IS NOT NULL"),
         ),
         Index("idx_workflow_runs_workflow_id", "workflow_id"),
+        # Retention sweeps (privacy) scan runs by age.
+        Index("idx_workflow_runs_created_at", "created_at"),
         Index("idx_workflow_runs_campaign_id", "campaign_id"),
         Index(
             "idx_workflow_runs_pending_completion",
@@ -2053,4 +2055,34 @@ class CallbackRequestModel(Base):
         Index("ix_callback_requests_due", "status", "scheduled_at"),
         Index("ix_callback_requests_org_status", "organization_id", "status"),
         Index("ix_callback_requests_org_phone", "organization_id", "phone"),
+    )
+
+
+class PrivacyRequestModel(Base):
+    """Register of GDPR requests (erasure, access/export) for accountability.
+
+    The data subject's phone number is never stored in clear: only a salted
+    hash (to spot repeated requests) and a masked hint for the operator.
+    """
+
+    __tablename__ = "privacy_requests"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    kind = Column(String(16), nullable=False)  # erasure | export
+    subject_hash = Column(String(64), nullable=False)
+    subject_hint = Column(String(32), nullable=False)
+    status = Column(String(16), nullable=False, default="pending")
+    counts = Column(JSON, nullable=False, default=dict)
+    error = Column(Text, nullable=True)
+    requested_by = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    completed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_privacy_requests_org_created", "organization_id", "created_at"),
     )
