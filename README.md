@@ -181,18 +181,50 @@ Principaux réglages de la plateforme :
 
 ## Feuille de route
 
+NIMBORA vise une **plateforme SaaS d'agents IA universels et omnicanaux** : chaque entreprise
+(commerce, immobilier, hôtellerie, assurance, clinique, école…) dispose de son agent, nourri de
+ses informations, joignable par **chat web, téléphone et WhatsApp**, sur un moteur commun.
+
+### Phase 1 — Moteur universel
+
 | Statut | Fonctionnalité |
 |---|---|
-| ✅ | Passation IA → humain avec fiche de contexte |
+| ✅ | Agents vocaux et textuels, éditeur de workflows, base de connaissances, outils API / MCP |
+| ✅ | Isolation stricte des données par entreprise |
+| ✅ | Détection automatique de la langue, voix par langue |
+| 🔜 | Fiche entreprise (identité, horaires, localisation, offres) partagée par tous les agents |
+| 🔜 | Modèles métier : compétences communes + modèles commerce, immobilier, hôtellerie, assurance, clinique, école |
+
+### Phase 2 — Omnicanal
+
+| Statut | Fonctionnalité |
+|---|---|
+| ✅ | Téléphone (Asterisk, Twilio, Vonage, Telnyx…), entrant et sortant |
+| ✅ | Widget web : voix et chat |
+| ✅ | Appels WhatsApp entrants |
+| 🚧 | Conversations WhatsApp : texte et messages vocaux |
+| 🚧 | Historique client partagé entre les trois canaux |
+
+### Phase 3 — Intelligence métier
+
+| Statut | Fonctionnalité |
+|---|---|
 | ✅ | Mémoire client |
-| ✅ | Rappels automatiques |
-| ✅ | Détection automatique de la langue |
-| ✅ | Masquage des données personnelles et RGPD |
-| ✅ | Console de supervision en direct |
-| ✅ | Actions prêtes à l'emploi : agenda (CalDAV, Google), SMS / WhatsApp / e-mail, tickets |
+| ✅ | Actions : rendez-vous (CalDAV, Google), SMS / WhatsApp / e-mail, tickets (Zendesk, Freshdesk) |
+| ✅ | Rappels automatiques, passation IA → humain avec fiche de contexte |
+| 🔜 | Catalogue : produits, biens, chambres… avec prix, stock et recherche par l'agent |
+| 🔜 | Prospects : qualification (besoin, budget), pipeline |
 | 🔜 | Routage intelligent (compétences, langue, client VIP, conseiller habituel) |
+
+### Phase 4 — SaaS commercial
+
+| Statut | Fonctionnalité |
+|---|---|
+| ✅ | Offres, abonnements, quotas, Stripe, console opérateur |
+| ✅ | Supervision en direct, centre d'appels humain |
+| ✅ | RGPD et PCI DSS |
+| 🔜 | Tableau de bord « AI Business Hub » : conversations, appels, prospects, rendez-vous, activité par canal |
 | 🔜 | Contrôle qualité des appels humains |
-| 🔜 | Tableau de bord des tendances (motifs d'appel, sentiment, résolution) |
 | 🔜 | Tests des agents avec des clients simulés |
 
 ## Développement
