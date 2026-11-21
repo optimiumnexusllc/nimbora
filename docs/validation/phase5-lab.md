@@ -335,6 +335,46 @@ expected pattern », sur le tenant dédié comme sur les tenants partagés : auc
 `numbers.py`) : le numéro est écrit et comparé **sans son `+`** côté moteur (`pbx_exten`),
 NIMBORA et l'argument `called=` de Stasis gardent le +E.164, et l'inventaire retrouve les
 numéros confiés à l'IA sous les deux formes. Le faux PBX refuse le `+` comme le moteur.
+## Rapport d'étape 7 — vérifications pour les PR #2 et #3 (21 novembre 2026)
+
+**Inscription publique.** Fermée depuis la création du compte administrateur :
+`ENABLE_SIGNUP=false`, `/api/v1/health` → `signup_enabled: false`, `POST /auth/signup` → 403.
+Elle n'a été rouverte que quelques minutes pour créer les deux entreprises de test, puis
+refermée (vérifié après chaque bascule).
+
+**PR #2, connexion et inscription en français.** Interface construite depuis la branche
+`feat/auth-fr-signup-control`, lancée dans un conteneur jetable branché sur l'API du
+laboratoire (inscription fermée), captures Chromium : `/auth/login` entièrement en français
+(« Connexion », « Saisissez votre e-mail et votre mot de passe », « Se connecter ») ;
+`/auth/signup` affiche « Inscriptions fermées — Les comptes de cette plateforme sont créés par
+son administrateur… » au lieu du formulaire ; un mauvais mot de passe donne « E-mail ou mot de
+passe incorrect ». ✅ Captures jointes au rapport de session (non versionnées).
+
+**PR #3, minutes humaines : sens du champ `duration` du journal d'appels du moteur.**
+Outil : conteneur Incus jetable `nimbora-siptest` (Debian 12, baresip 1.0) sur le pont privé,
+deux clients SIP enregistrés sur les postes 1002 et 1003 (poste 1003 créé pour servir de
+répondeur), audio 8 kHz dans les deux sens (RTP établi des deux côtés).
+
+| Appel réel (tenant « Entreprise test », `call-logd/1.0/cdr`) | start → answer | start → end | end → answer | `duration` |
+|---|---|---|---|---|
+| n° 2 : décroché automatique, raccroché par l'appelant | 0,4 s | 40,0 s | 39,6 s | **39** |
+| n° 3 : décroché après 12 s de sonnerie (`/accept` envoyé par `ctrl_tcp`) | 12,1 s | 42,0 s | 29,9 s | **29** |
+| n° 1 : jamais décroché (client mal configuré) | `answer: null` | 31,5 s | — | `null`, `answered: false` |
+
+Conclusion ✅ : sur Wazo 26.11, `duration` est le temps **du décroché au raccroché**, en
+secondes entières **tronquées** (29,9 → 29), `null` pour un appel non décroché ; la sonnerie
+n'est jamais comptée. `billing.py` de la PR #3 lit `duration` et `answered` : c'est le bon
+champ. Les appels de test sont `call_direction: internal` et ne sont donc pas facturables, ce
+qui est le comportement voulu ; un appel `inbound`/`outbound` réel demande un opérateur (🧪).
+
+**Constat utile pour le test humain.** Le moteur identifie un poste par le **nom du point de
+terminaison** (`identify_by = username,ip`, ex. `pqxtdakl`), le « SIP username » rendu par
+NIMBORA (`poste7640`) ne servant qu'à l'authentification. Un client SIP générique doit donc
+mettre le nom du point de terminaison en identité et le SIP username en identifiant
+d'authentification ; mes premiers essais avec le seul SIP username ont été refusés (« No
+matching endpoint ») et fail2ban `asterisk-wazo` a banni le conteneur de test après 15
+échecs, preuve que cette prison fonctionne. Amélioration proposée : renvoyer aussi le nom du
+point de terminaison dans la fiche d'identifiants d'un poste (`ExtensionCredentials`).
 
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
