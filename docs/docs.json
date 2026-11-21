@@ -194,6 +194,7 @@
               "deployment/authentication",
               "deployment/custom-domain",
               "deployment/scaling",
+              "deployment/saas",
               "deployment/update",
               "deployment/heroku"
             ]

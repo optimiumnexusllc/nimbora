@@ -1739,6 +1739,10 @@ class SubscriptionPlanModel(Base):
     monthly_price_cents = Column(Integer, nullable=False, default=0)
     included_minutes = Column(Integer, nullable=True)
     overage_price_cents_per_minute = Column(Integer, nullable=True)
+    # Minutes of human calls on the enterprise PBX (from its call logs),
+    # counted apart from AI minutes. None = unlimited.
+    included_human_minutes = Column(Integer, nullable=True)
+    human_overage_price_cents_per_minute = Column(Integer, nullable=True)
     max_concurrent_calls = Column(Integer, nullable=True)
     max_agents = Column(Integer, nullable=True)
     max_human_seats = Column(Integer, nullable=True)
@@ -1760,6 +1764,35 @@ class SubscriptionPlanModel(Base):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
+
+
+class HumanCallUsageModel(Base):
+    """A billable human call: answered, with a customer, not an AI call.
+
+    One row per call log of the enterprise PBX (``source="pbx"``), keyed by
+    the PBX's call-log id so webhooks and the periodic catch-up never count a
+    call twice.
+    """
+
+    __tablename__ = "human_call_usage"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "source", "external_id", name="uq_human_call_usage_ext"
+        ),
+        Index("ix_human_call_usage_org_started", "organization_id", "started_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    source = Column(String(16), nullable=False, default="pbx")
+    external_id = Column(String(64), nullable=False)
+    direction = Column(String(16), nullable=False)  # inbound | outbound
+    started_at = Column(DateTime(timezone=True), nullable=False)
+    billable_seconds = Column(Integer, nullable=False)
+    agent_name = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
 SUBSCRIPTION_STATUSES = ("trialing", "active", "past_due", "suspended", "canceled")
@@ -2296,6 +2329,8 @@ class PbxConnectionModel(Base):
     supervision_settings = Column(JSONB, nullable=False, default=dict)
     # Missed calls called back by an AI agent. See services/pbx/missed_calls.
     missed_call_policy = Column(JSONB, nullable=False, default=dict)
+    # Last call log read by the human-minutes catch-up (services/pbx/billing).
+    usage_synced_at = Column(DateTime(timezone=True), nullable=True)
     # Tenant created by NIMBORA on the operator's shared PBX (not editable by
     # the company). See services/pbx/provisioning.
     managed = Column(Boolean, nullable=False, default=False)

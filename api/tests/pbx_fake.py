@@ -1355,6 +1355,14 @@ class FakePbx:
             items = self.cdr
             if request.url.params.get("recorded") == "true":
                 items = [c for c in items if c.get("recordings")]
+            if request.url.params.get("from"):
+                since = request.url.params["from"]
+                items = [c for c in items if (c.get("start") or "") >= since]
+            if request.url.params.get("direction") == "asc":
+                items = sorted(items, key=lambda c: c.get("start") or "")
+                offset = int(request.url.params.get("offset") or 0)
+                limit = int(request.url.params.get("limit") or 1000)
+                items = items[offset : offset + limit]
             if request.url.params.get("user_uuid"):
                 wanted = request.url.params["user_uuid"]
                 items = [

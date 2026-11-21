@@ -13,6 +13,8 @@ export type Plan = {
     monthly_price_cents: number;
     included_minutes: number | null;
     overage_price_cents_per_minute: number | null;
+    included_human_minutes?: number | null;
+    human_overage_price_cents_per_minute?: number | null;
     max_concurrent_calls: number | null;
     max_agents: number | null;
     max_human_seats: number | null;
@@ -37,11 +39,34 @@ export type Subscription = {
     remaining_minutes: number | null;
     overage_minutes: number;
     estimated_overage_cents: number;
+    /** Human calls on the enterprise PBX, billed apart from AI minutes. */
+    human_used_minutes?: number;
+    human_included_minutes?: number | null;
+    human_remaining_minutes?: number | null;
+    human_overage_minutes?: number;
+    estimated_human_overage_cents?: number;
     limits: Record<string, number | null>;
     features: Record<string, boolean>;
     usable: boolean;
     blocked_reason: string | null;
     can_manage_billing: boolean;
+};
+
+export type UsageLine = {
+    organization_id: number;
+    company_name: string;
+    billing_email: string;
+    plan_code: string;
+    currency: string;
+    ai_minutes: number;
+    ai_included_minutes: number | null;
+    ai_overage_minutes: number;
+    ai_overage_cents: number;
+    human_minutes: number;
+    human_included_minutes: number | null;
+    human_overage_minutes: number;
+    human_overage_cents: number;
+    total_overage_cents: number;
 };
 
 export type Tenant = {
@@ -278,6 +303,8 @@ export const enterpriseApi = {
             "get",
             `${BASE}/saas/admin/tenants?page=${page}&limit=50${status ? `&status=${status}` : ""}`,
         ),
+    adminMonthlyUsage: (month: string) =>
+        call<{ month: string; lines: UsageLine[] }>("get", `${BASE}/saas/admin/usage?month=${encodeURIComponent(month)}`),
     adminTenantUsage: (organizationId: number) =>
         call<Subscription>("get", `${BASE}/saas/admin/tenants/${organizationId}/usage`),
     adminUpdateTenant: (organizationId: number, update: TenantUpdate) =>
@@ -374,3 +401,28 @@ export const FEATURE_LABELS: Record<string, string> = {
     pbx_shared: "Téléphonie d'entreprise sur le PBX de la plateforme",
     pbx_dedicated: "Connexion de son propre PBX (serveur dédié)",
 };
+
+/** Monthly usage as CSV (semicolon-separated, opens in Excel in French locales). */
+export function usageCsv(lines: UsageLine[]): string {
+    const columns: (keyof UsageLine)[] = [
+        "organization_id",
+        "company_name",
+        "billing_email",
+        "plan_code",
+        "currency",
+        "ai_minutes",
+        "ai_included_minutes",
+        "ai_overage_minutes",
+        "ai_overage_cents",
+        "human_minutes",
+        "human_included_minutes",
+        "human_overage_minutes",
+        "human_overage_cents",
+        "total_overage_cents",
+    ];
+    const cell = (value: unknown) => {
+        const text = value === null || value === undefined ? "" : String(value);
+        return /[;"\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text;
+    };
+    return [columns.join(";"), ...lines.map((line) => columns.map((c) => cell(line[c])).join(";"))].join("\n") + "\n";
+}

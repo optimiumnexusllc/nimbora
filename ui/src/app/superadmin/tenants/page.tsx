@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
+import { MonthlyUsageReport } from "@/components/superadmin/MonthlyUsageReport";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,7 +38,8 @@ import {
 const STATUSES = Object.keys(STATUS_LABELS) as Subscription["status"][];
 
 const LIMIT_FIELDS: { key: string; label: string }[] = [
-    { key: "included_minutes", label: "Minutes incluses / mois" },
+    { key: "included_minutes", label: "Minutes IA incluses / mois" },
+    { key: "included_human_minutes", label: "Minutes humaines incluses / mois" },
     { key: "max_concurrent_calls", label: "Appels simultanés" },
     { key: "max_agents", label: "Agents IA" },
     { key: "max_human_seats", label: "Postes humains" },
@@ -121,8 +123,9 @@ function TenantDialog({
                 </DialogHeader>
                 {usage && (
                     <p className="text-sm text-muted-foreground">
-                        Consommation de la période : {usage.used_minutes.toLocaleString("fr-FR")} min sur{" "}
-                        {formatLimit(usage.included_minutes)}
+                        Consommation de la période : {usage.used_minutes.toLocaleString("fr-FR")} min IA sur{" "}
+                        {formatLimit(usage.included_minutes)}, {(usage.human_used_minutes ?? 0).toLocaleString("fr-FR")} min
+                        humaines sur {formatLimit(usage.human_included_minutes)}
                         {usage.blocked_reason ? ` — bloqué (${usage.blocked_reason})` : ""}
                     </p>
                 )}
@@ -198,12 +201,23 @@ function TenantDialog({
 function PlanEditor({ plan, onSaved }: { plan: Plan; onSaved: () => void }) {
     const [price, setPrice] = useState(String(plan.monthly_price_cents / 100));
     const [minutes, setMinutes] = useState(plan.included_minutes === null ? "" : String(plan.included_minutes));
+    const [humanMinutes, setHumanMinutes] = useState(
+        plan.included_human_minutes == null ? "" : String(plan.included_human_minutes),
+    );
+    const [humanPrice, setHumanPrice] = useState(String((plan.human_overage_price_cents_per_minute ?? 0) / 100));
     const [stripePrice, setStripePrice] = useState("");
     const save = async () => {
         try {
             await enterpriseApi.adminUpsertPlan(plan.code, {
                 monthly_price_cents: Math.round(Number(price) * 100),
-                ...(minutes === "" ? { unlimited: ["included_minutes"] } : { included_minutes: Number(minutes) }),
+                ...(minutes === "" && humanMinutes === ""
+                    ? { unlimited: ["included_minutes", "included_human_minutes"] }
+                    : minutes === ""
+                      ? { unlimited: ["included_minutes"], included_human_minutes: Number(humanMinutes) }
+                      : humanMinutes === ""
+                        ? { unlimited: ["included_human_minutes"], included_minutes: Number(minutes) }
+                        : { included_minutes: Number(minutes), included_human_minutes: Number(humanMinutes) }),
+                human_overage_price_cents_per_minute: Math.round(Number(humanPrice) * 100),
                 ...(stripePrice ? { stripe_price_id: stripePrice } : {}),
             } as Partial<Plan> & { unlimited?: string[]; stripe_price_id?: string });
             toast.success(`Offre ${plan.name} enregistrée`);
@@ -222,6 +236,23 @@ function PlanEditor({ plan, onSaved }: { plan: Plan; onSaved: () => void }) {
             </TableCell>
             <TableCell>
                 <Input className="w-24" placeholder="illimité" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
+            </TableCell>
+            <TableCell>
+                <Input
+                    className="w-24"
+                    placeholder="illimité"
+                    aria-label={`Minutes humaines ${plan.name}`}
+                    value={humanMinutes}
+                    onChange={(e) => setHumanMinutes(e.target.value)}
+                />
+            </TableCell>
+            <TableCell>
+                <Input
+                    className="w-20"
+                    aria-label={`Prix minute humaine ${plan.name}`}
+                    value={humanPrice}
+                    onChange={(e) => setHumanPrice(e.target.value)}
+                />
             </TableCell>
             <TableCell>
                 <Input
@@ -365,7 +396,9 @@ export default function TenantsPage() {
                         <TableRow>
                             <TableHead>Offre</TableHead>
                             <TableHead>Prix (€)</TableHead>
-                            <TableHead>Minutes</TableHead>
+                            <TableHead>Minutes IA</TableHead>
+                            <TableHead>Minutes humaines</TableHead>
+                            <TableHead>€ / min humaine</TableHead>
                             <TableHead>Prix Stripe</TableHead>
                             <TableHead />
                         </TableRow>
@@ -380,6 +413,13 @@ export default function TenantsPage() {
                     Tarifs affichés aux clients :{" "}
                     {plans.map((p) => `${p.name} ${formatPrice(p.monthly_price_cents, p.currency)}`).join(" · ")}
                 </p>
+            </PageSection>
+
+            <PageSection
+                title="Consommation du mois"
+                description="Minutes des agents IA et minutes des appels humains du PBX de chaque entreprise, avec les dépassements de son offre, pour la facturation."
+            >
+                <MonthlyUsageReport />
             </PageSection>
 
             <TenantDialog tenant={selected} plans={plans} onClose={() => setSelected(null)} onSaved={load} />
