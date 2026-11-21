@@ -12,6 +12,7 @@ from api.constants import (
     S3_ADDRESSING_STYLE,
     S3_BUCKET,
     S3_ENDPOINT_URL,
+    S3_PUBLIC_ENDPOINT_URL,
     S3_REGION,
     S3_SIGNATURE_VERSION,
 )
@@ -35,6 +36,16 @@ def get_storage_for_backend(backend: str) -> BaseFileSystem:
                 "Set it to the full URL browsers use to reach MinIO, "
                 "e.g. 'http://localhost:9000' for local dev or "
                 "'https://your-server.example.com' for a remote deployment."
+            )
+        if (
+            ENVIRONMENT != Environment.LOCAL.value
+            and "localhost" in MINIO_PUBLIC_ENDPOINT
+        ):
+            logger.warning(
+                "MINIO_PUBLIC_ENDPOINT is {} outside local development: signed "
+                "download and upload links will not work for remote browsers. Set "
+                "it (or PUBLIC_BASE_URL) to the public address.",
+                MINIO_PUBLIC_ENDPOINT,
             )
         logger.info(
             f"Initializing {backend} storage at {MINIO_ENDPOINT} "
@@ -66,6 +77,7 @@ def get_storage_for_backend(backend: str) -> BaseFileSystem:
             endpoint_url=S3_ENDPOINT_URL,
             signature_version=S3_SIGNATURE_VERSION,
             addressing_style=S3_ADDRESSING_STYLE,
+            public_endpoint_url=S3_PUBLIC_ENDPOINT_URL,
         )
 
     # Future backend implementations can be added here:

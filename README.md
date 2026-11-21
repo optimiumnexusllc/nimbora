@@ -266,6 +266,8 @@ swahili, haoussa, yoruba, lingala…
   e-mails (même dictés), téléphones et adresses IP dans tout ce qui est conservé.
 - **Mode PCI** : l'agent IA n'entend jamais un numéro de carte, ni la supervision, ni les journaux.
 - **Durées de conservation** des enregistrements, transcriptions et de la mémoire client, purge quotidienne.
+- **Stockage privé** : enregistrements et documents dans un bucket fermé, chaque lien d'écoute ou
+  d'envoi est **signé et expire** ; sortie de MinIO vers un S3 maintenu en trois commandes.
 - **Droit d'accès et droit à l'effacement** à partir d'un numéro, avec registre des demandes,
   appels humains enregistrés sur le PBX compris.
 - **Numéros bloqués et opposition** : un client qui dit « ne m'appelez plus » n'est plus jamais
@@ -528,7 +530,9 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Métriques Prometheus d'exploitation : PBX de chaque entreprise (joignable, événements, alertes de supervision, rattrapage des minutes), abonnements, minutes IA et humaines du mois, fraîcheur des sauvegardes ; 13 règles d'alerte et tableau de bord Grafana « NIMBORA operations » |
 | 🧪 | Sauvegarde et restauration du PBX sur le moteur réel (laboratoire) |
 | 🔜 | Haute disponibilité du PBX (serveur de secours, bascule) |
-| 🔜 | **Stockage objet durable** : MinIO a retiré ses images publiques (quay.io et Docker Hub répondent 401 / accès refusé, constaté le 21 novembre 2026) ; la plateforme utilise le build Bitnami de la dernière version libre (`bitnamilegacy/minio:2025.4.22`, dépôt figé, plus mis à jour, épinglé par digest). À remplacer par une image MinIO construite par nos soins depuis les sources (AGPL-3.0) ou par Garage / SeaweedFS |
+| ✅ | **Sécurité du stockage** : le bucket des enregistrements est désormais **privé** (la politique anonyme lecture/écriture/liste des versions précédentes, joignable par `/voice-audio/`, est retirée au démarrage) ; tous les liens de téléchargement et d'envoi sont **signés et expirent**, calculés pour l'adresse publique |
+| ✅ | **Sortie de MinIO vers un stockage S3 maintenu** (Scaleway, OVHcloud, Cloudflare R2, Wasabi, AWS, SeaweedFS, Garage) : outil `scripts/migrate_object_store.py` copy / verify / switch (reprise sans doublon, vérification des tailles, bascule de la base), liens signés pour l'adresse publique (`S3_PUBLIC_ENDPOINT_URL`) |
+| 🔜 | **Stockage objet auto-hébergé maintenu par défaut** : MinIO a retiré ses images publiques (constaté le 21 novembre 2026) ; la plateforme utilise encore le build Bitnami figé `bitnamilegacy/minio:2025.4.22` (épinglé par empreinte, plus mis à jour). Remplacement par SeaweedFS intégré au compose, à valider sur le laboratoire (recette dans [la documentation](docs/deployment/object-storage.mdx)) |
 
 **5.5 Marque blanche totale du PBX**
 

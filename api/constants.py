@@ -119,6 +119,10 @@ S3_REGION = os.environ.get("S3_REGION", "us-east-1")
 S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL")
 S3_SIGNATURE_VERSION = os.environ.get("S3_SIGNATURE_VERSION")
 S3_ADDRESSING_STYLE = os.environ.get("S3_ADDRESSING_STYLE")
+# S3_PUBLIC_ENDPOINT_URL: the address browsers use when the S3 endpoint above is
+#   internal (e.g. http://seaweedfs:8333 behind https://app.example.com). Signed
+#   download and upload links are computed for this address.
+S3_PUBLIC_ENDPOINT_URL = os.environ.get("S3_PUBLIC_ENDPOINT_URL") or None
 
 # Sentry configuration
 SENTRY_DSN = os.getenv("SENTRY_DSN")
