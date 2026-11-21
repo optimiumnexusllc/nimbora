@@ -81,6 +81,21 @@ class NewExtension:
         return self
 
 
+def _default_login(connection, extension: str) -> str:
+    """The login of an extension created without an e-mail address.
+
+    The engine's logins are unique across the whole PBX, not per tenant: on
+    the operator's shared PBX, the "poste1001" of one company collides with
+    the "poste1001" of another (seen on the lab engine: 409 on /auth/users).
+    A platform-managed tenant prefixes its slug; a company's own PBX keeps
+    the short form.
+    """
+    slug = None
+    if getattr(connection, "managed", False):
+        slug = (getattr(connection, "provisioning", None) or {}).get("tenant_slug")
+    return f"{slug}-poste{extension}" if slug else f"poste{extension}"
+
+
 async def _internal_context(client: PbxClient) -> str:
     contexts = await client.contexts("internal")
     if not contexts:
@@ -162,7 +177,7 @@ async def create_extension(
     creds = {
         "sip_username": f"{_slug(spec.firstname)[:8]}{_pin(4)}",
         "sip_password": _secret(20),
-        "login": spec.email or f"poste{spec.extension}",
+        "login": spec.email or _default_login(connection, spec.extension),
         "login_password": _secret(14),
         "voicemail_pin": _pin(6) if spec.voicemail else None,
     }

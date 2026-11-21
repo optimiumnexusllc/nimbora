@@ -14,7 +14,7 @@ from api.routes import pbx as pbx_routes
 from api.services.pbx import admin, provisioning
 from api.services.pbx import client as client_module
 from api.services.pbx import service as pbx
-from api.services.pbx.client import PROVISIONING_ACL, REQUIRED_ACL
+from api.services.pbx.client import PROVISIONING_ACL, REQUIRED_ACL, PbxError
 from api.services.pbx.service import PbxRouteError
 from api.tests.pbx_fake import TENANT, FakePbx, install
 
@@ -479,3 +479,37 @@ def test_platform_and_kit_create_the_same_contexts():
         assert context.get("incall_ranges") == kit[kind].get("incall_ranges")
         assert context["enabled"] is True
     assert ours["internal"]["user_ranges"] == kit["internal"]["user_ranges"]
+
+
+async def test_logins_on_the_shared_pbx_carry_the_tenant_slug(db_session, monkeypatch):
+    """The engine's logins are unique PBX-wide: two companies' "poste1001" collide.
+
+    Seen on the lab engine (26.11): the second company's extension failed with
+    "409 Conflict detected for url .../auth/0.1/users". A managed tenant prefixes
+    its slug; a company's own PBX keeps "poste<number>".
+    """
+    fake = FakePbx()
+    _, org = await _connected(db_session, monkeypatch, fake)
+    own = await admin.create_extension(
+        org.id, admin.NewExtension(firstname="Awa", lastname="Koné", extension="1050")
+    )
+    assert own["credentials"]["login"] == "poste1050"
+
+    await db_session.save_pbx_connection(
+        org.id, {"managed": True, "provisioning": {"tenant_slug": f"org{org.id}"}}
+    )
+    shared = await admin.create_extension(
+        org.id, admin.NewExtension(firstname="Yao", lastname="K", extension="1051")
+    )
+    assert shared["credentials"]["login"] == f"org{org.id}-poste1051"
+    # An e-mail address stays the login, slug or not.
+    mailed = await admin.create_extension(
+        org.id, admin.NewExtension(firstname="Aya", lastname="B", extension="1052", email="aya@example.com")
+    )
+    assert mailed["credentials"]["login"] == "aya@example.com"
+    # The fake now refuses a duplicate login like the engine does.
+    with pytest.raises(PbxError):
+        fake.users.append({"auth": {"username": f"org{org.id}-poste1053"}, "lines": []})
+        await admin.create_extension(
+            org.id, admin.NewExtension(firstname="Dup", lastname="L", extension="1053")
+        )

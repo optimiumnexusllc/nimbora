@@ -568,6 +568,19 @@ class FakePbx:
                     return httpx.Response(
                         404, json=["Resource Not Found - EndpointSIPTemplate"]
                     )
+            # Like the engine: logins (wazo-auth usernames) are unique across the
+            # whole PBX, whatever the tenant.
+            login = (body.get("auth") or {}).get("username")
+            if login and any(
+                (u.get("auth") or {}).get("username") == login for u in self.users
+            ):
+                return httpx.Response(
+                    400,
+                    json=[
+                        "409 Client Error: Conflict detected for url: "
+                        "http://localhost:80/api/auth/0.1/users"
+                    ],
+                )
             user = {"uuid": str(uuid.uuid4()), "id": self._id(), **body}
             created_lines = []
             for line in body.get("lines") or []:
