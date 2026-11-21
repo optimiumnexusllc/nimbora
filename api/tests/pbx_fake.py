@@ -33,7 +33,8 @@ class FakePbx:
         ]
         self.extensions: list[dict] = [
             {"id": 10, "exten": "1001", "context": "default"},
-            {"id": 11, "exten": "+22527000000", "context": "from-extern"},
+            # DIDs are digits only on the engine (no "+"), see numbers._exten.
+            {"id": 11, "exten": "22527000000", "context": "from-extern"},
         ]
         self.incalls: list[dict] = [
             {
@@ -41,7 +42,7 @@ class FakePbx:
                 "description": "Standard",
                 "destination": {"type": "queue", "queue_id": 1},
                 "extensions": [
-                    {"id": 11, "exten": "+22527000000", "context": "from-extern"}
+                    {"id": 11, "exten": "22527000000", "context": "from-extern"}
                 ],
             }
         ]
@@ -421,6 +422,11 @@ class FakePbx:
             ]
             return httpx.Response(200, json={"items": items, "total": len(items)})
         if path == f"{prefix}/extensions" and method == "POST":
+            if not re.fullmatch(r"_?[0-9*#XZN.!\[\]-]+", body.get("exten") or ""):
+                # The engine's pattern: digits and dialplan patterns, never a "+".
+                return httpx.Response(
+                    400, json=["exten: ['String does not match expected pattern.']"]
+                )
             if any(
                 e["exten"] == body["exten"] and e["context"] == body["context"]
                 for e in self.extensions
