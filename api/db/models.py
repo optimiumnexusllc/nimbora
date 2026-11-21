@@ -181,6 +181,8 @@ class UserModel(Base):
     is_superuser = Column(Boolean, default=False)
     email = Column(String, nullable=True)
     password_hash = Column(String, nullable=True)
+    # Full name given at sign-up (local accounts).
+    name = Column(String(120), nullable=True)
 
     __table_args__ = (
         Index(

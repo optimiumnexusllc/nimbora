@@ -129,7 +129,8 @@ async def test_call_group_with_ordered_members_and_ai_fallback(db_session, monke
     incall = next(
         i
         for i in fake.incalls
-        if i["extensions"] and i["extensions"][0]["exten"] == "+22527000055"
+        # The engine refuses "+": public numbers are written in digits only.
+        if i["extensions"] and i["extensions"][0]["exten"] == "22527000055"
     )
     assert incall["destination"] == {"type": "group", "group_id": created["id"]}
 

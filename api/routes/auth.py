@@ -102,7 +102,7 @@ async def signup(request: SignupRequest):
         user=UserResponse(
             id=user.id,
             email=user.email,
-            name=request.name,
+            name=getattr(user, "name", None),
             organization_id=organization.id,
             provider_id=user.provider_id,
         ),
@@ -141,6 +141,7 @@ async def login(request: LoginRequest):
         user=UserResponse(
             id=user.id,
             email=user.email,
+            name=getattr(user, "name", None),
             organization_id=user.selected_organization_id,
             provider_id=user.provider_id,
         ),
@@ -152,6 +153,7 @@ async def get_current_user(user: UserModel = Depends(get_user)):
     return UserResponse(
         id=user.id,
         email=user.email,
+        name=getattr(user, "name", None),
         organization_id=user.selected_organization_id,
         provider_id=user.provider_id,
     )
