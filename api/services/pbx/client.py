@@ -303,6 +303,116 @@ class PbxClient:
             tenant=False,
         )
 
+    # ------------------------------------------------- administration
+
+    async def sip_templates(self) -> list[dict]:
+        return await self._items("confd", "/endpoints/sip/templates", limit=500)
+
+    async def create_user(self, body: dict) -> dict:
+        """One call creates the user with its lines, extensions, SIP account,
+        voicemail and login (the PBX rolls back everything on error)."""
+        return await self.request("confd", "POST", "/users", json=body)
+
+    async def delete_user(self, user_uuid: str) -> None:
+        # recursive: its lines, extensions, voicemail and login go too.
+        await self.request(
+            "confd", "DELETE", f"/users/{user_uuid}", params={"recursive": "true"}
+        )
+
+    async def create_agent(self, number: str, firstname: str, lastname: str) -> dict:
+        return await self.request(
+            "confd",
+            "POST",
+            "/agents",
+            json={"number": number, "firstname": firstname, "lastname": lastname},
+        )
+
+    async def delete_agent(self, agent_id: int) -> None:
+        await self.request("confd", "DELETE", f"/agents/{agent_id}")
+
+    async def associate_user_agent(self, user_uuid: str, agent_id: int) -> None:
+        await self.request("confd", "PUT", f"/users/{user_uuid}/agents/{agent_id}")
+
+    async def create_queue(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/queues", json=body)
+
+    async def queue(self, queue_id: int) -> dict:
+        return await self.request("confd", "GET", f"/queues/{queue_id}")
+
+    async def update_queue(self, queue_id: int, body: dict) -> None:
+        await self.request("confd", "PUT", f"/queues/{queue_id}", json=body)
+
+    async def delete_queue(self, queue_id: int) -> None:
+        await self.request("confd", "DELETE", f"/queues/{queue_id}")
+
+    async def associate_queue_extension(self, queue_id: int, extension_id: int) -> None:
+        await self.request(
+            "confd", "PUT", f"/queues/{queue_id}/extensions/{extension_id}"
+        )
+
+    async def set_queue_member(
+        self, queue_id: int, agent_id: int, penalty: int = 0
+    ) -> None:
+        await self.request(
+            "confd",
+            "PUT",
+            f"/queues/{queue_id}/members/agents/{agent_id}",
+            json={"penalty": penalty, "priority": 0},
+        )
+
+    async def remove_queue_member(self, queue_id: int, agent_id: int) -> None:
+        await self.request(
+            "confd", "DELETE", f"/queues/{queue_id}/members/agents/{agent_id}"
+        )
+
+    async def set_queue_fallbacks(self, queue_id: int, fallbacks: dict) -> None:
+        await self.request(
+            "confd", "PUT", f"/queues/{queue_id}/fallbacks", json=fallbacks
+        )
+
+    async def voicemails(self) -> list[dict]:
+        return await self._items("confd", "/voicemails", limit=500)
+
+    async def schedules(self) -> list[dict]:
+        return await self._items("confd", "/schedules", limit=500)
+
+    async def create_schedule(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/schedules", json=body)
+
+    async def update_schedule(self, schedule_id: int, body: dict) -> None:
+        await self.request("confd", "PUT", f"/schedules/{schedule_id}", json=body)
+
+    async def delete_schedule(self, schedule_id: int) -> None:
+        await self.request("confd", "DELETE", f"/schedules/{schedule_id}")
+
+    async def incall(self, incall_id: int) -> dict:
+        return await self.request("confd", "GET", f"/incalls/{incall_id}")
+
+    async def associate_incall_schedule(self, incall_id: int, schedule_id: int) -> None:
+        await self.request(
+            "confd", "PUT", f"/incalls/{incall_id}/schedules/{schedule_id}"
+        )
+
+    async def dissociate_incall_schedule(
+        self, incall_id: int, schedule_id: int
+    ) -> None:
+        await self.request(
+            "confd", "DELETE", f"/incalls/{incall_id}/schedules/{schedule_id}"
+        )
+
+    async def send_password_reset_email(self, login: str) -> None:
+        """Ask the PBX to e-mail a reset link (white-label template)."""
+        try:
+            response = await self._http.get(
+                f"{SERVICES['auth']}/users/password/reset", params={"login": login}
+            )
+        except httpx.HTTPError as error:
+            raise PbxUnavailable(
+                f"PBX injoignable : {error.__class__.__name__}"
+            ) from error
+        if response.status_code >= 400:
+            raise PbxError(_error_message(response), status=response.status_code)
+
     # ------------------------------------------------- calls and agents
 
     async def calls(self) -> list[dict]:
@@ -373,4 +483,27 @@ REQUIRED_ACL: dict[str, str] = {
     "create_subscription": "webhookd.subscriptions.create",
     "delete_subscription": "webhookd.subscriptions.{subscription_uuid}.delete",
     "cdr": "call-logd.cdr.read",
+    # administration
+    "sip_templates": "confd.endpoints.sip.templates.read",
+    "create_user": "confd.users.create",
+    "delete_user": "confd.users.{user_id}.delete",
+    "create_agent": "confd.agents.create",
+    "delete_agent": "confd.agents.{agent_id}.delete",
+    "associate_user_agent": "confd.users.{user_id}.agents.{agent_id}.update",
+    "create_queue": "confd.queues.create",
+    "queue": "confd.queues.{queue_id}.read",
+    "update_queue": "confd.queues.{queue_id}.update",
+    "delete_queue": "confd.queues.{queue_id}.delete",
+    "associate_queue_extension": "confd.queues.{queue_id}.extensions.{extension_id}.update",
+    "set_queue_member": "confd.queues.{queue_id}.members.agents.{agent_id}.update",
+    "remove_queue_member": "confd.queues.{queue_id}.members.agents.{agent_id}.delete",
+    "set_queue_fallbacks": "confd.queues.{queue_id}.fallbacks.update",
+    "voicemails": "confd.voicemails.read",
+    "schedules": "confd.schedules.read",
+    "create_schedule": "confd.schedules.create",
+    "update_schedule": "confd.schedules.{schedule_id}.update",
+    "delete_schedule": "confd.schedules.{schedule_id}.delete",
+    "incall": "confd.incalls.{incall_id}.read",
+    "associate_incall_schedule": "confd.incalls.{incall_id}.schedules.{schedule_id}.update",
+    "dissociate_incall_schedule": "confd.incalls.{incall_id}.schedules.{schedule_id}.delete",
 }

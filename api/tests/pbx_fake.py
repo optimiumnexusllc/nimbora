@@ -8,6 +8,7 @@ bare list, confd errors as a JSON list of messages, tenant in ``Wazo-Tenant``.
 from __future__ import annotations
 
 import json
+import re
 import uuid
 from typing import Any
 
@@ -115,6 +116,18 @@ class FakePbx:
         self.agent_actions: list[tuple[str, str, dict]] = []
         self.hung_up: list[str] = []
         self.password_resets: list[tuple[str, str]] = []
+        self.reset_emails: list[str] = []
+        self.templates = [
+            {"uuid": "tpl-global", "label": "global"},
+            {"uuid": "tpl-webrtc", "label": "webrtc"},
+        ]
+        self.created_users: list[dict] = []
+        self.voicemails = [
+            {"id": 1, "name": "Accueil", "number": "1000", "context": "default"}
+        ]
+        self.schedules: list[dict] = []
+        self.fallbacks: dict[int, dict] = {}
+        self.fail_agent_creation = False
         self._next = 100
 
     # ------------------------------------------------------------------
@@ -163,6 +176,9 @@ class FakePbx:
                 },
             )
 
+        if path == "/api/auth/0.1/users/password/reset" and method == "GET":
+            self.reset_emails.append(request.url.params.get("login"))
+            return httpx.Response(204)
         if path == "/api/auth/0.1/users/password/reset" and method == "POST":
             if request.headers.get("x-auth-token") != "email-token-123":
                 return httpx.Response(401, json={"reason": ["Unauthorized"]})
@@ -196,15 +212,15 @@ class FakePbx:
         ):
             if request.headers.get("wazo-tenant") != TENANT:
                 return httpx.Response(401, json={"message": "Unauthorized tenant"})
-        if path == f"{prefix}/users":
+        if path == f"{prefix}/users" and method == "GET":
             return httpx.Response(
                 200, json={"items": self.users, "total": len(self.users)}
             )
-        if path == f"{prefix}/queues":
+        if path == f"{prefix}/queues" and method == "GET":
             return httpx.Response(
                 200, json={"items": self.queues, "total": len(self.queues)}
             )
-        if path == f"{prefix}/agents":
+        if path == f"{prefix}/agents" and method == "GET":
             return httpx.Response(
                 200, json={"items": self.agents, "total": len(self.agents)}
             )
@@ -246,7 +262,7 @@ class FakePbx:
                 return httpx.Response(404, json=["Resource Not Found"])
             incall["extensions"].append(extension)
             return httpx.Response(204)
-        if path.startswith(f"{prefix}/incalls/") and method == "DELETE":
+        if re.fullmatch(rf"{prefix}/incalls/\d+", path) and method == "DELETE":
             incall_id = int(path.split("/")[-1])
             before = len(self.incalls)
             self.incalls = [i for i in self.incalls if i["id"] != incall_id]
@@ -281,7 +297,7 @@ class FakePbx:
             }
             self.extensions.append(extension)
             return httpx.Response(201, json=extension)
-        if path.startswith(f"{prefix}/extensions/") and method == "DELETE":
+        if re.fullmatch(rf"{prefix}/extensions/\d+", path) and method == "DELETE":
             extension_id = int(path.split("/")[-1])
             self.extensions = [e for e in self.extensions if e["id"] != extension_id]
             return httpx.Response(204)
@@ -289,6 +305,213 @@ class FakePbx:
             return httpx.Response(200, json={"options": dict(self.pjsip)})
         if path == f"{prefix}/asterisk/pjsip/global" and method == "PUT":
             self.pjsip = dict(body["options"])
+            return httpx.Response(204)
+
+        # ----- administration (confd)
+        if path == f"{prefix}/endpoints/sip/templates":
+            return httpx.Response(
+                200, json={"items": self.templates, "total": len(self.templates)}
+            )
+        if path == f"{prefix}/users" and method == "POST":
+            if not body.get("firstname"):
+                return httpx.Response(
+                    400,
+                    json=[
+                        "Input Error - field 'firstname': Missing data for required field."
+                    ],
+                )
+            for line in body.get("lines") or []:
+                if "context" not in line:
+                    return httpx.Response(
+                        400,
+                        json=["Input Error - field 'lines.0.context': Missing data"],
+                    )
+                for ext in line.get("extensions") or []:
+                    if any(
+                        e["exten"] == ext["exten"] and e["context"] == ext["context"]
+                        for e in self.extensions
+                    ):
+                        return httpx.Response(
+                            400, json=["Resource Error - Extension already exists"]
+                        )
+                templates = (line.get("endpoint_sip") or {}).get("templates") or []
+                if any(
+                    t.get("uuid") not in {x["uuid"] for x in self.templates}
+                    for t in templates
+                ):
+                    return httpx.Response(
+                        404, json=["Resource Not Found - EndpointSIPTemplate"]
+                    )
+            user = {"uuid": str(uuid.uuid4()), "id": self._id(), **body}
+            for line in body.get("lines") or []:
+                for ext in line.get("extensions") or []:
+                    self.extensions.append(
+                        {
+                            "id": self._id(),
+                            "exten": ext["exten"],
+                            "context": ext["context"],
+                            "user_uuid": user["uuid"],
+                        }
+                    )
+            if body.get("voicemail"):
+                self.voicemails.append({"id": self._id(), **body["voicemail"]})
+            self.users.append(
+                {
+                    "uuid": user["uuid"],
+                    "firstname": body["firstname"],
+                    "lastname": body.get("lastname"),
+                    "extension": (body.get("lines") or [{}])[0]
+                    .get("extensions", [{}])[0]
+                    .get("exten"),
+                    "email": body.get("email"),
+                    "enabled": True,
+                }
+            )
+            self.created_users.append(user)
+            return httpx.Response(201, json=user)
+        if (
+            path.startswith(f"{prefix}/users/")
+            and method == "DELETE"
+            and path.count("/") == 5
+        ):
+            user_uuid = path.split("/")[-1]
+            if not any(u["uuid"] == user_uuid for u in self.users):
+                return httpx.Response(404, json=["Resource Not Found - User"])
+            if request.url.params.get("recursive") != "true":
+                return httpx.Response(
+                    400, json=["Resource Error - User is associated with a Line"]
+                )
+            self.users = [u for u in self.users if u["uuid"] != user_uuid]
+            self.extensions = [
+                e for e in self.extensions if e.get("user_uuid") != user_uuid
+            ]
+            return httpx.Response(204)
+        if path == f"{prefix}/agents" and method == "POST":
+            if self.fail_agent_creation:
+                return httpx.Response(
+                    400, json=["Resource Error - Agent already exists"]
+                )
+            agent = {"id": self._id(), **body}
+            self.agents.append(agent)
+            return httpx.Response(201, json=agent)
+        if path.startswith(f"{prefix}/agents/") and method == "DELETE":
+            agent_id = int(path.split("/")[-1])
+            self.agents = [a for a in self.agents if a["id"] != agent_id]
+            return httpx.Response(204)
+        if (
+            path.startswith(f"{prefix}/users/")
+            and "/agents/" in path
+            and method == "PUT"
+        ):
+            return httpx.Response(204)
+        if path == f"{prefix}/queues" and method == "POST":
+            if not body.get("name") or not re.fullmatch(r"[a-z0-9_-]+", body["name"]):
+                return httpx.Response(400, json=["Input Error - field 'name': invalid"])
+            queue = {
+                "id": self._id(),
+                "members": {"agents": [], "users": []},
+                "extensions": [],
+                "wait_time_threshold": None,
+                "wait_time_destination": None,
+                "timeout": None,
+                **body,
+            }
+            self.queues.append(queue)
+            return httpx.Response(201, json=queue)
+        if re.fullmatch(rf"{prefix}/queues/\d+", path):
+            queue_id = int(path.split("/")[-1])
+            queue = next((q for q in self.queues if q["id"] == queue_id), None)
+            if queue is None:
+                return httpx.Response(404, json=["Resource Not Found - Queue"])
+            if method == "GET":
+                return httpx.Response(200, json=queue)
+            if method == "PUT":
+                if "name" in body:
+                    return httpx.Response(
+                        400, json=["Input Error - field 'name': read only"]
+                    )
+                queue.update(body)
+                return httpx.Response(204)
+            if method == "DELETE":
+                self.queues = [q for q in self.queues if q["id"] != queue_id]
+                return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/queues/(\d+)/extensions/(\d+)", path)
+        if m and method == "PUT":
+            queue = next(q for q in self.queues if q["id"] == int(m.group(1)))
+            extension = next(e for e in self.extensions if e["id"] == int(m.group(2)))
+            queue["extensions"].append(extension)
+            return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/queues/(\d+)/members/agents/(\d+)", path)
+        if m:
+            queue = next((q for q in self.queues if q["id"] == int(m.group(1))), None)
+            agent_id = int(m.group(2))
+            if queue is None or not any(a["id"] == agent_id for a in self.agents):
+                return httpx.Response(404, json=["Resource Not Found"])
+            members = queue["members"]["agents"]
+            if method == "PUT":
+                members[:] = [a for a in members if a["id"] != agent_id] + [
+                    {"id": agent_id, "penalty": body.get("penalty", 0)}
+                ]
+            else:
+                members[:] = [a for a in members if a["id"] != agent_id]
+            return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/queues/(\d+)/fallbacks", path)
+        if m and method == "PUT":
+            self.fallbacks[int(m.group(1))] = body
+            return httpx.Response(204)
+        if path == f"{prefix}/voicemails":
+            return httpx.Response(
+                200, json={"items": self.voicemails, "total": len(self.voicemails)}
+            )
+        if path == f"{prefix}/schedules" and method == "GET":
+            return httpx.Response(
+                200, json={"items": self.schedules, "total": len(self.schedules)}
+            )
+        if path == f"{prefix}/schedules" and method == "POST":
+            if "closed_destination" not in body:
+                return httpx.Response(
+                    400, json=["Input Error - field 'closed_destination': Missing data"]
+                )
+            schedule = {"id": self._id(), **body}
+            self.schedules.append(schedule)
+            return httpx.Response(201, json=schedule)
+        m = re.fullmatch(rf"{prefix}/schedules/(\d+)", path)
+        if m:
+            schedule = next(
+                (x for x in self.schedules if x["id"] == int(m.group(1))), None
+            )
+            if schedule is None:
+                return httpx.Response(404, json=["Resource Not Found - Schedule"])
+            if method == "PUT":
+                schedule.update(body)
+            else:
+                self.schedules.remove(schedule)
+            return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/incalls/(\d+)", path)
+        if m and method == "GET":
+            incall = next((i for i in self.incalls if i["id"] == int(m.group(1))), None)
+            return (
+                httpx.Response(200, json=incall)
+                if incall
+                else httpx.Response(404, json=["Resource Not Found - Incall"])
+            )
+        m = re.fullmatch(rf"{prefix}/incalls/(\d+)/schedules/(\d+)", path)
+        if m:
+            incall = next((i for i in self.incalls if i["id"] == int(m.group(1))), None)
+            schedule = next(
+                (x for x in self.schedules if x["id"] == int(m.group(2))), None
+            )
+            if incall is None or schedule is None:
+                return httpx.Response(404, json=["Resource Not Found"])
+            current = incall.setdefault("schedules", [])
+            if method == "PUT":
+                if current and current[0]["id"] != schedule["id"]:
+                    return httpx.Response(
+                        400, json=["Resource Error - Incall already has a schedule"]
+                    )
+                current[:] = [{"id": schedule["id"], "name": schedule["name"]}]
+            else:
+                current[:] = []
             return httpx.Response(204)
 
         if path == "/api/calld/1.0/calls":

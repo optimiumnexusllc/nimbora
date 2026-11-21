@@ -12,6 +12,7 @@ from api.db import db_client
 from api.db.models import UserModel
 from api.services.auth.depends import get_user
 from api.services.branding import brand
+from api.services.pbx import admin
 from api.services.pbx import service as pbx
 from api.services.pbx.client import PbxAuthError, PbxError, PbxUnavailable
 
@@ -285,6 +286,200 @@ async def call_logs(
         ]
 
     return await _call(run())
+
+
+# ------------------------------------------------------- administration
+
+
+class ExtensionRequest(BaseModel):
+    firstname: str = Field(min_length=1, max_length=64)
+    lastname: str = Field(default="", max_length=64)
+    extension: str = Field(min_length=2, max_length=10)
+    email: str | None = Field(default=None, max_length=254)
+    line: Literal["sip", "webrtc"] = "sip"
+    voicemail: bool = True
+    agent: bool = False
+
+
+class ExtensionCredentials(BaseModel):
+    login: str
+    login_password: str
+    sip_username: str
+    sip_password: str
+    voicemail_pin: str | None
+
+
+class ExtensionResponse(BaseModel):
+    uuid: str
+    name: str
+    extension: str
+    context: str
+    line: str
+    agent_id: int | None
+    credentials: ExtensionCredentials = Field(
+        description="Shown once: the PBX keeps them, NIMBORA does not store them."
+    )
+
+
+class ImportRequest(BaseModel):
+    content: str = Field(max_length=500_000, description="CSV, comma or semicolon")
+
+
+class ImportRow(BaseModel):
+    line: int
+    firstname: str
+    lastname: str
+    extension: str
+    email: str | None
+    type: str
+    voicemail: bool
+    agent: bool
+    errors: list[str]
+
+
+class ImportResult(BaseModel):
+    created: list[ExtensionResponse]
+    failed: list[ImportRow]
+    credentials_csv: str
+
+
+class LoginRequest(BaseModel):
+    login: str = Field(min_length=2, max_length=254)
+
+
+class QueueRequest(BaseModel):
+    label: str = Field(min_length=1, max_length=128)
+    extension: str = Field(min_length=2, max_length=10)
+    strategy: str = "leastrecent"
+    ring_seconds: int = Field(default=20, ge=5, le=120)
+    agent_ids: list[int] = Field(default_factory=list, max_length=200)
+    overflow_workflow_id: int | None = None
+    overflow_after_seconds: int = Field(default=60, ge=10, le=3600)
+
+
+class OverflowRequest(BaseModel):
+    workflow_id: int | None = Field(description="None removes the overflow")
+    after_seconds: int = Field(default=60, ge=10, le=3600)
+
+
+class ScheduleRequest(BaseModel):
+    incall_ids: list[int] = Field(min_length=1, max_length=100)
+    closed: Literal["ai_agent", "voicemail", "hangup"] = "ai_agent"
+    workflow_id: int | None = None
+    voicemail_id: int | None = None
+
+
+@router.post("/extensions", response_model=ExtensionResponse)
+async def create_extension(
+    request: ExtensionRequest, user: UserModel = Depends(get_user)
+):
+    """User + line + extension + SIP account + voicemail + login (+ agent)."""
+    return await _call(
+        admin.create_extension(_org(user), admin.NewExtension(**request.model_dump()))
+    )
+
+
+@router.delete("/extensions/{user_uuid}", status_code=204)
+async def delete_extension(user_uuid: str, user: UserModel = Depends(get_user)):
+    await _call(admin.delete_extension(_org(user), user_uuid))
+    return Response(status_code=204)
+
+
+@router.post("/extensions/password-reset", status_code=204)
+async def extension_password_reset(
+    request: LoginRequest, user: UserModel = Depends(get_user)
+):
+    """E-mail the user a white-label reset link."""
+    await _call(admin.send_password_reset(_org(user), request.login))
+    return Response(status_code=204)
+
+
+@router.post("/extensions/import/preview", response_model=list[ImportRow])
+async def preview_import(request: ImportRequest, user: UserModel = Depends(get_user)):
+    return await _call(admin.preview_import(_org(user), request.content))
+
+
+@router.post("/extensions/import", response_model=ImportResult)
+async def run_import(request: ImportRequest, user: UserModel = Depends(get_user)):
+    result = await _call(admin.run_import(_org(user), request.content))
+    return {**result, "credentials_csv": admin.credentials_csv(result["created"])}
+
+
+@router.get("/strategies")
+async def strategies(user: UserModel = Depends(get_user)) -> dict[str, str]:
+    return admin.STRATEGIES
+
+
+@router.post("/queues")
+async def create_queue(
+    request: QueueRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    return await _call(
+        admin.create_queue(_org(user), admin.NewQueue(**request.model_dump()))
+    )
+
+
+@router.delete("/queues/{queue_id}", status_code=204)
+async def delete_queue(queue_id: int, user: UserModel = Depends(get_user)):
+    await _call(admin.delete_queue(_org(user), queue_id))
+    return Response(status_code=204)
+
+
+@router.put("/queues/{queue_id}/overflow")
+async def queue_overflow(
+    queue_id: int, request: OverflowRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    """Too long a wait, nobody answering or logged in → this AI agent."""
+    return await _call(
+        admin.set_queue_overflow(
+            _org(user), queue_id, request.workflow_id, request.after_seconds
+        )
+    )
+
+
+@router.put("/queues/{queue_id}/members/{agent_id}", status_code=204)
+async def add_queue_member(
+    queue_id: int, agent_id: int, user: UserModel = Depends(get_user)
+):
+    await _call(admin.set_queue_member(_org(user), queue_id, agent_id, True))
+    return Response(status_code=204)
+
+
+@router.delete("/queues/{queue_id}/members/{agent_id}", status_code=204)
+async def remove_queue_member(
+    queue_id: int, agent_id: int, user: UserModel = Depends(get_user)
+):
+    await _call(admin.set_queue_member(_org(user), queue_id, agent_id, False))
+    return Response(status_code=204)
+
+
+@router.get("/voicemails")
+async def list_voicemails(user: UserModel = Depends(get_user)) -> list[dict[str, Any]]:
+    async def run():
+        connection = await pbx._connection(_org(user))
+        async with pbx.client_for(connection) as client:
+            return [
+                {"id": v.get("id"), "name": v.get("name"), "number": v.get("number")}
+                for v in await client.voicemails()
+            ]
+
+    return await _call(run())
+
+
+@router.put("/schedule")
+async def sync_schedule(
+    request: ScheduleRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    """Apply the opening hours of 'Mon entreprise' to PBX numbers."""
+    return await _call(
+        admin.sync_opening_hours(
+            _org(user),
+            request.incall_ids,
+            request.closed,
+            request.workflow_id,
+            request.voicemail_id,
+        )
+    )
 
 
 class PasswordResetRequest(BaseModel):

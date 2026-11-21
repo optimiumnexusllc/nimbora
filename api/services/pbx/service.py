@@ -208,6 +208,19 @@ async def inventory(organization_id: int, **client_kwargs) -> dict[str, Any]:
         )
 
     statuses = {s.get("id"): s for s in result.pop("agent_statuses") or []}
+    overflows = {}
+    for row in phone_rows:
+        meta = (row.extra_metadata or {}).get("pbx_overflow")
+        if meta and row.is_active and row.inbound_workflow_id:
+            if row.inbound_workflow_id not in workflows:
+                workflow = await db_client.get_workflow(
+                    row.inbound_workflow_id, organization_id=organization_id
+                )
+                workflows[row.inbound_workflow_id] = workflow.name if workflow else None
+            overflows[meta.get("queue_id")] = {
+                "workflow_id": row.inbound_workflow_id,
+                "workflow_name": workflows.get(row.inbound_workflow_id),
+            }
     users = [
         {
             "uuid": u.get("uuid"),
@@ -218,12 +231,18 @@ async def inventory(organization_id: int, **client_kwargs) -> dict[str, Any]:
             or "—",
             "extension": u.get("extension"),
             "email": u.get("email"),
+            "login": u.get("username") or u.get("email"),
             "enabled": u.get("enabled", True),
         }
         for u in result["users"]
     ]
     queues = [
         {
+            "overflow": overflows.get(q.get("id")),
+            "wait_time_threshold": q.get("wait_time_threshold"),
+            "agent_ids": [
+                a.get("id") for a in (q.get("members") or {}).get("agents") or []
+            ],
             "id": q.get("id"),
             "name": q.get("label") or q.get("name"),
             "extensions": [e.get("exten") for e in q.get("extensions") or []],
@@ -264,6 +283,9 @@ async def inventory(organization_id: int, **client_kwargs) -> dict[str, Any]:
             )
             numbers.append(
                 {
+                    "schedules": [
+                        sc.get("name") for sc in incall.get("schedules") or []
+                    ],
                     "number": exten,
                     "incall_id": incall.get("id"),
                     "description": incall.get("description"),

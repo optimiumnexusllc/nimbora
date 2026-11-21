@@ -21,6 +21,10 @@ The PBX engine is [Wazo Platform](https://github.com/wazo-platform) (GPL-3.0), i
 | Route a PBX number to an AI agent | NIMBORA creates the inbound number on the PBX and registers it on its side |
 | Keep one customer history | Each human call on the PBX is added to the customer's history, next to AI calls, WhatsApp and web chat |
 | Apply your brand to the PBX | Sets the SIP `User-Agent`/`Server` header to your PBX name |
+| Create extensions, one by one or from a CSV file | User, line, extension, SIP account, voicemail, login and contact-center agent in one action |
+| Create queues and choose their members | Ring strategy, ring time, agents |
+| Send unanswered queue calls to an AI agent | Overflow after a wait you choose, when nobody answers or nobody is logged in |
+| Apply the company's opening hours to numbers | Hours and closures from **Mon entreprise**; outside hours an AI agent, a voicemail, or hang up |
 
 ## Install the PBX
 
@@ -36,7 +40,7 @@ The install script:
 - generates every secret, so the installer's public default passwords are never used;
 - leaves out the engine's own web UI;
 - firewalls ARI (port 5039) to NIMBORA only and AMI (port 5038) to the server itself, over IPv4 and IPv6;
-- creates the service account. Its policy grants only the 25 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant.
+- creates the service account. Its policy grants only the 46 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant.
 
 See `deploy/pbx/README.md` for every option and what the white label changes.
 
@@ -59,6 +63,78 @@ See `deploy/pbx/README.md` for every option and what the white label changes.
 
 <Frame caption="Numéros — a PBX number answered by an AI agent">
   <img src="/images/screenshots/pbx-numbers.webp" alt="Inbound numbers with one routed to an AI agent" />
+</Frame>
+
+## Administer the PBX
+
+### Extensions
+
+**Postes → Nouveau poste** creates everything a person needs in one action, rolled back by the PBX if anything fails:
+
+- the user;
+- the line, with **Softphone dans le navigateur** (WebRTC) or **Téléphone de bureau ou application SIP**;
+- the extension number;
+- the SIP account, with a generated 20-character password;
+- the voicemail, with a 6-digit PIN, messages sent by e-mail when an address is given;
+- the login, which is the e-mail address or `poste<number>`, with a generated password;
+- optionally the contact-center agent.
+
+The credentials are shown **once**, so you can copy them or download them as a CSV file. NIMBORA never stores them. Later, **Mot de passe** e-mails the person a reset link under your brand. **Supprimer** removes the user together with their line, extension, voicemail and login.
+
+<Frame caption="Credentials of a new extension, shown once">
+  <img src="/images/screenshots/pbx-credentials.webp" alt="Dialog showing the generated login, SIP account and voicemail PIN of a new extension" />
+</Frame>
+
+### Importing a CSV file
+
+**Importer (CSV)** reads a comma- or semicolon-separated file with these columns, up to 500 rows:
+
+```text
+prenom;nom;poste;email;ligne;messagerie;agent
+Awa;Diallo;1010;awa@example.com;navigateur;oui;oui
+Koffi;Yao;1011;;sip;non;non
+```
+
+Before anything is created, a preview checks every row and flags:
+
+- missing first names;
+- invalid extension numbers or e-mail addresses;
+- extension numbers that already exist on the PBX;
+- extension numbers used twice in the file.
+
+Only the valid rows are created. A failed row never stops the others. You then download the credentials sheet for everyone who was created.
+
+<Frame caption="CSV import: every row checked before anything is created">
+  <img src="/images/screenshots/pbx-import.webp" alt="Import preview with valid rows and rows rejected for a duplicate or existing extension" />
+</Frame>
+
+### Queues and AI overflow
+
+**Files → Nouvelle file** creates a queue with its internal number, its ring strategy and its agents. The strategies are:
+
+- all phones at once;
+- the agent idle the longest;
+- the agent with the fewest calls;
+- each in turn;
+- random;
+- in list order.
+
+**Membres** changes who takes the queue's calls.
+
+**Débordement IA** hands callers to an AI agent in three cases: after the wait you choose (10 seconds to 1 hour), when nobody answers, or when no agent is logged in. No caller is left waiting. Behind the scenes, the queue's wait-time destination and its fallbacks point to `Stasis(<app>,inbound,called=nimbora-q<queue>)`. That key contains letters, so it can never collide with a real phone number.
+
+<Frame caption="Queues with their AI overflow">
+  <img src="/images/screenshots/pbx-queues.webp" alt="Queues table showing members and the AI agent that takes overflow calls" />
+</Frame>
+
+### Opening hours
+
+**Numéros → Horaires** applies the opening hours and exceptional closures of **Mon entreprise** to the numbers you pick. Outside those hours, calls go to an AI agent (recommended), to a voicemail, or are hung up.
+
+The PBX keeps a single schedule per company. When the hours change, open the dialog again and apply: the same schedule is updated. A number that already had another schedule switches to the company's.
+
+<Frame caption="Company hours applied to PBX numbers, an AI agent answering outside them">
+  <img src="/images/screenshots/pbx-schedule.webp" alt="Opening hours dialog with numbers to cover and the after-hours destination" />
 </Frame>
 
 ### How AI calls flow

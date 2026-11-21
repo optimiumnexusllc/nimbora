@@ -3,6 +3,7 @@
 import {
     Bot,
     CheckCircle2,
+    Clock,
     Pause,
     PhoneCall,
     PhoneOff,
@@ -40,6 +41,9 @@ import type {
 } from "@/client/types.gen";
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
 import { ConnectionDialog, type ConnectionForm } from "@/components/pbx/ConnectionDialog";
+import { ExtensionsTab } from "@/components/pbx/ExtensionsTab";
+import { QueuesTab } from "@/components/pbx/QueuesTab";
+import { ScheduleDialog } from "@/components/pbx/ScheduleDialog";
 import { DIRECTION_LABELS, elapsed, type PbxCallLog, type PbxInventory } from "@/components/pbx/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -88,6 +92,7 @@ export default function PbxPage() {
     const [workflows, setWorkflows] = useState<WorkflowSummaryResponse[]>([]);
     const [editing, setEditing] = useState(false);
     const [routing, setRouting] = useState<{ number: string; workflowId: string } | null>(null);
+    const [scheduling, setScheduling] = useState(false);
     const [now, setNow] = useState(() => Date.now());
     const fetched = useRef(false);
 
@@ -433,68 +438,32 @@ export default function PbxPage() {
                     </TabsContent>
 
                     <TabsContent value="queues">
-                        <PageSection title="Files d'attente">
-                            <SectionError error={errors.queues} />
-                            {inventory.queues.length === 0 ? (
-                                <Empty>Aucune file d&apos;attente.</Empty>
-                            ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>File</TableHead>
-                                            <TableHead>Numéros</TableHead>
-                                            <TableHead className="text-right">Membres</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {inventory.queues.map((queue) => (
-                                            <TableRow key={queue.id}>
-                                                <TableCell className="font-medium">{queue.name}</TableCell>
-                                                <TableCell className="font-mono text-sm">{queue.extensions.join(", ") || "—"}</TableCell>
-                                                <TableCell className="text-right">{queue.members}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            )}
-                        </PageSection>
+                        <QueuesTab
+                            queues={inventory.queues}
+                            agents={inventory.agents}
+                            workflows={workflows}
+                            aiEnabled={Boolean(connection.ari_configuration_id)}
+                            error={errors.queues}
+                            onChanged={() => void loadInventory()}
+                        />
                     </TabsContent>
 
                     <TabsContent value="users">
-                        <PageSection title="Postes et utilisateurs">
-                            <SectionError error={errors.users} />
-                            {inventory.users.length === 0 ? (
-                                <Empty>Aucun poste.</Empty>
-                            ) : (
-                                <Table>
-                                    <TableHeader>
-                                        <TableRow>
-                                            <TableHead>Utilisateur</TableHead>
-                                            <TableHead>Poste</TableHead>
-                                            <TableHead>E-mail</TableHead>
-                                        </TableRow>
-                                    </TableHeader>
-                                    <TableBody>
-                                        {inventory.users.map((u) => (
-                                            <TableRow key={u.uuid}>
-                                                <TableCell className="font-medium">{u.name}</TableCell>
-                                                <TableCell className="font-mono">{u.extension ?? "—"}</TableCell>
-                                                <TableCell className="text-sm text-muted-foreground">{u.email ?? "—"}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            )}
-                        </PageSection>
+                        <ExtensionsTab users={inventory.users} error={errors.users} onChanged={() => void loadInventory()} />
                     </TabsContent>
 
                     <TabsContent value="numbers">
                         <PageSection
                             title="Numéros entrants"
                             actions={
-                                <Button onClick={() => setRouting({ number: "", workflowId: "" })} disabled={!connection.ari_configuration_id}>
-                                    <Bot /> Router un numéro vers un agent IA
-                                </Button>
+                                <>
+                                    <Button variant="outline" onClick={() => setScheduling(true)}>
+                                        <Clock /> Horaires
+                                    </Button>
+                                    <Button onClick={() => setRouting({ number: "", workflowId: "" })} disabled={!connection.ari_configuration_id}>
+                                        <Bot /> Router un numéro vers un agent IA
+                                    </Button>
+                                </>
                             }
                         >
                             {!connection.ari_configuration_id && (
@@ -527,6 +496,11 @@ export default function PbxPage() {
                                                         <>
                                                             {n.destination}
                                                             {n.description && <span className="text-muted-foreground"> · {n.description}</span>}
+                                                            {n.schedules?.some((name) => name.startsWith("nimbora-horaires")) && (
+                                                                <Badge variant="outline" className="ml-2 gap-1">
+                                                                    <Clock className="size-3" /> Horaires de l&apos;entreprise
+                                                                </Badge>
+                                                            )}
                                                         </>
                                                     )}
                                                 </TableCell>
@@ -598,6 +572,17 @@ export default function PbxPage() {
             )}
 
             {dialog}
+
+            {inventory && (
+                <ScheduleDialog
+                    open={scheduling}
+                    onOpenChange={setScheduling}
+                    numbers={inventory.numbers}
+                    workflows={workflows}
+                    aiEnabled={Boolean(connection.ari_configuration_id)}
+                    onDone={() => void loadInventory()}
+                />
+            )}
 
             <Dialog open={routing !== null} onOpenChange={(open) => !open && setRouting(null)}>
                 <DialogContent>

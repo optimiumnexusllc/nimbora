@@ -1,6 +1,6 @@
 {
   "name": "nimbora-integration",
-  "description": "Platform integration: PBX management, AI routing, events",
+  "description": "Platform integration: PBX management and administration, AI routing, events",
   "acl": [
     "auth.tenants.*.read",
     "confd.infos.read",
@@ -26,6 +26,28 @@
     "agentd.agents.by-number.*.unpause.create",
     "webhookd.subscriptions.create",
     "webhookd.subscriptions.*.delete",
-    "call-logd.cdr.read"
+    "call-logd.cdr.read",
+    "confd.endpoints.sip.templates.read",
+    "confd.users.create",
+    "confd.users.*.delete",
+    "confd.users.*.agents.*.update",
+    "confd.agents.create",
+    "confd.agents.*.delete",
+    "confd.queues.create",
+    "confd.queues.*.read",
+    "confd.queues.*.update",
+    "confd.queues.*.delete",
+    "confd.queues.*.extensions.*.update",
+    "confd.queues.*.members.agents.*.update",
+    "confd.queues.*.members.agents.*.delete",
+    "confd.queues.*.fallbacks.update",
+    "confd.schedules.read",
+    "confd.schedules.create",
+    "confd.schedules.*.update",
+    "confd.schedules.*.delete",
+    "confd.incalls.*.read",
+    "confd.incalls.*.schedules.*.update",
+    "confd.incalls.*.schedules.*.delete",
+    "confd.voicemails.read"
   ]
 }

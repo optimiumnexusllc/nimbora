@@ -1,0 +1,13 @@
+[2026-11-21T06:27:05.779Z] Error: Request failed with status 500: fetch failed
+Stack:
+Error: Request failed with status 500: fetch failed
+    at getSpecData (file:///home/claude/nimbora/ui/node_modules/@hey-api/openapi-ts/dist/src-CI9riJdm.mjs:82:10)
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async Promise.all (index 0)
+    at async createClient$1 (file:///home/claude/nimbora/ui/node_modules/@hey-api/openapi-ts/dist/src-CI9riJdm.mjs:89:20)
+    at async file:///home/claude/nimbora/ui/node_modules/@hey-api/openapi-ts/dist/src-CI9riJdm.mjs:213:12
+    at async Promise.all (index 0)
+    at async createClient (file:///home/claude/nimbora/ui/node_modules/@hey-api/openapi-ts/dist/src-CI9riJdm.mjs:211:21)
+    at async Command.<anonymous> (file:///home/claude/nimbora/ui/node_modules/@hey-api/openapi-ts/dist/run.mjs:35:8)
+    at async Command.parseAsync (file:///home/claude/nimbora/ui/node_modules/commander/lib/command.js:1113:5)
+    at async runCli (file:///home/claude/nimbora/ui/node_modules/@hey-api/openapi-ts/dist/run.mjs:39:3)

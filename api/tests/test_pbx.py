@@ -222,6 +222,7 @@ async def test_inventory_merges_agent_status_and_survives_a_failing_service(
         "extension": "1001",
         "email": "koffi@ivoire-immo.ci",
         "enabled": True,
+        "login": "koffi@ivoire-immo.ci",
     }
     assert (
         inventory["agents"][0]["paused"] is True
@@ -232,6 +233,9 @@ async def test_inventory_merges_agent_status_and_survives_a_failing_service(
         "name": "Ventes",
         "extensions": ["3001"],
         "members": 1,
+        "agent_ids": [7],
+        "overflow": None,
+        "wait_time_threshold": None,
     }
     assert inventory["calls"] == [] and "calls" in inventory["errors"]
 

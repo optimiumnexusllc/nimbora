@@ -1,6 +1,21 @@
 /** Shapes of GET /pbx/inventory and /pbx/call-logs (free-form JSON in OpenAPI). */
-export type PbxUser = { uuid: string; name: string; extension: string | null; email: string | null; enabled: boolean };
-export type PbxQueue = { id: number; name: string; extensions: string[]; members: number };
+export type PbxUser = {
+    uuid: string;
+    name: string;
+    extension: string | null;
+    email: string | null;
+    enabled: boolean;
+    login?: string | null;
+};
+export type PbxQueue = {
+    id: number;
+    name: string;
+    extensions: string[];
+    members: number;
+    agent_ids?: number[];
+    wait_time_threshold?: number | null;
+    overflow?: { workflow_id: number; workflow_name: string | null } | null;
+};
 export type PbxAgent = {
     id: number;
     number: string;
@@ -17,6 +32,7 @@ export type PbxNumber = {
     destination: string;
     ai_workflow_id: number | null;
     ai_workflow_name: string | null;
+    schedules?: string[];
 };
 export type PbxCall = {
     call_id: string;

@@ -92,8 +92,19 @@ en-têtes SIP, page d'accueil. Depuis NIMBORA, vous suivez les appels en cours, 
 files, vous **routez un numéro du PBX vers un agent IA** en un clic, et chaque appel humain
 rejoint l'historique client, à côté des appels IA, de WhatsApp et du chat web.
 
+L'administration se fait aussi depuis NIMBORA :
+
+- **postes** en une action (ligne navigateur ou SIP, messagerie, accès, agent), à l'unité ou par
+  **import CSV** vérifié ligne par ligne ;
+- **files d'attente** avec **débordement vers un agent IA** quand l'attente dure, que personne ne
+  répond ou que personne n'est connecté ;
+- **horaires** de « Mon entreprise » appliqués aux numéros, avec un agent IA hors horaires.
+
+Aucun client ne reste sans réponse.
+
 <p align="center"><img src="docs/images/screenshots/pbx-calls.webp" alt="Téléphonie d'entreprise : appels en cours" width="88%"></p>
-<p align="center"><img src="docs/images/screenshots/pbx-numbers.webp" alt="Un numéro du PBX routé vers un agent IA" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/pbx-queues.webp" alt="Files d'attente avec débordement vers un agent IA" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/pbx-import.webp" alt="Import CSV des postes, vérifié avant création" width="88%"></p>
 
 ### 💬 WhatsApp : l'agent répond aussi aux messages
 
@@ -179,7 +190,7 @@ swahili, haoussa, yoruba, lingala…
 | **Confidentialité** | Masquage des données personnelles, mode PCI, journaux masqués, durées de conservation, export et effacement RGPD |
 | **SaaS multi-entreprises** | Offres et abonnements, essai gratuit, quotas de minutes, limites par client, paiement Stripe optionnel, console opérateur |
 | **Téléphonie** | Asterisk (SIP), Twilio, Vonage, Telnyx, Plivo, WhatsApp… |
-| **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; routage d'un numéro vers un agent IA ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 25 ACL) |
+| **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; création de postes en une action et import CSV ; files avec débordement vers un agent IA ; horaires de l'entreprise appliqués aux numéros ; routage d'un numéro vers un agent IA ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 46 ACL) |
 | **Marque blanche** | Nom de la plateforme et du PBX centralisés (`BRAND_*`), e-mails et page de réinitialisation à la marque, en-têtes SIP |
 | **Sécurité** | Isolation stricte entre entreprises, protection SSRF, secrets générés à l'installation, télémétrie désactivée |
 
@@ -329,7 +340,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Routage d'un numéro du PBX vers un agent IA (`Stasis(app,inbound,called=…)`), sans jamais écraser une destination existante ; retrait propre des deux côtés |
 | ✅ | Console : appels en cours (raccrocher), agents (pause, reprise, déconnexion), files, postes, numéros, journal des appels ; pannes partielles affichées par section |
 | ✅ | Événements du PBX : chaque appel humain rejoint l'historique client multicanal (appels manqués compris), dédoublonné, sans doublonner les appels IA |
-| ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **25 ACL** (testé contre le code) |
+| ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **46 ACL** (testé contre le code) |
 | ✅ | Marque blanche : e-mails d'authentification en français à votre nom (fini `noreply@wazo.community` et le lien vers `app.wazo.io`), page `/pbx-password` à la marque (sans SSRF), en-têtes SIP `User-Agent`/`Server`, page d'accueil, bannière |
 | ✅ | Conformité : moteur GPL-3.0 non modifié, licences conservées sur le serveur, `NOTICE.md` ; NIMBORA (BSD-2) reste un programme distinct |
 | 🧪 | Validation sur un PBX réel : modules `chan_websocket` / `res_websocket_client` de l'Asterisk du moteur, appel IA de bout en bout, livraison des webhooks |
@@ -338,11 +349,15 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 
 | Statut | Fonctionnalité |
 |---|---|
-| 🔜 | Postes en une action : utilisateur + ligne SIP/WebRTC + extension + messagerie ; import CSV ; réinitialisation du mot de passe |
-| 🔜 | Files et agents : création, compétences, stratégies de sonnerie, temps d'attente maximum, **débordement vers un agent IA** |
-| 🔜 | Serveurs vocaux et horaires en éditeur visuel ; horaires et fermetures repris de la fiche entreprise |
+| ✅ | Postes en une action : utilisateur + ligne (navigateur WebRTC ou SIP) + extension + compte SIP + messagerie + accès + agent ; secrets générés affichés une seule fois ; suppression complète ; lien de mot de passe à la marque |
+| ✅ | Import CSV (virgule ou point-virgule, 500 lignes) : aperçu ligne par ligne (doublons, postes existants, champs invalides), création des seules lignes valides, fiche d'identifiants à télécharger |
+| ✅ | Files d'attente : création avec numéro, stratégie de distribution, durée de sonnerie, membres ; gestion des membres |
+| ✅ | **Débordement vers un agent IA** : attente trop longue, personne ne répond, personne connecté → l'agent IA décroche |
+| ✅ | Horaires : ceux de « Mon entreprise » (plages et fermetures) appliqués aux numéros choisis ; hors horaires, agent IA, messagerie ou raccrocher ; une seule source, une seule plage horaire par entreprise |
+| 🔜 | Serveurs vocaux (SVI) en éditeur visuel, avec une option « parler à l'agent IA » |
 | 🔜 | Trunks SIP opérateurs, routes sortantes, numéros (DID), numéro présenté, listes noires |
 | 🔜 | Groupes d'appel, interception, renvois, ne-pas-déranger, conférences, parcage |
+| 🔜 | Compétences des agents et routage par compétence entre IA et conseillers |
 | 🔜 | Enregistrements des appels humains dans le stockage NIMBORA, avec masquage PCI et durées de conservation |
 
 **5.3 Centre d'appels humain unifié**
