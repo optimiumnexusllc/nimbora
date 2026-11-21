@@ -18,7 +18,7 @@ from typing import Any
 from loguru import logger
 
 from api.services.branding import brand
-from api.services.pbx.client import PbxClient, PbxError, PbxSettings
+from api.services.pbx.client import PbxAuthError, PbxClient, PbxError, PbxSettings
 
 WEBHOOK_EVENTS = [
     "call_log_created",
@@ -544,13 +544,30 @@ async def apply_branding(organization_id: int, **client_kwargs) -> dict[str, str
     connection = await _connection(organization_id)
     user_agent = brand().sip_user_agent
     async with client_for(connection, **client_kwargs) as client:
-        options = await client.pjsip_global()
-        options["user_agent"] = user_agent
-        await client.set_pjsip_global(options)
+        try:
+            options = await client.pjsip_global()
+            options["user_agent"] = user_agent
+            await client.set_pjsip_global(options)
+        except PbxAuthError:
+            # The engine only lets a master-tenant token touch its global
+            # Asterisk settings; a company's service account (the install
+            # kit's least-privilege account) gets 401 whatever its policy
+            # says. The kit itself brands the SIP headers at install time
+            # (whitelabel.yml), so this is a report, not a failure.
+            return {
+                "sip_user_agent": user_agent,
+                "applied_by": "kit",
+                "detail": (
+                    "Le compte de service de l'entreprise ne peut pas modifier "
+                    "les réglages globaux du moteur : l'en-tête SIP est posé par "
+                    "le kit d'installation (whitelabel.yml), à relancer après "
+                    "une mise à jour du moteur."
+                ),
+            }
     await db_client.save_pbx_connection(
         organization_id, {"branding_applied_at": datetime.now(UTC)}
     )
-    return {"sip_user_agent": user_agent}
+    return {"sip_user_agent": user_agent, "applied_by": "platform"}
 
 
 # -------------------------------------------------------------- events

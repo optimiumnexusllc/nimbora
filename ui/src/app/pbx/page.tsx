@@ -410,8 +410,16 @@ export default function PbxPage() {
                     variant="ghost"
                     size="sm"
                     onClick={async () => {
-                        if (await run(() => applyBrandingApiV1PbxBrandingApplyPost(), `Marque appliquée : ${connection.brand.sip_user_agent}`, "Application impossible"))
-                            void loadConnection();
+                        const response = await applyBrandingApiV1PbxBrandingApplyPost();
+                        if (response.error) {
+                            toast.error(detailFromError(response.error, "Application impossible"));
+                            return;
+                        }
+                        // A company's service account cannot touch the engine's
+                        // global settings: the install kit brands them instead.
+                        if (response.data?.applied_by === "kit") toast.info(response.data.detail);
+                        else toast.success(`Marque appliquée : ${connection.brand.sip_user_agent}`);
+                        void loadConnection();
                     }}
                 >
                     <Sparkles /> {connection.branding_applied_at ? "Marque appliquée" : "Appliquer la marque"}

@@ -244,7 +244,10 @@ async def test_inventory_merges_agent_status_and_survives_a_failing_service(
 async def test_white_label_and_event_subscription(db_session, monkeypatch):
     fake = FakePbx()
     _, org, _, _ = await _org_with_pbx(db_session, monkeypatch, fake)
-    assert await pbx.apply_branding(org.id) == {"sip_user_agent": "NIMBORA-Voice"}
+    assert await pbx.apply_branding(org.id) == {
+        "sip_user_agent": "NIMBORA-Voice",
+        "applied_by": "platform",
+    }
     assert fake.pjsip == {
         "user_agent": "NIMBORA-Voice",
         "keep_alive_interval": "30",
@@ -263,6 +266,23 @@ async def test_white_label_and_event_subscription(db_session, monkeypatch):
     second = await pbx.ensure_webhook(org.id, "https://app.nimbora.io")
     assert first not in fake.subscriptions and second in fake.subscriptions
     assert connection.branding_applied_at is not None
+
+
+async def test_branding_is_reported_as_the_kits_when_the_engine_refuses(db_session, monkeypatch):
+    """Seen on a real engine (26.11): /asterisk/pjsip/global needs a master-tenant
+    token, so the company's least-privilege service account gets 401. The kit
+    brands the SIP headers at install time: the platform reports that instead of
+    answering 502."""
+    fake = FakePbx()
+    fake.asterisk_master_only = True
+    _, org, _, _ = await _org_with_pbx(db_session, monkeypatch, fake)
+    result = await pbx.apply_branding(org.id)
+    assert result["applied_by"] == "kit"
+    assert result["sip_user_agent"] == "NIMBORA-Voice"
+    assert "whitelabel.yml" in result["detail"]
+    assert fake.pjsip["user_agent"] == "Wazo"  # untouched: not ours to change
+    connection = await db_session.get_pbx_connection(org.id)
+    assert connection.branding_applied_at is None
 
 
 async def test_human_calls_feed_customer_history(db_session, monkeypatch):
@@ -406,7 +426,8 @@ async def test_routes_connection_isolation_and_events(
         logs = (await client.get("/api/v1/pbx/call-logs")).json()
         assert logs[0]["destination_name"] == "Koffi Yao"
         assert (await client.post("/api/v1/pbx/branding/apply")).json() == {
-            "sip_user_agent": "NIMBORA-Voice"
+            "sip_user_agent": "NIMBORA-Voice",
+            "applied_by": "platform",
         }
         assert (await client.post("/api/v1/pbx/events/connect")).status_code == 200
         foreign_ari = (

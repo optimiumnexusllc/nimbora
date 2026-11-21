@@ -166,6 +166,9 @@ class FakePbx:
         ]
         self.subscriptions: dict[str, dict] = {}
         self.pjsip = {"user_agent": "Wazo", "keep_alive_interval": "30"}
+        # True: global Asterisk settings answer 401 to a non-master token,
+        # like the real engine does for a company's service account.
+        self.asterisk_master_only = False
         self.agent_actions: list[tuple[str, str, dict]] = []
         self.hung_up: list[str] = []
         self.password_resets: list[tuple[str, str]] = []
@@ -436,6 +439,10 @@ class FakePbx:
             extension_id = int(path.split("/")[-1])
             self.extensions = [e for e in self.extensions if e["id"] != extension_id]
             return httpx.Response(204)
+        if path == f"{prefix}/asterisk/pjsip/global" and self.asterisk_master_only:
+            # The real engine: global Asterisk settings need a master-tenant
+            # token; a company's service account gets 401 (not 403).
+            return httpx.Response(401, json={"reason": ["Unauthorized"], "status_code": 401})
         if path == f"{prefix}/asterisk/pjsip/global" and method == "GET":
             return httpx.Response(200, json={"options": dict(self.pjsip)})
         if path == f"{prefix}/asterisk/pjsip/global" and method == "PUT":
