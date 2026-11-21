@@ -40,7 +40,7 @@ The install script:
 - generates every secret, so the installer's public default passwords are never used;
 - leaves out the engine's own web UI;
 - firewalls ARI (port 5039) to NIMBORA only and AMI (port 5038) to the server itself, over IPv4 and IPv6;
-- creates the service account. Its policy grants only the 46 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant.
+- creates the service account. Its policy grants only the 73 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
 
 See `deploy/pbx/README.md` for every option and what the white label changes.
 
@@ -135,6 +135,60 @@ The PBX keeps a single schedule per company. When the hours change, open the dia
 
 <Frame caption="Company hours applied to PBX numbers, an AI agent answering outside them">
   <img src="/images/screenshots/pbx-schedule.webp" alt="Opening hours dialog with numbers to cover and the after-hours destination" />
+</Frame>
+
+### Voice menus
+
+**Serveurs vocaux → Nouveau menu** opens a visual editor for menus like "for sales, press 1". Each menu has:
+
+- an optional greeting;
+- up to 12 choices, each one a key (0 to 9, `*`, `#`), a label, and a destination;
+- a menu message, which NIMBORA writes from the choices if you leave it empty ("Pour le service commercial, tapez 1. Pour notre assistante, tapez dièse.");
+- a message for keys that lead nowhere, how long to wait for a key, and how many tries;
+- a destination for callers who press nothing or keep pressing wrong keys.
+
+A choice can lead to a queue, an extension, a voicemail, another menu, a hang-up, or **an AI agent**. Put an AI agent as the fallback and no caller hangs up without an answer.
+
+The editor shows the menu as the caller lives it: the messages, the phone keypad with the keys in use, and where each key leads. **Écouter** plays any message in telephone quality before you publish.
+
+**Publier** does the rest:
+
+1. Every message is spoken with your organization's voice, or the voice of the agent you pick, so the menu sounds like your AI agents.
+2. The audio is converted to the format the PBX plays natively (8 kHz, 16-bit, mono) and uploaded to the `menus-vocaux` sound category.
+3. Each key becomes a PBX destination. AI keys hand the call over with `Stasis(<app>,inbound,called=nimbora-m<menu>-<key>)`. Like the queue overflow key, it contains letters and never collides with a phone number.
+4. The PBX menu is created, or replaced if it already exists. Messages and AI hand-offs you removed are cleaned up.
+
+A menu you change after publishing shows **Modifié, à republier** until you publish it again. A menu that another menu or a number still leads to cannot be deleted: change those first.
+
+<Frame caption="Visual voice menu editor: keypad, spoken messages and an AI agent behind a key">
+  <img src="/images/screenshots/pbx-menu-editor.webp" alt="Menu editor with choices, destinations and the caller's view of the menu" />
+</Frame>
+
+### Numbers
+
+**Numéros → Ajouter un numéro** creates a public number on the PBX and chooses where it rings: an AI agent, a voice menu, a queue, an extension, a voicemail, or nowhere. **Destination** changes it later. The number keeps its schedule and caller ID settings; only the destination changes.
+
+A number that already existed on the PBX can be handed to an AI agent too. NIMBORA remembers its previous destination: removing the AI agent puts it back, and never deletes the number.
+
+### Operator lines and outbound routes
+
+**Lignes opérateurs → Ajouter une ligne** connects the PBX to a telephone operator over SIP. Enter the operator's server, port and transport (UDP, TCP or TLS). Then pick how the line authenticates:
+
+- **registration**: a SIP username and password. The PBX registers with the operator, using the tenant's registration template.
+- **IP address**: no registration. The operator recognizes your PBX by its address, and the PBX recognizes the operator's calls by its host.
+
+Calls from the operator arrive in the PBX's incoming-call context, so the numbers you route above ring. The list shows whether each line is registered and how many calls it carries. The SIP password is never sent back.
+
+**Nouvelle route** decides which dialled numbers leave through which lines:
+
+- **Lines in order**: the first is tried first, the next takes over if it fails.
+- **Patterns**: `_` followed by `X` (any digit), `N` (2 to 9), `Z` (1 to 9), `[1-5]` (a range) and `.` (the rest of the number). Shortcuts fill in common patterns.
+- **For each pattern**: digits to strip, a prefix to add for the operator, and the **number presented** to the people you call.
+
+**Tester un numéro** shows which pattern a number matches and exactly what the operator receives, before anything reaches the PBX. A line used by a route cannot be deleted until you remove it from the route.
+
+<Frame caption="Operator lines with their registration state, and outbound routes with failover">
+  <img src="/images/screenshots/pbx-lines.webp" alt="Operator lines table and outbound routes with their patterns and presented numbers" />
 </Frame>
 
 ### How AI calls flow

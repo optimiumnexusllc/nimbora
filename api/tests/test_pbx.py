@@ -217,6 +217,7 @@ async def test_inventory_merges_agent_status_and_survives_a_failing_service(
     fake.down.add("calld")
     inventory = await pbx.inventory(org.id)
     assert inventory["users"][0] == {
+        "id": 1,
         "uuid": "u-1",
         "name": "Koffi Yao",
         "extension": "1001",

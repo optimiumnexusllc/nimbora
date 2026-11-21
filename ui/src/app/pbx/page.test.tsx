@@ -10,7 +10,12 @@ const mocks = vi.hoisted(() => ({
     save: vi.fn(),
     test: vi.fn(),
     inventory: vi.fn(),
-    route: vi.fn(),
+    setNumber: vi.fn(),
+    removeNumber: vi.fn(),
+    menus: vi.fn(),
+    voicemails: vi.fn(),
+    trunks: vi.fn(),
+    routes: vi.fn(),
     unroute: vi.fn(),
     branding: vi.fn(),
     events: vi.fn(),
@@ -28,7 +33,12 @@ vi.mock("@/client/sdk.gen", () => ({
     saveConnectionApiV1PbxConnectionPut: mocks.save,
     testConnectionApiV1PbxConnectionTestPost: mocks.test,
     readInventoryApiV1PbxInventoryGet: mocks.inventory,
-    routeNumberApiV1PbxRoutesPost: mocks.route,
+    setNumberDestinationApiV1PbxNumbersPut: mocks.setNumber,
+    removeNumberApiV1PbxNumbersNumberDelete: mocks.removeNumber,
+    listMenusApiV1PbxMenusGet: mocks.menus,
+    listVoicemailsApiV1PbxVoicemailsGet: mocks.voicemails,
+    listTrunksApiV1PbxTrunksGet: mocks.trunks,
+    listOutboundRoutesApiV1PbxOutboundRoutesGet: mocks.routes,
     unrouteNumberApiV1PbxRoutesNumberDelete: mocks.unroute,
     applyBrandingApiV1PbxBrandingApplyPost: mocks.branding,
     connectEventsApiV1PbxEventsConnectPost: mocks.events,
@@ -65,7 +75,24 @@ beforeEach(() => {
     mocks.inventory.mockResolvedValue({ data: inventory });
     mocks.configs.mockResolvedValue({ data: { configurations: [{ id: 3, name: "PBX (ARI)", provider: "ari" }, { id: 4, name: "Twilio", provider: "twilio" }] } });
     mocks.workflows.mockResolvedValue({ data: [{ id: 4, name: "Accueil" }, { id: 6, name: "Recouvrement" }] });
-    for (const m of [mocks.route, mocks.unroute, mocks.branding, mocks.events, mocks.hangup, mocks.agent]) m.mockResolvedValue({ data: {} });
+    mocks.menus.mockResolvedValue({
+        data: [
+            {
+                id: 2, name: "Accueil", pbx_ivr_id: 31, published_at: "2026-11-21T09:00:00Z", up_to_date: true, last_error: null,
+                spec: { greeting_text: "", menu_text: "", invalid_text: "", timeout_seconds: 5, max_tries: 3, voice_workflow_id: null,
+                    fallback: { type: "hangup", target_id: null },
+                    choices: [{ digit: "1", label: "Les ventes", type: "queue", target_id: 1 }] },
+            },
+        ],
+    });
+    mocks.voicemails.mockResolvedValue({ data: [{ id: 1, name: "Accueil", number: "1000" }] });
+    mocks.trunks.mockResolvedValue({
+        data: { status_error: null, trunks: [{ id: 40, label: "Orange", technology: "sip", host: "sip.orange.ci", username: "2252700", registration: true, registered: true, current_calls: 1, outcalls: ["Sortie"], caller_id_format: "+E164" }] },
+    });
+    mocks.routes.mockResolvedValue({
+        data: { presets: [], routes: [{ id: 50, name: "Sortie", enabled: true, internal_caller_id: false, trunks: [{ id: 40, label: "Orange" }], rules: [{ pattern: "_0XXXXXXXXX", strip_digits: 0, prefix: "", external_prefix: "", caller_id: "+22527000000" }] }] },
+    });
+    for (const m of [mocks.setNumber, mocks.removeNumber, mocks.unroute, mocks.branding, mocks.events, mocks.hangup, mocks.agent]) m.mockResolvedValue({ data: {} });
     mocks.logs.mockResolvedValue({ data: [{ id: 1, start: "2026-11-21T08:00:00Z", answered: false, duration: 0, direction: "inbound", source_name: "Awa", source: "+225", destination_name: "Koffi Yao", destination: "1001" }] });
 });
 
@@ -118,13 +145,57 @@ describe("pbx page", () => {
         });
         expect(mocks.unroute).toHaveBeenCalledWith({ path: { number: "+22527000099" } });
 
-        fireEvent.click(screen.getByRole("button", { name: /Router un numéro vers un agent IA/ }));
+        fireEvent.click(screen.getByRole("button", { name: /Ajouter un numéro/ }));
         fireEvent.change(await screen.findByLabelText("Numéro"), { target: { value: "+22527000100" } });
-        selectOption(screen.getByRole("combobox", { name: "Agent IA" }), "Recouvrement");
+        selectOption(screen.getByRole("combobox", { name: "Destination du numéro — cible" }), "Recouvrement");
         await act(async () => {
-            fireEvent.click(screen.getByRole("button", { name: /^Router$/ }));
+            fireEvent.click(screen.getByRole("button", { name: /^Enregistrer$/ }));
         });
-        expect(mocks.route).toHaveBeenCalledWith({ body: { number: "+22527000100", workflow_id: 6 } });
+        expect(mocks.setNumber).toHaveBeenCalledWith({
+            body: { number: "+22527000100", destination: { type: "ai", target_id: 6 } },
+        });
+    });
+
+    it("points an existing number at a voice menu and deletes a number", async () => {
+        mocks.inventory.mockResolvedValue({
+            data: {
+                ...inventory,
+                numbers: [{ ...inventory.numbers[0], destination: "Serveur vocal", destination_type: "ivr", destination_target_id: 31 }],
+            },
+        });
+        render(<PbxPage />);
+        await screen.findByTestId("pbx-call");
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Numéros/ }));
+        const row = (await screen.findAllByTestId("pbx-number"))[0];
+        await waitFor(() => expect(row.textContent).toContain("Serveur vocal « Accueil »"));
+        fireEvent.click(within(row).getByRole("button", { name: /Modifier la destination/ }));
+        expect((await screen.findByLabelText("Numéro") as HTMLInputElement).disabled).toBe(true);
+        selectOption(screen.getByRole("combobox", { name: "Destination du numéro — type" }), "File d'attente");
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: /^Enregistrer$/ }));
+        });
+        expect(mocks.setNumber).toHaveBeenCalledWith({
+            body: { number: "+22527000000", destination: { type: "queue", target_id: 1 } },
+        });
+        await act(async () => {
+            fireEvent.click(within(row).getByRole("button", { name: /Supprimer le numéro/ }));
+        });
+        expect(mocks.removeNumber).toHaveBeenCalledWith({ path: { number: "+22527000000" } });
+    });
+
+    it("shows voice menus and operator lines", async () => {
+        render(<PbxPage />);
+        await screen.findByTestId("pbx-call");
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Serveurs vocaux/ }));
+        const menu = await screen.findByTestId("pbx-menu");
+        expect(menu.textContent).toContain("Publié");
+        expect(menu.textContent).toContain("Pour les ventes, tapez 1.");
+        expect(menu.textContent).toContain("File d'attente · Ventes (3001)");
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Lignes opérateurs/ }));
+        const trunk = await screen.findByTestId("pbx-trunk");
+        expect(trunk.textContent).toContain("Enregistrée");
+        expect(trunk.textContent).toContain("sip.orange.ci");
+        expect((await screen.findByTestId("pbx-route")).textContent).toContain("1. Orange");
     });
 
     it("applies the brand, subscribes to events and shows partial outages", async () => {

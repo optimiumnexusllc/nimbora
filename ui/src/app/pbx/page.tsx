@@ -2,10 +2,13 @@
 
 import {
     Bot,
+    Cable,
     CheckCircle2,
     Clock,
     Pause,
+    Pencil,
     PhoneCall,
+    PhoneForwarded,
     PhoneOff,
     Play,
     Plug,
@@ -26,10 +29,14 @@ import {
     connectEventsApiV1PbxEventsConnectPost,
     getWorkflowsSummaryApiV1WorkflowSummaryGet,
     hangupCallApiV1PbxCallsCallIdHangupPost,
+    listMenusApiV1PbxMenusGet,
+    listOutboundRoutesApiV1PbxOutboundRoutesGet,
     listTelephonyConfigurationsApiV1OrganizationsTelephonyConfigsGet,
+    listTrunksApiV1PbxTrunksGet,
+    listVoicemailsApiV1PbxVoicemailsGet,
     readConnectionApiV1PbxConnectionGet,
     readInventoryApiV1PbxInventoryGet,
-    routeNumberApiV1PbxRoutesPost,
+    removeNumberApiV1PbxNumbersNumberDelete,
     saveConnectionApiV1PbxConnectionPut,
     testConnectionApiV1PbxConnectionTestPost,
     unrouteNumberApiV1PbxRoutesNumberDelete,
@@ -41,23 +48,26 @@ import type {
 } from "@/client/types.gen";
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
 import { ConnectionDialog, type ConnectionForm } from "@/components/pbx/ConnectionDialog";
+import type { Destination, DestinationSources, PbxVoicemail } from "@/components/pbx/DestinationPicker";
 import { ExtensionsTab } from "@/components/pbx/ExtensionsTab";
+import { MenusTab } from "@/components/pbx/MenusTab";
+import { NumberDialog, type NumberEdit } from "@/components/pbx/NumberDialog";
 import { QueuesTab } from "@/components/pbx/QueuesTab";
 import { ScheduleDialog } from "@/components/pbx/ScheduleDialog";
-import { DIRECTION_LABELS, elapsed, type PbxCallLog, type PbxInventory } from "@/components/pbx/types";
+import { TrunksTab } from "@/components/pbx/TrunksTab";
+import {
+    DIRECTION_LABELS,
+    elapsed,
+    type PatternPreset,
+    type PbxCallLog,
+    type PbxInventory,
+    type PbxMenu,
+    type PbxNumber,
+    type PbxOutboundRoute,
+    type PbxTrunk,
+} from "@/components/pbx/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/components/ui/dialog";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -91,7 +101,15 @@ export default function PbxPage() {
     const [ariConfigs, setAriConfigs] = useState<TelephonyConfigurationListItem[]>([]);
     const [workflows, setWorkflows] = useState<WorkflowSummaryResponse[]>([]);
     const [editing, setEditing] = useState(false);
-    const [routing, setRouting] = useState<{ number: string; workflowId: string } | null>(null);
+    const [numberEdit, setNumberEdit] = useState<NumberEdit | null>(null);
+    const [menus, setMenus] = useState<PbxMenu[]>([]);
+    const [voicemails, setVoicemails] = useState<PbxVoicemail[]>([]);
+    const [lines, setLines] = useState<{
+        trunks: PbxTrunk[];
+        routes: PbxOutboundRoute[];
+        presets: PatternPreset[];
+        error: string | null;
+    } | null>(null);
     const [scheduling, setScheduling] = useState(false);
     const [now, setNow] = useState(() => Date.now());
     const fetched = useRef(false);
@@ -104,6 +122,28 @@ export default function PbxPage() {
         }
         setInventory(response.data as unknown as PbxInventory);
         setNow(Date.now());
+    }, []);
+
+    const loadMenus = useCallback(async () => {
+        const response = await listMenusApiV1PbxMenusGet();
+        if (!response.error) setMenus((response.data as unknown as PbxMenu[]) ?? []);
+    }, []);
+
+    const loadVoicemails = useCallback(async () => {
+        const response = await listVoicemailsApiV1PbxVoicemailsGet();
+        if (!response.error) setVoicemails((response.data as unknown as PbxVoicemail[]) ?? []);
+    }, []);
+
+    const loadLines = useCallback(async () => {
+        const [trunks, routes] = await Promise.all([listTrunksApiV1PbxTrunksGet(), listOutboundRoutesApiV1PbxOutboundRoutesGet()]);
+        const t = trunks.data as { trunks: PbxTrunk[]; status_error: string | null } | undefined;
+        const r = routes.data as { routes: PbxOutboundRoute[]; presets: PatternPreset[] } | undefined;
+        setLines({
+            trunks: t?.trunks ?? [],
+            routes: r?.routes ?? [],
+            presets: r?.presets ?? [],
+            error: trunks.error ? detailFromError(trunks.error, "Lignes indisponibles") : (t?.status_error ?? null),
+        });
     }, []);
 
     const loadConnection = useCallback(async () => {
@@ -127,9 +167,13 @@ export default function PbxPage() {
             ]);
             setAriConfigs((configs.data?.configurations ?? []).filter((c) => c.provider === "ari"));
             setWorkflows((flows.data as WorkflowSummaryResponse[] | undefined) ?? []);
-            if (current?.configured) void loadInventory();
+            if (current?.configured) {
+                void loadInventory();
+                void loadMenus();
+                void loadVoicemails();
+            }
         })();
-    }, [authLoading, user, loadConnection, loadInventory]);
+    }, [authLoading, user, loadConnection, loadInventory, loadMenus, loadVoicemails]);
 
     useEffect(() => {
         if (!connection?.configured) return;
@@ -238,6 +282,32 @@ export default function PbxPage() {
     }
 
     const errors = inventory?.errors ?? {};
+    const sources: DestinationSources = {
+        queues: inventory?.queues ?? [],
+        users: inventory?.users ?? [],
+        voicemails,
+        workflows,
+        menus: menus.map((m) => ({ id: m.id, name: m.name, published: Boolean(m.pbx_ivr_id) })),
+        aiEnabled: Boolean(connection.ari_configuration_id),
+    };
+    const menuByIvr = new Map(menus.filter((m) => m.pbx_ivr_id).map((m) => [m.pbx_ivr_id as number, m]));
+    const currentDestination = (n: PbxNumber): Destination => {
+        const target = n.destination_target_id ?? null;
+        switch (n.destination_type) {
+            case "ai":
+                return { type: "ai", target_id: n.ai_workflow_id };
+            case "ivr": {
+                const menu = target != null ? menuByIvr.get(target) : undefined;
+                return menu ? { type: "menu", target_id: menu.id } : { type: "hangup", target_id: null };
+            }
+            case "queue":
+            case "user":
+            case "voicemail":
+                return { type: n.destination_type, target_id: target };
+            default:
+                return { type: "hangup", target_id: null };
+        }
+    };
     const ok = connection.status === "ok";
     const agentAction = async (number: string, action: "pause" | "unpause" | "logoff") => {
         const labels = { pause: "Agent en pause", unpause: "Agent disponible", logoff: "Agent déconnecté" };
@@ -258,7 +328,7 @@ export default function PbxPage() {
     return (
         <PageLayout
             title={pbxName}
-            description="Le PBX d'entreprise en temps réel : appels, agents, files, postes et numéros. Routez un numéro vers un agent IA en un clic."
+            description="Le PBX d'entreprise en temps réel : appels, agents, files, postes, numéros, serveurs vocaux et lignes opérateurs. Un agent IA derrière n'importe quel numéro ou touche."
             actions={
                 <>
                     <Button variant="outline" onClick={() => void loadInventory()}>
@@ -316,7 +386,11 @@ export default function PbxPage() {
             ) : (
                 <Tabs
                     defaultValue="calls"
-                    onValueChange={(v) => v === "logs" && logs === null && void loadLogs()}
+                    onValueChange={(v) => {
+                        if (v === "logs" && logs === null) void loadLogs();
+                        if (v === "lines" && lines === null) void loadLines();
+                        if (v === "menus") void loadMenus();
+                    }}
                     className="space-y-4"
                 >
                     <TabsList className="flex-wrap">
@@ -325,6 +399,10 @@ export default function PbxPage() {
                         <TabsTrigger value="queues">Files ({inventory.queues.length})</TabsTrigger>
                         <TabsTrigger value="users">Postes ({inventory.users.length})</TabsTrigger>
                         <TabsTrigger value="numbers">Numéros ({inventory.numbers.length})</TabsTrigger>
+                        <TabsTrigger value="menus">Serveurs vocaux ({menus.length})</TabsTrigger>
+                        <TabsTrigger value="lines">
+                            <Cable className="size-3.5" /> Lignes opérateurs
+                        </TabsTrigger>
                         <TabsTrigger value="logs">Journal</TabsTrigger>
                     </TabsList>
 
@@ -460,8 +538,18 @@ export default function PbxPage() {
                                     <Button variant="outline" onClick={() => setScheduling(true)}>
                                         <Clock /> Horaires
                                     </Button>
-                                    <Button onClick={() => setRouting({ number: "", workflowId: "" })} disabled={!connection.ari_configuration_id}>
-                                        <Bot /> Router un numéro vers un agent IA
+                                    <Button
+                                        onClick={() =>
+                                            setNumberEdit({
+                                                number: "",
+                                                existing: false,
+                                                destination: connection.ari_configuration_id && workflows[0]
+                                                    ? { type: "ai", target_id: workflows[0].id }
+                                                    : { type: "hangup", target_id: null },
+                                            })
+                                        }
+                                    >
+                                        <PhoneForwarded /> Ajouter un numéro
                                     </Button>
                                 </>
                             }
@@ -494,7 +582,9 @@ export default function PbxPage() {
                                                         </span>
                                                     ) : (
                                                         <>
-                                                            {n.destination}
+                                                            {n.destination_type === "ivr" && menuByIvr.get(n.destination_target_id ?? -1)
+                                                                ? `Serveur vocal « ${menuByIvr.get(n.destination_target_id ?? -1)?.name} »`
+                                                                : n.destination}
                                                             {n.description && <span className="text-muted-foreground"> · {n.description}</span>}
                                                             {n.schedules?.some((name) => name.startsWith("nimbora-horaires")) && (
                                                                 <Badge variant="outline" className="ml-2 gap-1">
@@ -504,7 +594,30 @@ export default function PbxPage() {
                                                         </>
                                                     )}
                                                 </TableCell>
-                                                <TableCell className="text-right">
+                                                <TableCell className="whitespace-nowrap text-right">
+                                                    <Button
+                                                        variant="ghost"
+                                                        size="sm"
+                                                        aria-label={`Modifier la destination du ${n.number}`}
+                                                        onClick={() => setNumberEdit({ number: n.number, existing: true, destination: currentDestination(n) })}
+                                                    >
+                                                        <Pencil /> Destination
+                                                    </Button>
+                                                    {!n.ai_workflow_id && (
+                                                        <Button
+                                                            variant="ghost"
+                                                            size="sm"
+                                                            className="text-destructive"
+                                                            aria-label={`Supprimer le numéro ${n.number}`}
+                                                            onClick={async () => {
+                                                                if (!window.confirm(`Supprimer le numéro ${n.number} du PBX ?`)) return;
+                                                                if (await run(() => removeNumberApiV1PbxNumbersNumberDelete({ path: { number: n.number } }), "Numéro supprimé", "Suppression impossible"))
+                                                                    void loadInventory();
+                                                            }}
+                                                        >
+                                                            <Trash2 />
+                                                        </Button>
+                                                    )}
                                                     {n.ai_workflow_id && (
                                                         <Button
                                                             variant="ghost"
@@ -526,6 +639,31 @@ export default function PbxPage() {
                                 </Table>
                             )}
                         </PageSection>
+                    </TabsContent>
+
+                    <TabsContent value="menus">
+                        <MenusTab
+                            menus={menus}
+                            sources={sources}
+                            onChanged={() => {
+                                void loadMenus();
+                                void loadInventory();
+                            }}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="lines">
+                        {lines === null ? (
+                            <Skeleton className="h-64 w-full" />
+                        ) : (
+                            <TrunksTab
+                                trunks={lines.trunks}
+                                routes={lines.routes}
+                                presets={lines.presets}
+                                error={lines.error}
+                                onChanged={() => void loadLines()}
+                            />
+                        )}
                     </TabsContent>
 
                     <TabsContent value="logs">
@@ -584,70 +722,7 @@ export default function PbxPage() {
                 />
             )}
 
-            <Dialog open={routing !== null} onOpenChange={(open) => !open && setRouting(null)}>
-                <DialogContent>
-                    <DialogHeader>
-                        <DialogTitle>Router un numéro vers un agent IA</DialogTitle>
-                        <DialogDescription>
-                            Le numéro est créé sur le PBX et les appels sont décrochés par l&apos;agent choisi. Un numéro qui
-                            a déjà une destination (poste, file…) n&apos;est jamais écrasé.
-                        </DialogDescription>
-                    </DialogHeader>
-                    {routing && (
-                        <div className="space-y-3">
-                            <div className="space-y-1">
-                                <Label htmlFor="route-number">Numéro</Label>
-                                <Input
-                                    id="route-number"
-                                    placeholder="+225 27 00 00 00 99"
-                                    value={routing.number}
-                                    onChange={(e) => setRouting({ ...routing, number: e.target.value })}
-                                />
-                            </div>
-                            <div className="space-y-1">
-                                <Label>Agent IA</Label>
-                                <Select value={routing.workflowId} onValueChange={(v) => setRouting({ ...routing, workflowId: v })}>
-                                    <SelectTrigger aria-label="Agent IA" className="w-full">
-                                        <SelectValue placeholder="Choisir un agent" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {workflows.map((w) => (
-                                            <SelectItem key={w.id} value={String(w.id)}>
-                                                {w.name}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                        </div>
-                    )}
-                    <DialogFooter>
-                        <Button variant="outline" onClick={() => setRouting(null)}>
-                            Annuler
-                        </Button>
-                        <Button
-                            disabled={!routing?.number.trim() || !routing?.workflowId}
-                            onClick={async () => {
-                                if (!routing) return;
-                                const done = await run(
-                                    () =>
-                                        routeNumberApiV1PbxRoutesPost({
-                                            body: { number: routing.number, workflow_id: Number(routing.workflowId) },
-                                        }),
-                                    `Le ${routing.number} sonne maintenant chez l'agent IA`,
-                                    "Routage impossible",
-                                );
-                                if (done) {
-                                    setRouting(null);
-                                    void loadInventory();
-                                }
-                            }}
-                        >
-                            <Bot /> Router
-                        </Button>
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
+            <NumberDialog edit={numberEdit} onClose={() => setNumberEdit(null)} sources={sources} onDone={() => void loadInventory()} />
         </PageLayout>
     );
 }

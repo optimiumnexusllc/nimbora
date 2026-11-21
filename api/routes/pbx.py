@@ -12,7 +12,7 @@ from api.db import db_client
 from api.db.models import UserModel
 from api.services.auth.depends import get_user
 from api.services.branding import brand
-from api.services.pbx import admin
+from api.services.pbx import admin, ivr, numbers, trunks
 from api.services.pbx import service as pbx
 from api.services.pbx.client import PbxAuthError, PbxError, PbxUnavailable
 
@@ -480,6 +480,224 @@ async def sync_schedule(
             request.voicemail_id,
         )
     )
+
+
+# ----------------------------------------------------------- voice menus
+
+
+class MenuRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    spec: ivr.MenuSpec
+
+
+class PromptPreviewRequest(BaseModel):
+    text: str = Field(min_length=1, max_length=800)
+    voice_workflow_id: int | None = None
+
+
+@router.get("/menus")
+async def list_menus(user: UserModel = Depends(get_user)) -> list[dict[str, Any]]:
+    """Voice menus designed in the visual editor (draft and published)."""
+    return [ivr.serialize(m) for m in await db_client.list_pbx_ivr_menus(_org(user))]
+
+
+@router.post("/menus", status_code=201)
+async def create_menu(
+    request: MenuRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    row = await _call(ivr.create_menu(_org(user), request.name, request.spec))
+    return ivr.serialize(row)
+
+
+@router.put("/menus/{menu_id}")
+async def update_menu(
+    menu_id: int, request: MenuRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    row = await _call(ivr.update_menu(_org(user), menu_id, request.name, request.spec))
+    return ivr.serialize(row)
+
+
+@router.post("/menus/{menu_id}/publish")
+async def publish_menu(
+    menu_id: int, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    """Speak the prompts with the organization's voice and publish on the PBX."""
+    return await _call(ivr.publish_menu(_org(user), menu_id))
+
+
+@router.delete("/menus/{menu_id}", status_code=204)
+async def delete_menu(menu_id: int, user: UserModel = Depends(get_user)):
+    await _call(ivr.delete_menu(_org(user), menu_id))
+    return Response(status_code=204)
+
+
+@router.post("/menus/spoken-text")
+async def menu_spoken_text(
+    spec: ivr.MenuSpec, user: UserModel = Depends(get_user)
+) -> dict[str, str]:
+    """What callers will hear (the menu text written from the choices)."""
+    _org(user)
+    return {"greeting": spec.greeting_text.strip(), "menu": spec.spoken_menu()}
+
+
+@router.post(
+    "/prompts/preview",
+    response_class=Response,
+    responses={200: {"content": {"audio/wav": {}}}},
+)
+async def preview_prompt(
+    request: PromptPreviewRequest, user: UserModel = Depends(get_user)
+) -> Response:
+    """Listen to a prompt before publishing (telephone quality, 8 kHz)."""
+    from api.services.pbx.prompts import synthesize_prompt
+
+    audio = await _call(
+        synthesize_prompt(
+            _org(user), request.text, voice_workflow_id=request.voice_workflow_id
+        )
+    )
+    return Response(
+        content=audio, media_type="audio/wav", headers={"Cache-Control": "no-store"}
+    )
+
+
+# --------------------------------------------------- numbers (DIDs)
+
+
+class NumberRequest(BaseModel):
+    number: str = Field(min_length=2, max_length=32)
+    destination: ivr.MenuAction
+
+
+@router.put("/numbers")
+async def set_number_destination(
+    request: NumberRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    """Where a public number rings (created on the PBX if new)."""
+    return await _call(
+        numbers.set_number_destination(_org(user), request.number, request.destination)
+    )
+
+
+@router.delete("/numbers/{number}", status_code=204)
+async def remove_number(number: str, user: UserModel = Depends(get_user)):
+    if not await _call(numbers.remove_number(_org(user), number)):
+        raise HTTPException(status_code=404, detail="Numéro inconnu du PBX")
+    return Response(status_code=204)
+
+
+# ------------------------------------------ operator lines & routes
+
+
+class TrunkRequest(BaseModel):
+    label: str = Field(min_length=1, max_length=128)
+    host: str = Field(min_length=1, max_length=253)
+    port: int = Field(default=5060, ge=1, le=65535)
+    transport: Literal["udp", "tcp", "tls"] = "udp"
+    username: str = Field(default="", max_length=64)
+    password: str = Field(default="", max_length=128)
+    registration: bool = Field(
+        default=True, description="Register with the operator (login/password)."
+    )
+    caller_id_format: Literal["+E164", "E164", "national"] = "+E164"
+
+
+class DialRuleModel(BaseModel):
+    pattern: str = Field(min_length=1, max_length=40)
+    strip_digits: int = Field(default=0, ge=0, le=20)
+    prefix: str = Field(default="", max_length=20)
+    external_prefix: str = Field(default="", max_length=20)
+    caller_id: str = Field(default="", max_length=24)
+
+
+class OutboundRouteRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    trunk_ids: list[int] = Field(min_length=1, max_length=10)
+    rules: list[DialRuleModel] = Field(min_length=1, max_length=20)
+    internal_caller_id: bool = False
+    ring_seconds: int = Field(default=60, ge=10, le=300)
+
+
+class DialTestRequest(BaseModel):
+    dialled: str = Field(min_length=1, max_length=40)
+    rules: list[DialRuleModel] = Field(min_length=1, max_length=20)
+
+
+@router.get("/trunks")
+async def list_trunks(user: UserModel = Depends(get_user)) -> dict[str, Any]:
+    """Operator lines with their registration state and live calls."""
+    return await _call(trunks.list_trunks(_org(user)))
+
+
+@router.post("/trunks", status_code=201)
+async def create_trunk(
+    request: TrunkRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    return await _call(
+        trunks.create_trunk(
+            _org(user),
+            trunks.NewTrunk(
+                **request.model_dump(exclude={"registration"}),
+                register=request.registration,
+            ),
+        )
+    )
+
+
+@router.delete("/trunks/{trunk_id}", status_code=204)
+async def delete_trunk(trunk_id: int, user: UserModel = Depends(get_user)):
+    await _call(trunks.delete_trunk(_org(user), trunk_id))
+    return Response(status_code=204)
+
+
+@router.get("/outbound-routes")
+async def list_outbound_routes(
+    user: UserModel = Depends(get_user),
+) -> dict[str, Any]:
+    routes = await _call(trunks.list_outbound_routes(_org(user)))
+    return {"routes": routes, "presets": trunks.PATTERN_PRESETS}
+
+
+@router.post("/outbound-routes", status_code=201)
+async def create_outbound_route(
+    request: OutboundRouteRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    spec = trunks.NewOutboundRoute(
+        name=request.name,
+        trunk_ids=request.trunk_ids,
+        rules=[trunks.DialRule(**r.model_dump()) for r in request.rules],
+        internal_caller_id=request.internal_caller_id,
+        ring_seconds=request.ring_seconds,
+    )
+    return await _call(trunks.create_outbound_route(_org(user), spec))
+
+
+@router.delete("/outbound-routes/{outcall_id}", status_code=204)
+async def delete_outbound_route(outcall_id: int, user: UserModel = Depends(get_user)):
+    await _call(trunks.delete_outbound_route(_org(user), outcall_id))
+    return Response(status_code=204)
+
+
+@router.post("/outbound-routes/test")
+async def test_dial(
+    request: DialTestRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    """Which rule a dialled number matches, and what the operator receives."""
+    _org(user)
+    for index, model in enumerate(request.rules):
+        rule = trunks.DialRule(**model.model_dump())
+        try:
+            rule.validate()
+        except pbx.PbxRouteError as error:
+            raise HTTPException(status_code=error.status, detail=str(error)) from error
+        if trunks.pattern_matches(rule.pattern, request.dialled):
+            return {
+                "matched": True,
+                "rule_index": index,
+                "sent": trunks.dialled_number(rule, request.dialled),
+                "caller_id": rule.caller_id or None,
+            }
+    return {"matched": False, "rule_index": None, "sent": None, "caller_id": None}
 
 
 class PasswordResetRequest(BaseModel):

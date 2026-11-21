@@ -1,6 +1,6 @@
 {
   "name": "nimbora-integration",
-  "description": "Platform integration: PBX management and administration, AI routing, events",
+  "description": "Platform integration: PBX management and administration, voice menus, operator lines, AI routing, events",
   "acl": [
     "auth.tenants.*.read",
     "confd.infos.read",
@@ -48,6 +48,32 @@
     "confd.incalls.*.read",
     "confd.incalls.*.schedules.*.update",
     "confd.incalls.*.schedules.*.delete",
-    "confd.voicemails.read"
+    "confd.voicemails.read",
+    "confd.incalls.*.update",
+    "confd.ivr.read",
+    "confd.ivr.*.read",
+    "confd.ivr.create",
+    "confd.ivr.*.update",
+    "confd.ivr.*.delete",
+    "confd.sounds.read",
+    "confd.sounds.create",
+    "confd.sounds.*.read",
+    "confd.sounds.*.files.*.update",
+    "confd.sounds.*.files.*.delete",
+    "confd.tenants.*.read",
+    "confd.sip.transports.read",
+    "confd.endpoints.sip.create",
+    "confd.endpoints.sip.*.delete",
+    "confd.trunks.read",
+    "confd.trunks.*.read",
+    "confd.trunks.create",
+    "confd.trunks.*.delete",
+    "confd.trunks.*.endpoints.sip.*.update",
+    "calld.trunks.read",
+    "confd.outcalls.read",
+    "confd.outcalls.create",
+    "confd.outcalls.*.delete",
+    "confd.outcalls.*.trunks.update",
+    "confd.outcalls.*.extensions.*.update"
   ]
 }

@@ -162,15 +162,24 @@ class PbxClient:
         json: Any = None,
         params: dict[str, Any] | None = None,
         tenant: bool = True,
+        content: bytes | None = None,
+        content_type: str | None = None,
     ) -> Any:
         url = f"{SERVICES[service]}{path}"
         for attempt in (0, 1):
             headers = {TOKEN_HEADER: await self.token(refresh=attempt == 1)}
             if tenant and self.settings.tenant_uuid:
                 headers[TENANT_HEADER] = self.settings.tenant_uuid
+            if content_type:
+                headers["Content-Type"] = content_type
             try:
                 response = await self._http.request(
-                    method, url, json=json, params=params, headers=headers
+                    method,
+                    url,
+                    json=json if content is None else None,
+                    content=content,
+                    params=params,
+                    headers=headers,
                 )
             except httpx.HTTPError as error:
                 raise PbxUnavailable(
@@ -400,6 +409,116 @@ class PbxClient:
             "confd", "DELETE", f"/incalls/{incall_id}/schedules/{schedule_id}"
         )
 
+    async def update_incall(self, incall_id: int, body: dict) -> None:
+        await self.request("confd", "PUT", f"/incalls/{incall_id}", json=body)
+
+    # -------------------------------------------- voice menus & sounds
+
+    async def ivrs(self) -> list[dict]:
+        return await self._items("confd", "/ivr", limit=500)
+
+    async def ivr(self, ivr_id: int) -> dict:
+        return await self.request("confd", "GET", f"/ivr/{ivr_id}")
+
+    async def create_ivr(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/ivr", json=body)
+
+    async def update_ivr(self, ivr_id: int, body: dict) -> None:
+        await self.request("confd", "PUT", f"/ivr/{ivr_id}", json=body)
+
+    async def delete_ivr(self, ivr_id: int) -> None:
+        await self.request("confd", "DELETE", f"/ivr/{ivr_id}")
+
+    async def sound_categories(self) -> list[dict]:
+        return await self._items("confd", "/sounds", limit=500)
+
+    async def create_sound_category(self, name: str) -> dict:
+        return await self.request("confd", "POST", "/sounds", json={"name": name})
+
+    async def sound_category(self, name: str, **params) -> dict:
+        return await self.request(
+            "confd", "GET", f"/sounds/{name}", params=params or None
+        )
+
+    async def upload_sound(
+        self, category: str, filename: str, audio: bytes, *, sound_format: str
+    ) -> None:
+        await self.request(
+            "confd",
+            "PUT",
+            f"/sounds/{category}/files/{filename}",
+            params={"format": sound_format},
+            content=audio,
+            content_type="application/octet-stream",
+        )
+
+    async def delete_sound(self, category: str, filename: str) -> None:
+        await self.request("confd", "DELETE", f"/sounds/{category}/files/{filename}")
+
+    # ------------------------------------------ operator lines (trunks)
+
+    async def tenant(self, tenant_uuid: str) -> dict:
+        """The PBX's view of the tenant (its generated SIP templates)."""
+        return await self.request("confd", "GET", f"/tenants/{tenant_uuid}")
+
+    async def sip_transports(self) -> list[dict]:
+        return await self._items("confd", "/sip/transports", limit=50)
+
+    async def create_endpoint_sip(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/endpoints/sip", json=body)
+
+    async def delete_endpoint_sip(self, sip_uuid: str) -> None:
+        await self.request("confd", "DELETE", f"/endpoints/sip/{sip_uuid}")
+
+    async def trunks(self) -> list[dict]:
+        return await self._items("confd", "/trunks", limit=500)
+
+    async def trunk(self, trunk_id: int) -> dict:
+        return await self.request("confd", "GET", f"/trunks/{trunk_id}")
+
+    async def create_trunk(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/trunks", json=body)
+
+    async def delete_trunk(self, trunk_id: int) -> None:
+        await self.request("confd", "DELETE", f"/trunks/{trunk_id}")
+
+    async def associate_trunk_endpoint_sip(self, trunk_id: int, sip_uuid: str) -> None:
+        await self.request(
+            "confd", "PUT", f"/trunks/{trunk_id}/endpoints/sip/{sip_uuid}"
+        )
+
+    async def trunk_statuses(self) -> list[dict]:
+        """Registration state and live call count of every trunk."""
+        return await self._items("calld", "/trunks")
+
+    async def outcalls(self) -> list[dict]:
+        return await self._items("confd", "/outcalls", limit=500)
+
+    async def create_outcall(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/outcalls", json=body)
+
+    async def delete_outcall(self, outcall_id: int) -> None:
+        await self.request("confd", "DELETE", f"/outcalls/{outcall_id}")
+
+    async def set_outcall_trunks(self, outcall_id: int, trunk_ids: list[int]) -> None:
+        """Ordered: the first trunk is tried first, the next ones on failure."""
+        await self.request(
+            "confd",
+            "PUT",
+            f"/outcalls/{outcall_id}/trunks",
+            json={"trunks": [{"id": t} for t in trunk_ids]},
+        )
+
+    async def associate_outcall_extension(
+        self, outcall_id: int, extension_id: int, dial_pattern: dict
+    ) -> None:
+        await self.request(
+            "confd",
+            "PUT",
+            f"/outcalls/{outcall_id}/extensions/{extension_id}",
+            json=dial_pattern,
+        )
+
     async def send_password_reset_email(self, login: str) -> None:
         """Ask the PBX to e-mail a reset link (white-label template)."""
         try:
@@ -506,4 +625,32 @@ REQUIRED_ACL: dict[str, str] = {
     "incall": "confd.incalls.{incall_id}.read",
     "associate_incall_schedule": "confd.incalls.{incall_id}.schedules.{schedule_id}.update",
     "dissociate_incall_schedule": "confd.incalls.{incall_id}.schedules.{schedule_id}.delete",
+    "update_incall": "confd.incalls.{incall_id}.update",
+    # voice menus & sounds
+    "ivrs": "confd.ivr.read",
+    "ivr": "confd.ivr.{ivr_id}.read",
+    "create_ivr": "confd.ivr.create",
+    "update_ivr": "confd.ivr.{ivr_id}.update",
+    "delete_ivr": "confd.ivr.{ivr_id}.delete",
+    "sound_categories": "confd.sounds.read",
+    "create_sound_category": "confd.sounds.create",
+    "sound_category": "confd.sounds.{sound_category}.read",
+    "upload_sound": "confd.sounds.{sound_category}.files.{sound_filename}.update",
+    "delete_sound": "confd.sounds.{sound_category}.files.{sound_filename}.delete",
+    # operator lines (trunks) and outbound routes
+    "tenant": "confd.tenants.{tenant_uuid}.read",
+    "sip_transports": "confd.sip.transports.read",
+    "create_endpoint_sip": "confd.endpoints.sip.create",
+    "delete_endpoint_sip": "confd.endpoints.sip.{sip_uuid}.delete",
+    "trunks": "confd.trunks.read",
+    "trunk": "confd.trunks.{trunk_id}.read",
+    "create_trunk": "confd.trunks.create",
+    "delete_trunk": "confd.trunks.{trunk_id}.delete",
+    "associate_trunk_endpoint_sip": "confd.trunks.{trunk_id}.endpoints.sip.{sip_uuid}.update",
+    "trunk_statuses": "calld.trunks.read",
+    "outcalls": "confd.outcalls.read",
+    "create_outcall": "confd.outcalls.create",
+    "delete_outcall": "confd.outcalls.{outcall_id}.delete",
+    "set_outcall_trunks": "confd.outcalls.{outcall_id}.trunks.update",
+    "associate_outcall_extension": "confd.outcalls.{outcall_id}.extensions.{extension_id}.update",
 }

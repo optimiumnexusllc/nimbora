@@ -29,6 +29,7 @@ class FakePbx:
         self.contexts = [
             {"id": 1, "name": "from-extern", "type": "incall", "tenant_uuid": TENANT},
             {"id": 2, "name": "default", "type": "internal", "tenant_uuid": TENANT},
+            {"id": 3, "name": "to-extern", "type": "outcall", "tenant_uuid": TENANT},
         ]
         self.extensions: list[dict] = [
             {"id": 10, "exten": "1001", "context": "default"},
@@ -46,6 +47,7 @@ class FakePbx:
         ]
         self.users = [
             {
+                "id": 1,
                 "uuid": "u-1",
                 "firstname": "Koffi",
                 "lastname": "Yao",
@@ -54,6 +56,7 @@ class FakePbx:
                 "enabled": True,
             },
             {
+                "id": 2,
                 "uuid": "u-2",
                 "firstname": "Aya",
                 "lastname": "Diallo",
@@ -128,6 +131,33 @@ class FakePbx:
         self.schedules: list[dict] = []
         self.fallbacks: dict[int, dict] = {}
         self.fail_agent_creation = False
+        # voice menus & sounds
+        self.ivrs: list[dict] = []
+        self.sound_categories: dict[str, dict[str, bytes]] = {}
+        # operator lines & outbound routes
+        self.tenant_templates = {
+            "uuid": TENANT,
+            "global_sip_template_uuid": "tpl-global",
+            "webrtc_sip_template_uuid": "tpl-webrtc",
+            "registration_trunk_sip_template_uuid": "tpl-trunk",
+        }
+        self.transports = [
+            {
+                "uuid": "tr-udp",
+                "name": "transport-udp",
+                "options": [["protocol", "udp"]],
+            },
+            {
+                "uuid": "tr-tls",
+                "name": "transport-tls",
+                "options": [["protocol", "tls"]],
+            },
+        ]
+        self.endpoints_sip: dict[str, dict] = {}
+        self.trunks: list[dict] = []
+        self.trunk_status: dict[int, dict] = {}
+        self.outcalls: list[dict] = []
+        self.fail_trunk_association = False
         self._next = 100
 
     # ------------------------------------------------------------------
@@ -146,7 +176,12 @@ class FakePbx:
     def handle(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
         method = request.method
-        body = json.loads(request.content) if request.content else None
+        body = (
+            json.loads(request.content)
+            if request.content
+            and request.headers.get("content-type") != "application/octet-stream"
+            else None
+        )
         self.requests.append((method, path, dict(request.headers)))
         service = path.split("/")[2] if path.startswith("/api/") else ""
         if service in self.down:
@@ -513,6 +548,254 @@ class FakePbx:
             else:
                 current[:] = []
             return httpx.Response(204)
+
+        # ----- incall update
+        m = re.fullmatch(rf"{prefix}/incalls/(\d+)", path)
+        if m and method == "PUT":
+            incall = next((i for i in self.incalls if i["id"] == int(m.group(1))), None)
+            if incall is None:
+                return httpx.Response(404, json=["Resource Not Found - Incall"])
+            if "destination" not in body:
+                return httpx.Response(400, json=["Input Error - field 'destination'"])
+            incall.update(body)
+            return httpx.Response(204)
+
+        # ----- voice menus
+        if path == f"{prefix}/ivr" and method == "GET":
+            return httpx.Response(
+                200, json={"items": self.ivrs, "total": len(self.ivrs)}
+            )
+        if path == f"{prefix}/ivr" and method == "POST":
+            if not body.get("name") or not body.get("menu_sound"):
+                return httpx.Response(
+                    400, json=["Input Error - field 'menu_sound': Missing data"]
+                )
+            for choice in body.get("choices") or []:
+                if not re.fullmatch(r"[0-9*#]{1,255}", choice.get("exten", "")):
+                    return httpx.Response(400, json=["Input Error - field 'exten'"])
+            ivr = {"id": self._id(), "incalls": [], **body}
+            self.ivrs.append(ivr)
+            return httpx.Response(201, json=ivr)
+        m = re.fullmatch(rf"{prefix}/ivr/(\d+)", path)
+        if m:
+            ivr = next((i for i in self.ivrs if i["id"] == int(m.group(1))), None)
+            if ivr is None:
+                return httpx.Response(404, json=["Resource Not Found - IVR"])
+            if method == "GET":
+                incalls = [
+                    {"id": i["id"], "extensions": i["extensions"]}
+                    for i in self.incalls
+                    if (i.get("destination") or {}).get("type") == "ivr"
+                    and i["destination"].get("ivr_id") == ivr["id"]
+                ]
+                return httpx.Response(200, json={**ivr, "incalls": incalls})
+            if method == "PUT":
+                if not body.get("menu_sound"):
+                    return httpx.Response(400, json=["Input Error - menu_sound"])
+                ivr.update(body)
+                return httpx.Response(204)
+            self.ivrs.remove(ivr)
+            return httpx.Response(204)
+
+        # ----- sounds
+        if path == f"{prefix}/sounds" and method == "GET":
+            items = [
+                {"name": name, "tenant_uuid": TENANT} for name in self.sound_categories
+            ] + [{"name": "system", "tenant_uuid": TENANT}]
+            return httpx.Response(200, json={"items": items, "total": len(items)})
+        if path == f"{prefix}/sounds" and method == "POST":
+            name = body.get("name", "")
+            if (
+                not re.fullmatch(r"[a-zA-Z0-9][-_.a-zA-Z0-9]+", name)
+                or name == "system"
+            ):
+                return httpx.Response(400, json=["Input Error - field 'name'"])
+            if name in self.sound_categories:
+                return httpx.Response(
+                    400, json=["Resource Error - Sound already exists"]
+                )
+            self.sound_categories[name] = {}
+            return httpx.Response(201, json={"name": name, "files": []})
+        m = re.fullmatch(rf"{prefix}/sounds/([^/]+)", path)
+        if m and method == "GET":
+            category = m.group(1)
+            if category not in self.sound_categories:
+                return httpx.Response(404, json=["Resource Not Found - Sound"])
+            wanted = request.url.params.get("file_name")
+            files = [
+                {
+                    "name": name,
+                    "formats": [
+                        {
+                            "format": "slin",
+                            "language": None,
+                            "path": f"/var/lib/wazo/sounds/tenants/{TENANT}/{category}/{name}",
+                        }
+                    ],
+                }
+                for name in self.sound_categories[category]
+                if not wanted or name == wanted
+            ]
+            return httpx.Response(200, json={"name": category, "files": files})
+        m = re.fullmatch(rf"{prefix}/sounds/([^/]+)/files/([^/]+)", path)
+        if m:
+            category, filename = m.group(1), m.group(2)
+            if category not in self.sound_categories:
+                return httpx.Response(404, json=["Resource Not Found - Sound"])
+            if method == "PUT":
+                if request.headers.get("content-type") != "application/octet-stream":
+                    return httpx.Response(400, json=["Bad content type"])
+                if request.content[:4] != b"RIFF":
+                    return httpx.Response(400, json=["Not a WAV file"])
+                self.sound_categories[category][filename] = request.content
+                return httpx.Response(204)
+            if self.sound_categories[category].pop(filename, None) is None:
+                return httpx.Response(404, json=["Resource Not Found - Sound file"])
+            return httpx.Response(204)
+
+        # ----- operator lines
+        if path == f"{prefix}/tenants/{TENANT}" and method == "GET":
+            return httpx.Response(200, json=self.tenant_templates)
+        if path == f"{prefix}/sip/transports":
+            return httpx.Response(
+                200, json={"items": self.transports, "total": len(self.transports)}
+            )
+        if path == f"{prefix}/endpoints/sip" and method == "POST":
+            known = {t["uuid"] for t in self.templates} | {"tpl-trunk"}
+            if any(t.get("uuid") not in known for t in body.get("templates") or []):
+                return httpx.Response(
+                    404, json=["Resource Not Found - EndpointSIPTemplate"]
+                )
+            endpoint = {"uuid": str(uuid.uuid4()), **body}
+            self.endpoints_sip[endpoint["uuid"]] = endpoint
+            return httpx.Response(201, json=endpoint)
+        m = re.fullmatch(rf"{prefix}/endpoints/sip/([^/]+)", path)
+        if m and method == "DELETE":
+            if self.endpoints_sip.pop(m.group(1), None) is None:
+                return httpx.Response(404, json=["Resource Not Found - EndpointSIP"])
+            return httpx.Response(204)
+        if path == f"{prefix}/trunks" and method == "GET":
+            return httpx.Response(
+                200, json={"items": self.trunks, "total": len(self.trunks)}
+            )
+        if path == f"{prefix}/trunks" and method == "POST":
+            trunk = {
+                "id": self._id(),
+                "endpoint_sip": None,
+                "outcalls": [],
+                "context": body.get("context"),
+                "outgoing_caller_id_format": body.get(
+                    "outgoing_caller_id_format", "+E164"
+                ),
+            }
+            self.trunks.append(trunk)
+            return httpx.Response(201, json=trunk)
+        m = re.fullmatch(rf"{prefix}/trunks/(\d+)", path)
+        if m:
+            trunk = next((t for t in self.trunks if t["id"] == int(m.group(1))), None)
+            if trunk is None:
+                return httpx.Response(404, json=["Resource Not Found - Trunk"])
+            if method == "GET":
+                return httpx.Response(200, json=trunk)
+            self.trunks.remove(trunk)
+            return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/trunks/(\d+)/endpoints/sip/([^/]+)", path)
+        if m and method == "PUT":
+            if self.fail_trunk_association:
+                return httpx.Response(
+                    400, json=["Resource Error - Trunk already associated"]
+                )
+            trunk = next((t for t in self.trunks if t["id"] == int(m.group(1))), None)
+            endpoint = self.endpoints_sip.get(m.group(2))
+            if trunk is None or endpoint is None:
+                return httpx.Response(404, json=["Resource Not Found"])
+            trunk["endpoint_sip"] = {
+                "uuid": endpoint["uuid"],
+                "label": endpoint.get("label"),
+                "name": endpoint.get("name"),
+                "auth_section_options": [
+                    o
+                    for o in endpoint.get("auth_section_options") or []
+                    if o[0] == "username"
+                ],
+                "registration_section_options": [
+                    o
+                    for o in endpoint.get("registration_section_options") or []
+                    if o[0] == "client_uri"
+                ],
+            }
+            return httpx.Response(204)
+        if path == f"{prefix}/outcalls" and method == "GET":
+            return httpx.Response(
+                200, json={"items": self.outcalls, "total": len(self.outcalls)}
+            )
+        if path == f"{prefix}/outcalls" and method == "POST":
+            if not body.get("name"):
+                return httpx.Response(400, json=["Input Error - field 'name'"])
+            outcall = {"id": self._id(), "trunks": [], "extensions": [], **body}
+            self.outcalls.append(outcall)
+            return httpx.Response(201, json=outcall)
+        m = re.fullmatch(rf"{prefix}/outcalls/(\d+)", path)
+        if m and method == "DELETE":
+            outcall = next(
+                (o for o in self.outcalls if o["id"] == int(m.group(1))), None
+            )
+            if outcall is None:
+                return httpx.Response(404, json=["Resource Not Found - Outcall"])
+            self.outcalls.remove(outcall)
+            for trunk in self.trunks:
+                trunk["outcalls"] = [
+                    o for o in trunk["outcalls"] if o["id"] != outcall["id"]
+                ]
+            return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/outcalls/(\d+)/trunks", path)
+        if m and method == "PUT":
+            outcall = next(
+                (o for o in self.outcalls if o["id"] == int(m.group(1))), None
+            )
+            if outcall is None:
+                return httpx.Response(404, json=["Resource Not Found - Outcall"])
+            trunks = []
+            for item in body.get("trunks") or []:
+                trunk = next((t for t in self.trunks if t["id"] == item["id"]), None)
+                if trunk is None:
+                    return httpx.Response(404, json=["Resource Not Found - Trunk"])
+                trunks.append(trunk)
+            outcall["trunks"] = [
+                {"id": t["id"], "endpoint_sip": t.get("endpoint_sip")} for t in trunks
+            ]
+            for trunk in trunks:
+                trunk["outcalls"].append({"id": outcall["id"], "name": outcall["name"]})
+            return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/outcalls/(\d+)/extensions/(\d+)", path)
+        if m and method == "PUT":
+            outcall = next(
+                (o for o in self.outcalls if o["id"] == int(m.group(1))), None
+            )
+            extension = next(
+                (e for e in self.extensions if e["id"] == int(m.group(2))), None
+            )
+            if outcall is None or extension is None:
+                return httpx.Response(404, json=["Resource Not Found"])
+            if extension["context"] != "to-extern":
+                return httpx.Response(
+                    400, json=["Resource Error - not an outcall context"]
+                )
+            outcall["extensions"].append({**body, **extension})
+            return httpx.Response(204)
+        if path == "/api/calld/1.0/trunks":
+            items = [
+                {
+                    "id": t["id"],
+                    "technology": "sip",
+                    "name": (t.get("endpoint_sip") or {}).get("name"),
+                    **self.trunk_status.get(
+                        t["id"], {"registered": False, "current_call_count": 0}
+                    ),
+                }
+                for t in self.trunks
+            ]
+            return httpx.Response(200, json={"items": items, "total": len(items)})
 
         if path == "/api/calld/1.0/calls":
             return httpx.Response(200, json={"items": self.calls})

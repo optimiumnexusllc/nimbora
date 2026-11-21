@@ -173,6 +173,14 @@ def _describe_destination(destination: dict | None) -> str:
     return labels.get(kind or "", kind or "—")
 
 
+def _destination_target(destination: dict | None) -> int | None:
+    destination = destination or {}
+    for key in ("queue_id", "user_id", "voicemail_id", "ivr_id", "group_id"):
+        if destination.get(key) is not None:
+            return destination[key]
+    return None
+
+
 async def inventory(organization_id: int, **client_kwargs) -> dict[str, Any]:
     """Everything the PBX page shows. Each section fails on its own."""
     from api.db import db_client
@@ -223,6 +231,7 @@ async def inventory(organization_id: int, **client_kwargs) -> dict[str, Any]:
             }
     users = [
         {
+            "id": u.get("id"),
             "uuid": u.get("uuid"),
             "name": " ".join(
                 p for p in (u.get("firstname"), u.get("lastname")) if p
@@ -292,6 +301,12 @@ async def inventory(organization_id: int, **client_kwargs) -> dict[str, Any]:
                     "destination": "Agent IA"
                     if ai
                     else _describe_destination(incall.get("destination")),
+                    "destination_type": "ai"
+                    if ai
+                    else (incall.get("destination") or {}).get("type"),
+                    "destination_target_id": _destination_target(
+                        incall.get("destination")
+                    ),
                     "ai_workflow_id": row.inbound_workflow_id if ai else None,
                     "ai_workflow_name": workflows.get(row.inbound_workflow_id)
                     if ai
@@ -450,8 +465,35 @@ async def unroute_number(organization_id: int, number: str, **client_kwargs) -> 
         return False
     route = row.extra_metadata[ROUTE_METADATA_KEY]
     async with client_for(connection, **client_kwargs) as client:
+        if route.get("adopted"):
+            # The number existed before the AI took it: give it back its
+            # previous destination instead of deleting it.
+            try:
+                current = await client.incall(route["incall_id"])
+                body = {
+                    k: v
+                    for k, v in (current or {}).items()
+                    if k
+                    in {
+                        "preprocess_subroutine",
+                        "greeting_sound",
+                        "caller_id_mode",
+                        "caller_id_name",
+                        "description",
+                    }
+                }
+                body["destination"] = route.get("previous_destination") or {
+                    "type": "none"
+                }
+                await client.update_incall(route["incall_id"], body)
+            except PbxError as error:
+                if error.status != 404:
+                    raise
         for action, ident in (
-            (client.delete_incall, route.get("incall_id")),
+            (
+                client.delete_incall,
+                None if route.get("adopted") else route.get("incall_id"),
+            ),
             (client.delete_extension, route.get("extension_id")),
         ):
             if ident is None:
