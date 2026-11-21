@@ -5,27 +5,49 @@
 <p align="center"><strong>Le centre d'appels qui pense, parle et décide.</strong></p>
 
 <p align="center">
-  Agents vocaux IA · centre d'appels humain · supervision en direct · IA souveraine · multi-entreprises
+  Agents vocaux IA · PBX d'entreprise en marque blanche · NIMBORA Softphone · supervision temps réel · IA souveraine
 </p>
 
 <p align="center">
   <a href="LICENSE"><img alt="Licence BSD-2" src="https://img.shields.io/badge/licence-BSD--2--Clause-7c3aed"></a>
+  <a href="https://github.com/optimiumnexusllc/nimbora/actions/workflows/softphone.yml"><img alt="NIMBORA Softphone" src="https://github.com/optimiumnexusllc/nimbora/actions/workflows/softphone.yml/badge.svg"></a>
   <img alt="Python 3.13" src="https://img.shields.io/badge/python-3.13-0ea5e9">
   <img alt="Next.js 15" src="https://img.shields.io/badge/Next.js-15-111827">
+  <img alt="Softphone" src="https://img.shields.io/badge/softphone-Windows%20%C2%B7%20macOS%20%C2%B7%20Linux%20%C2%B7%20Android%20%C2%B7%20iOS-06b6d4">
   <img alt="Auto-hébergé" src="https://img.shields.io/badge/IA-100%25%20auto--h%C3%A9berg%C3%A9e-10b981">
   <img alt="RGPD" src="https://img.shields.io/badge/RGPD%20%26%20PCI-int%C3%A9gr%C3%A9s-f59e0b">
 </p>
 
 <p align="center">
-  <img src="ui/public/brand/og-image.png" alt="NIMBORA" width="80%">
+  <a href="#ce-qui-rend-nimbora-différent">Fonctionnalités</a> ·
+  <a href="#installation-sur-un-vps">Installation</a> ·
+  <a href="#architecture">Architecture</a> ·
+  <a href="docs/">Documentation</a> ·
+  <a href="#feuille-de-route">Feuille de route</a>
 </p>
 
-NIMBORA est une plateforme de centre d'appels **100 % auto-hébergée** que vous proposez en
-abonnement à des entreprises. Chaque entreprise cliente dispose de ses agents vocaux IA, de ses
+<p align="center">
+  <img src="docs/images/github-social-preview.png" alt="NIMBORA : agents vocaux IA, softphone avec la fiche de l'IA, supervision temps réel" width="92%">
+</p>
+
+NIMBORA est une plateforme de centre d'appels **100 % auto-hébergée et en marque blanche** que
+vous proposez en abonnement à des entreprises. Chaque entreprise cliente dispose de ses agents vocaux IA, de ses
 files d'attente et de ses conseillers humains, sur **votre** serveur et avec **vos** modèles d'IA.
 Les agents IA décrochent, comprennent, agissent avec des outils, se souviennent de chaque client,
 passent la main à un humain avec un résumé, rappellent les clients perdus, et un superviseur peut
-tout suivre et intervenir en direct.
+tout suivre et intervenir en direct. Côté humains, un **PBX d'entreprise à votre marque** (postes,
+files, serveurs vocaux, lignes opérateurs, enregistrements) et **NIMBORA Softphone** sur
+ordinateur, mobile et navigateur complètent la plateforme.
+
+| En un coup d'œil | |
+|---|---|
+| 🤖 **Agents vocaux IA** | décrochent 24 h/24, agissent (rendez-vous, tickets, SMS), se souviennent de chaque client, parlent la langue de l'appelant |
+| 🤝 **Passation avec contexte** | l'IA transfère vers une file ou un poste ; le conseiller voit motif, résumé et humeur dès la sonnerie |
+| ☎️ **PBX d'entreprise** | moteur Wazo Platform à votre marque, administré entièrement depuis NIMBORA |
+| 📱 **NIMBORA Softphone** | Windows, macOS, Linux, Android, iPhone et navigateur, jumelage par QR code |
+| 🎧 **Supervision temps réel** | appels IA et humains sur un écran, écoute / chuchotement / intervention, statistiques de files |
+| 🔁 **Aucun client perdu** | appels manqués et transferts abandonnés rappelés automatiquement par un agent IA |
+| 🛡️ **Souverain et conforme** | IA auto-hébergée possible, RGPD, masquage PCI, numéros bloqués, journal des écoutes |
 
 ---
 
