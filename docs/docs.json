@@ -59,7 +59,8 @@
               "configurations/interruption",
               "configurations/tracing",
               "configurations/call-events",
-              "configurations/privacy"
+              "configurations/privacy",
+              "configurations/business-profile"
             ]
           },
           {

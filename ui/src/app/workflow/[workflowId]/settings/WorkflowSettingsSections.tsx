@@ -1,7 +1,9 @@
 "use client";
 
 import { format } from "date-fns";
-import { BookA, Brain, CalendarIcon, Clipboard, Download, ExternalLink, FileDown, Fingerprint, Languages, Loader2, Pause, PhoneOff, Play, Plus, Rocket, Settings, Trash2Icon, Upload, Variable, X } from "lucide-react";
+import { BookA, Brain, CalendarIcon, Clipboard, Download, ExternalLink, FileDown, Fingerprint, Languages, Loader2, Pause, PhoneOff, Play, Plus, Rocket, Settings,     Store,
+Trash2Icon, Upload, Variable, X,
+} from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -44,6 +46,7 @@ import {
 import { AnswerSupervisorFields, isVoicemailMessageMissing, readAnswerSupervisorSettings } from "../components/AnswerSupervisorFields";
 import { EmbedDialog } from "../components/EmbedDialog";
 import type { useWorkflowState } from "../hooks/useWorkflowState";
+import { BusinessProfileSection } from "./components/BusinessProfileSection";
 import {
     CallDispositionEditor,
     type CallDispositionRow,
@@ -66,6 +69,7 @@ const NAV_ITEMS = [
     { id: "models", label: "Model Configuration", icon: Brain },
     { id: "variables", label: "Template Variables", icon: Variable },
     { id: "dictionary", label: "Dictionary", icon: BookA },
+    { id: "business-profile", label: "Fiche entreprise", icon: Store },
     { id: "languages", label: "Languages", icon: Languages },
     { id: "prompt-caching", label: "Prompt Caching", icon: Brain },
     { id: "voicemail", label: "Voicemail & Screening", icon: PhoneOff },
@@ -1511,6 +1515,12 @@ export function WorkflowSettingsSections({
                             )}
 
                             {show("dictionary") && <DictionarySection dictionary={dictionary} onSave={saveDictionary} />}
+                            {show("business-profile") && (
+                                <BusinessProfileSection
+                                    workflowConfigurations={resolved}
+                                    onSave={(value) => saveWorkflowConfigurations(value, workflowName)}
+                                />
+                            )}
                             {show("languages") && (
                                 <LanguageDetectionSection
                                     workflowConfigurations={resolved}

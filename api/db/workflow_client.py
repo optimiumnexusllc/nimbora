@@ -337,6 +337,7 @@ class WorkflowClient(BaseDBClient):
         organization_id: int = None,
         *,
         created_via: str = "blank",
+        workflow_configurations: dict | None = None,
     ) -> WorkflowModel:
         if organization_id is not None:
             # SaaS plans cap the number of AI agents per tenant; covers every
@@ -353,6 +354,8 @@ class WorkflowClient(BaseDBClient):
                     organization_id=organization_id,
                     created_via=created_via,
                 )
+                if workflow_configurations is not None:
+                    new_workflow.workflow_configurations = workflow_configurations
                 session.add(new_workflow)
                 await session.flush()  # Flush to get the workflow ID
 

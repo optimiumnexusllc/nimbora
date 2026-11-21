@@ -201,6 +201,9 @@ class PipecatEngine:
         self._transfer_coordinator = None
         self.context = context
         self._call_context_vars = call_context_vars
+        # Company card loaded in initialize(); kept apart from the run's own
+        # context so it is never persisted with it.
+        self._business_context: dict = {}
         self._workflow_run_id = workflow_run_id
         self._node_transition_callback = node_transition_callback
         self._run_transition_variable_extraction_in_background = (
@@ -405,6 +408,17 @@ class PipecatEngine:
             except Exception as e:
                 logger.error(f"Error loading the organization disposition mapping: {e}")
 
+            # The company card every agent reads (never fails the call).
+            try:
+                from api.services.business.service import load_business_context
+
+                async with asyncio.timeout(2):
+                    self._business_context = await load_business_context(
+                        await self._get_organization_id(), self._workflow_run_id
+                    )
+            except Exception:
+                logger.warning("Business profile not loaded for this run")
+
             # Open persistent MCP server sessions for this call (degrades on failure)
             await self._open_mcp_sessions()
 
@@ -440,6 +454,11 @@ class PipecatEngine:
     def _format_prompt(self, prompt: str) -> str:
         """Delegate prompt formatting to the shared workflow.utils implementation."""
 
+        business = (getattr(self, "_business_context", None) or {}).get("business")
+        if business and "business" not in (self._call_context_vars or {}):
+            return render_template(
+                prompt, {**(self._call_context_vars or {}), "business": business}
+            )
         return render_template(prompt, self._call_context_vars)
 
     def _update_call_context_variables(self) -> None:
@@ -1021,6 +1040,9 @@ class PipecatEngine:
             supervisor_instructions=(
                 getattr(self, "_call_context_vars", None) or {}
             ).get("supervisor_instructions"),
+            business_profile=(getattr(self, "_business_context", None) or {}).get(
+                "business_profile"
+            ),
         )
         functions = await compose_functions_for_node(
             node=node, custom_tool_manager=manager
@@ -1088,6 +1110,9 @@ class PipecatEngine:
                     supervisor_instructions=(
                         getattr(self, "_call_context_vars", None) or {}
                     ).get("supervisor_instructions"),
+                    business_profile=(
+                        getattr(self, "_business_context", None) or {}
+                    ).get("business_profile"),
                 )
                 functions = await compose_functions_for_node(
                     node=target, custom_tool_manager=manager

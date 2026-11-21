@@ -1,0 +1,85 @@
+---
+title: "Business Profile and Industry Templates"
+description: "Describe your company once (identity, hours, offers, FAQ, skills) and every agent uses it on every channel. Start from a template for your industry."
+---
+
+## Overview
+
+**Mon entreprise** holds one card per company. Every agent reads it at the start of each exchange, on the phone, on WhatsApp and in the web chat. You update your hours or prices in one place, and all agents use the change from the next exchange on. You don't need to republish anything.
+
+The card contains:
+
+| Section | What the agents get |
+|---|---|
+| **Identity** | Company name, activity, assistant's first name, tone, presentation, phone, WhatsApp, e-mail, website, spoken languages |
+| **Hours and location** | Weekly opening hours with several ranges per day, exceptional closures, time zone, address, landmarks and map link |
+| **Offers and FAQ** | Up to 40 offers with price and category, 40 questions and answers, and your conditions (payment, delivery, cancellation…) |
+| **Skills** | Common behaviours applied by every agent (see below) and your own rules ("never promise a discount") |
+
+Agents also know whether you are **open right now**. This is computed in your time zone, with exceptional closures taken into account:
+
+> Maintenant : Fermé en ce moment (Noël). Réouverture demain à 09:00.
+
+The **Ce que lisent les agents** tab shows the exact text added to the agents' prompts, including changes you have not saved yet.
+
+<Frame caption="Ce que lisent les agents — the section added to every prompt">
+  <img src="/images/screenshots/business-preview.webp" alt="Preview of the business profile section as agents read it" />
+</Frame>
+
+<Frame caption="Mon entreprise — industry templates and the company card">
+  <img src="/images/screenshots/business-profile.webp" alt="Business profile page with industry templates and the identity form" />
+</Frame>
+
+## Common skills
+
+| Skill | The agent… |
+|---|---|
+| Répondre aux questions (FAQ) | Answers from the card and the FAQ, and says honestly when it doesn't know |
+| Horaires, adresse et itinéraire | Gives hours, address and directions, taking the current opening status into account |
+| Présenter les offres et les prix | Presents the card's offers and prices and never invents any |
+| Prendre un message | Takes a complete message: name, phone number, reason and best time to call back |
+| Prendre rendez-vous | Offers and books an appointment with the [appointment tool](/voice-agent/tools/book-appointment) |
+| Qualifier les prospects | Finds out a prospect's need, budget, timeline and contact details |
+| Passer la main à un humain | Offers an advisor (transfer or callback) when asked or when the person is unhappy |
+| Recueillir la satisfaction | Asks at the end whether the person is satisfied |
+
+## Industry templates
+
+Pick your industry at the top of the page. Each template brings:
+
+- **a method**: what a good agent in this trade does, step by step;
+- **the data to collect**: for real estate, these are project, property type, area, number of rooms, budget and move-in date;
+- **the outcomes to classify**: for example `visite_planifiee`, `prospect_qualifie` or `mandat_proprietaire`, shown in call history and reports;
+- **the skills** to switch on and the **tools** worth attaching;
+- **example** offers, FAQ and conditions to adapt.
+
+| Template | For |
+|---|---|
+| Accueil général | Any company: information, messages, routing |
+| Commerce et boutique | Products, prices, orders, delivery, returns, complaints |
+| Immobilier | Rentals and sales: project qualification, matching properties, viewings, owner mandates |
+| Hôtellerie et restauration | Availability, bookings, guest requests |
+| Assurance | Quotes, claims, file follow-up, certificates |
+| Clinique et cabinet médical | Appointments, practical information, emergency routing, no medical advice |
+| École et formation | Enrolment, programmes, fees, messages for staff |
+
+In the template window:
+
+- **Choisir ce métier** sets your industry and its skills. It can also pre-fill offers, FAQ and conditions that are still empty with examples to adapt. Content you have already entered is never replaced.
+- **Créer l'agent** creates a ready agent for the trade. It comes with the role and method, a greeting with your company and assistant name, the data to collect and the outcomes to classify. Your existing tools of the right kind (appointments, messages, tickets…) are attached to it. The confirmation lists the suggested tools you haven't set up yet.
+
+Every agent created this way reads the card at run time. One template therefore serves every company in the trade, and the agent stays up to date when the card changes.
+
+## Per agent
+
+The card is added to every agent's prompt by default. To control this for one agent:
+
+- **Turn it off**: in the agent's settings, under **Fiche entreprise**, turn off **Utiliser la fiche entreprise**. This suits test, survey or internal agents. Publish the agent to apply the change.
+- **Place it yourself**: write `{{business_profile}}` where you want the card to appear in a prompt. The card is then not appended a second time.
+- **Use single values**: `{{business.name}}`, `{{business.assistant_name}}`, `{{business.phone}}`, `{{business.whatsapp}}`, `{{business.email}}`, `{{business.website}}`, `{{business.address}}`, `{{business.city}}` and `{{business.opening_status}}` work in prompts and greetings.
+
+The card is added before the [customer memory](/integrations/telephony/whatsapp-messages#one-customer-history-across-channels) and the caller's language instructions.
+
+<Note>
+  The card is stored in your NIMBORA database with the rest of your organization's settings. It is sent only to the language model your agents use, like the rest of the prompt. Large catalogues (hundreds of products) don't belong in the card: keep the essentials there.
+</Note>

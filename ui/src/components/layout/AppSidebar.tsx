@@ -24,6 +24,7 @@ import {
   ReceiptText,
   Settings,
   ShieldCheck,
+  Store,
   TrendingUp,
   Users,
   Workflow,
@@ -94,6 +95,11 @@ const NAV_SECTIONS: SidebarNavSection[] = [
   {
     label: "CONSTRUIRE",
     items: [
+      {
+        title: "Mon entreprise",
+        url: "/business",
+        icon: Store,
+      },
       {
         title: "Agents vocaux",
         url: "/workflow",

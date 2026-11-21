@@ -324,6 +324,18 @@ export type AppendTextChatMessageRequest = {
 };
 
 /**
+ * ApplyTemplateRequest
+ */
+export type ApplyTemplateRequest = {
+    /**
+     * With Examples
+     *
+     * Fill empty offers, FAQ and policies with examples to adapt.
+     */
+    with_examples?: boolean;
+};
+
+/**
  * AppointmentResponse
  */
 export type AppointmentResponse = {
@@ -896,6 +908,117 @@ export type BuilderTurnRequest = {
     } | null;
     approval?: BuilderPlanApproval | null;
     tool_approval?: BuilderToolApproval | null;
+};
+
+/**
+ * BusinessProfile
+ */
+export type BusinessProfile = {
+    /**
+     * Enabled
+     *
+     * Give this card to every agent of the company.
+     */
+    enabled?: boolean;
+    /**
+     * Industry
+     */
+    industry?: 'general' | 'commerce' | 'real_estate' | 'hospitality' | 'insurance' | 'clinic' | 'education';
+    /**
+     * Name
+     */
+    name?: string;
+    /**
+     * Activity
+     *
+     * e.g. agence immobilière
+     */
+    activity?: string;
+    /**
+     * Description
+     */
+    description?: string;
+    /**
+     * Assistant Name
+     */
+    assistant_name?: string;
+    /**
+     * Tone
+     */
+    tone?: string;
+    /**
+     * Phone
+     */
+    phone?: string;
+    /**
+     * Whatsapp
+     */
+    whatsapp?: string;
+    /**
+     * Email
+     */
+    email?: string;
+    /**
+     * Website
+     */
+    website?: string;
+    /**
+     * Address
+     */
+    address?: string;
+    /**
+     * City
+     */
+    city?: string;
+    /**
+     * Country
+     */
+    country?: string;
+    /**
+     * Directions
+     *
+     * Landmarks, parking, access.
+     */
+    directions?: string;
+    /**
+     * Maps Url
+     */
+    maps_url?: string;
+    /**
+     * Timezone
+     */
+    timezone?: string;
+    /**
+     * Opening Hours
+     */
+    opening_hours?: {
+        [key: string]: Array<TimeRange>;
+    };
+    /**
+     * Closures
+     */
+    closures?: Array<Closure>;
+    /**
+     * Languages
+     */
+    languages?: Array<string>;
+    /**
+     * Offers
+     */
+    offers?: Array<Offer>;
+    /**
+     * Faq
+     */
+    faq?: Array<FaqEntry>;
+    /**
+     * Policies
+     */
+    policies?: Array<Policy>;
+    /**
+     * Instructions
+     */
+    instructions?: string;
+    skills?: Skills;
 };
 
 /**
@@ -1559,6 +1682,20 @@ export type CircuitBreakerConfigResponse = {
 };
 
 /**
+ * Closure
+ */
+export type Closure = {
+    /**
+     * Date
+     */
+    date: string;
+    /**
+     * Label
+     */
+    label?: string;
+};
+
+/**
  * CloudonixConfigurationRequest
  *
  * Request schema for Cloudonix configuration.
@@ -1836,6 +1973,40 @@ export type CreateApiKeyResponse = {
      * Created At
      */
     created_at: string;
+};
+
+/**
+ * CreateAgentRequest
+ */
+export type CreateAgentRequest = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Attach Tools
+     */
+    attach_tools?: boolean;
+};
+
+/**
+ * CreateAgentResponse
+ */
+export type CreateAgentResponse = {
+    /**
+     * Workflow Id
+     */
+    workflow_id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Missing Tools
+     *
+     * Suggested tool categories the company has not set up yet.
+     */
+    missing_tools: Array<string>;
 };
 
 /**
@@ -3195,6 +3366,20 @@ export type ExternalPbxFieldMapping = {
 };
 
 /**
+ * FAQEntry
+ */
+export type FaqEntry = {
+    /**
+     * Question
+     */
+    question: string;
+    /**
+     * Answer
+     */
+    answer: string;
+};
+
+/**
  * FallbackPolicy[ServiceSelection]
  */
 export type FallbackPolicyServiceSelection = {
@@ -4529,6 +4714,28 @@ export type NumberInputOptions = {
 };
 
 /**
+ * Offer
+ */
+export type Offer = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Price
+     */
+    price?: string;
+    /**
+     * Description
+     */
+    description?: string;
+    /**
+     * Category
+     */
+    category?: string;
+};
+
+/**
  * OnboardingState
  *
  * Per-user onboarding state, stored under UserConfigurationKey.ONBOARDING.
@@ -5081,6 +5288,20 @@ export type PlivoConfigurationRequest = {
 };
 
 /**
+ * Policy
+ */
+export type Policy = {
+    /**
+     * Title
+     */
+    title: string;
+    /**
+     * Content
+     */
+    content: string;
+};
+
+/**
  * PresenceRequest
  */
 export type PresenceRequest = {
@@ -5316,6 +5537,26 @@ export type ProcessDocumentRequestSchema = {
      * Retrieval mode: 'chunked' for vector search or 'full_document' for full text retrieval
      */
     retrieval_mode?: string;
+};
+
+/**
+ * ProfilePreview
+ */
+export type ProfilePreview = {
+    /**
+     * Prompt
+     *
+     * Section added to every agent's prompt (null when empty or off).
+     */
+    prompt: string | null;
+    /**
+     * Opening Status
+     */
+    opening_status: string | null;
+    /**
+     * Characters
+     */
+    characters: number;
 };
 
 /**
@@ -6777,6 +7018,60 @@ export type SignupRequest = {
 };
 
 /**
+ * SkillInfo
+ */
+export type SkillInfo = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Label
+     */
+    label: string;
+};
+
+/**
+ * Skills
+ *
+ * Common skills: behaviours every agent of the company applies.
+ */
+export type Skills = {
+    /**
+     * Answer Questions
+     */
+    answer_questions?: boolean;
+    /**
+     * Hours And Location
+     */
+    hours_and_location?: boolean;
+    /**
+     * Present Offers
+     */
+    present_offers?: boolean;
+    /**
+     * Take Message
+     */
+    take_message?: boolean;
+    /**
+     * Book Appointment
+     */
+    book_appointment?: boolean;
+    /**
+     * Qualify Leads
+     */
+    qualify_leads?: boolean;
+    /**
+     * Human Handoff
+     */
+    human_handoff?: boolean;
+    /**
+     * Collect Feedback
+     */
+    collect_feedback?: boolean;
+};
+
+/**
  * SlotPreviewResponse
  */
 export type SlotPreviewResponse = {
@@ -7544,6 +7839,70 @@ export type TelnyxConfigurationRequest = {
 };
 
 /**
+ * TemplateSummary
+ */
+export type TemplateSummary = {
+    /**
+     * Id
+     */
+    id: string;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Description
+     */
+    description: string;
+    /**
+     * Icon
+     */
+    icon: string;
+    /**
+     * Activity
+     */
+    activity: string;
+    /**
+     * Method
+     */
+    method: Array<string>;
+    /**
+     * Collects
+     */
+    collects: Array<string>;
+    /**
+     * Dispositions
+     */
+    dispositions: Array<string>;
+    /**
+     * Skills
+     */
+    skills: Array<string>;
+    /**
+     * Tools
+     */
+    tools: Array<string>;
+    /**
+     * Example Offers
+     */
+    example_offers: Array<{
+        [key: string]: string;
+    }>;
+    /**
+     * Example Faq
+     */
+    example_faq: Array<{
+        [key: string]: string;
+    }>;
+    /**
+     * Example Policies
+     */
+    example_policies: Array<{
+        [key: string]: string;
+    }>;
+};
+
+/**
  * TenantListResponse
  */
 export type TenantListResponse = {
@@ -7835,6 +8194,20 @@ export type TicketUpdateRequest = {
      * Assigned User Id
      */
     assigned_user_id?: number | null;
+};
+
+/**
+ * TimeRange
+ */
+export type TimeRange = {
+    /**
+     * Open
+     */
+    open: string;
+    /**
+     * Close
+     */
+    close: string;
 };
 
 /**
@@ -9398,6 +9771,12 @@ export type WorkflowConfigurationDefaults = {
      */
     context_compaction_enabled?: boolean;
     language_detection?: LanguageDetectionConfiguration;
+    /**
+     * Use Business Profile
+     *
+     * Append the company card (identity, hours, offers, FAQ, skills) to this agent's prompts.
+     */
+    use_business_profile?: boolean;
     /**
      * Tts Cache Enabled
      *
@@ -20946,6 +21325,293 @@ export type GetConversationApiV1WhatsappConversationsConversationIdGetResponses 
 };
 
 export type GetConversationApiV1WhatsappConversationsConversationIdGetResponse = GetConversationApiV1WhatsappConversationsConversationIdGetResponses[keyof GetConversationApiV1WhatsappConversationsConversationIdGetResponses];
+
+export type ReadProfileApiV1BusinessProfileGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/business/profile';
+};
+
+export type ReadProfileApiV1BusinessProfileGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadProfileApiV1BusinessProfileGetError = ReadProfileApiV1BusinessProfileGetErrors[keyof ReadProfileApiV1BusinessProfileGetErrors];
+
+export type ReadProfileApiV1BusinessProfileGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: BusinessProfile;
+};
+
+export type ReadProfileApiV1BusinessProfileGetResponse = ReadProfileApiV1BusinessProfileGetResponses[keyof ReadProfileApiV1BusinessProfileGetResponses];
+
+export type UpdateProfileApiV1BusinessProfilePutData = {
+    body: BusinessProfile;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/business/profile';
+};
+
+export type UpdateProfileApiV1BusinessProfilePutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateProfileApiV1BusinessProfilePutError = UpdateProfileApiV1BusinessProfilePutErrors[keyof UpdateProfileApiV1BusinessProfilePutErrors];
+
+export type UpdateProfileApiV1BusinessProfilePutResponses = {
+    /**
+     * Successful Response
+     */
+    200: BusinessProfile;
+};
+
+export type UpdateProfileApiV1BusinessProfilePutResponse = UpdateProfileApiV1BusinessProfilePutResponses[keyof UpdateProfileApiV1BusinessProfilePutResponses];
+
+export type PreviewProfileApiV1BusinessProfilePreviewPostData = {
+    body: BusinessProfile;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/business/profile/preview';
+};
+
+export type PreviewProfileApiV1BusinessProfilePreviewPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PreviewProfileApiV1BusinessProfilePreviewPostError = PreviewProfileApiV1BusinessProfilePreviewPostErrors[keyof PreviewProfileApiV1BusinessProfilePreviewPostErrors];
+
+export type PreviewProfileApiV1BusinessProfilePreviewPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ProfilePreview;
+};
+
+export type PreviewProfileApiV1BusinessProfilePreviewPostResponse = PreviewProfileApiV1BusinessProfilePreviewPostResponses[keyof PreviewProfileApiV1BusinessProfilePreviewPostResponses];
+
+export type ListSkillsApiV1BusinessSkillsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/business/skills';
+};
+
+export type ListSkillsApiV1BusinessSkillsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListSkillsApiV1BusinessSkillsGetError = ListSkillsApiV1BusinessSkillsGetErrors[keyof ListSkillsApiV1BusinessSkillsGetErrors];
+
+export type ListSkillsApiV1BusinessSkillsGetResponses = {
+    /**
+     * Response List Skills Api V1 Business Skills Get
+     *
+     * Successful Response
+     */
+    200: Array<SkillInfo>;
+};
+
+export type ListSkillsApiV1BusinessSkillsGetResponse = ListSkillsApiV1BusinessSkillsGetResponses[keyof ListSkillsApiV1BusinessSkillsGetResponses];
+
+export type ListTemplatesApiV1BusinessTemplatesGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/business/templates';
+};
+
+export type ListTemplatesApiV1BusinessTemplatesGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListTemplatesApiV1BusinessTemplatesGetError = ListTemplatesApiV1BusinessTemplatesGetErrors[keyof ListTemplatesApiV1BusinessTemplatesGetErrors];
+
+export type ListTemplatesApiV1BusinessTemplatesGetResponses = {
+    /**
+     * Response List Templates Api V1 Business Templates Get
+     *
+     * Successful Response
+     */
+    200: Array<TemplateSummary>;
+};
+
+export type ListTemplatesApiV1BusinessTemplatesGetResponse = ListTemplatesApiV1BusinessTemplatesGetResponses[keyof ListTemplatesApiV1BusinessTemplatesGetResponses];
+
+export type ApplyTemplateApiV1BusinessTemplatesTemplateIdApplyPostData = {
+    body: ApplyTemplateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Template Id
+         */
+        template_id: string;
+    };
+    query?: never;
+    url: '/api/v1/business/templates/{template_id}/apply';
+};
+
+export type ApplyTemplateApiV1BusinessTemplatesTemplateIdApplyPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ApplyTemplateApiV1BusinessTemplatesTemplateIdApplyPostError = ApplyTemplateApiV1BusinessTemplatesTemplateIdApplyPostErrors[keyof ApplyTemplateApiV1BusinessTemplatesTemplateIdApplyPostErrors];
+
+export type ApplyTemplateApiV1BusinessTemplatesTemplateIdApplyPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: BusinessProfile;
+};
+
+export type ApplyTemplateApiV1BusinessTemplatesTemplateIdApplyPostResponse = ApplyTemplateApiV1BusinessTemplatesTemplateIdApplyPostResponses[keyof ApplyTemplateApiV1BusinessTemplatesTemplateIdApplyPostResponses];
+
+export type CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostData = {
+    body: CreateAgentRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Template Id
+         */
+        template_id: string;
+    };
+    query?: never;
+    url: '/api/v1/business/templates/{template_id}/agent';
+};
+
+export type CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostError = CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostErrors[keyof CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostErrors];
+
+export type CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: CreateAgentResponse;
+};
+
+export type CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostResponse = CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostResponses[keyof CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostResponses];
 
 export type ListQueuesApiV1ContactCenterQueuesGetData = {
     body?: never;

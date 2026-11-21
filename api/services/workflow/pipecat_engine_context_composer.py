@@ -71,6 +71,7 @@ def compose_system_prompt_for_node(
     customer_memory: str | None = None,
     language_directive: str | None = None,
     supervisor_instructions: list[str] | None = None,
+    business_profile: str | None = None,
 ) -> ComposedNodePrompt:
     """Compose the full system prompt text for a workflow node.
 
@@ -115,6 +116,19 @@ def compose_system_prompt_for_node(
         parts.append(RECORDING_RESPONSE_MODE_INSTRUCTIONS)
     if prompt_variables and prompt_variables.mode == "call_context":
         parts.append(call_context_note(prompt_variables))
+    # The company card (identity, hours, offers, FAQ, skills), unless the
+    # prompt already places {{business_profile}} itself.
+    from api.services.business.service import business_section_for_prompt
+
+    business = business_section_for_prompt(
+        business_profile,
+        node.prompt,
+        workflow.nodes[workflow.global_node_id].prompt
+        if workflow.global_node_id and node.add_global_prompt
+        else None,
+    )
+    if business:
+        parts.append(business)
     # Known caller: append what the organization remembers, unless the prompt
     # already places {{customer_memory}} itself.
     from api.services.customer_memory.service import memory_section_for_prompt

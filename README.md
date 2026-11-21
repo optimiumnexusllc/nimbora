@@ -47,6 +47,26 @@ Quand l'agent IA transfère vers une file, le conseiller qui décroche voit une 
 générée par l'IA : motif, résumé, prénom et humeur du client, prochaine étape, données collectées et
 transcription. Plus besoin de faire répéter le client.
 
+### 🏢 Mon entreprise : une fiche, tous les agents, sept métiers
+
+Décrivez votre entreprise **une seule fois** : identité, prénom de l'assistant, ton, horaires
+(plusieurs plages par jour, fermetures exceptionnelles, fuseau horaire), adresse et repères, offres
+et prix, FAQ, conditions. **Tous les agents la lisent**, sur tous les canaux, et savent s'ils sont
+**ouverts en ce moment** (« Fermé. Réouverture lundi 23 novembre à 08:00 »). Changez un prix : c'est
+pris en compte dès l'échange suivant, sans republier.
+
+Des **compétences communes** s'activent d'un clic : répondre à la FAQ, horaires et itinéraire,
+présenter les offres sans jamais inventer de prix, prendre un message, prendre rendez-vous,
+qualifier un prospect, passer la main à un humain, recueillir la satisfaction.
+
+Sept **modèles métier** (accueil général, commerce, immobilier, hôtellerie, assurance, clinique,
+école) apportent la méthode du métier, les données à recueillir (quartier, budget, nombre de pièces…),
+les issues d'appel à classer et des exemples à adapter. **Un clic crée l'agent du métier**, avec vos
+outils de rendez-vous et de messages déjà rattachés.
+
+<p align="center"><img src="docs/images/screenshots/business-profile.webp" alt="Mon entreprise : métiers et fiche" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/business-templates.webp" alt="Modèle métier Clinique" width="88%"></p>
+
 ### 💬 WhatsApp : l'agent répond aussi aux messages
 
 Le même agent répond aux **appels et aux messages WhatsApp** de votre numéro Business : textes,
@@ -118,6 +138,7 @@ swahili, haoussa, yoruba, lingala…
 
 | | |
 |---|---|
+| **Mon entreprise** | Fiche entreprise lue par tous les agents (identité, horaires et ouverture en temps réel, adresse, offres, FAQ, conditions), 8 compétences communes, 7 modèles métier et création d'agent en un clic, variables `{{business.*}}` |
 | **Agents vocaux IA** | Éditeur visuel de workflows, appels entrants et sortants, campagnes, outils HTTP / MCP / intégrations, base de connaissances, extraction de données, QA automatique |
 | **Outils de l'agent** | Prise de rendez-vous (NIMBORA, CalDAV, Google Agenda), SMS / WhatsApp / e-mail, tickets (NIMBORA, Zendesk, Freshdesk), transfert vers un humain ou un autre agent, rappel, fin d'appel, calculatrice, appels d'API, serveurs MCP |
 | **Activité** | Rendez-vous, messages envoyés et tickets ouverts par les agents, avec annulation, statut et résolution |
@@ -207,8 +228,8 @@ ses informations, joignable par **chat web, téléphone et WhatsApp**, sur un mo
 | ✅ | Agents vocaux et textuels, éditeur de workflows, base de connaissances, outils API / MCP |
 | ✅ | Isolation stricte des données par entreprise |
 | ✅ | Détection automatique de la langue, voix par langue |
-| 🔜 | Fiche entreprise (identité, horaires, localisation, offres) partagée par tous les agents |
-| 🔜 | Modèles métier : compétences communes + modèles commerce, immobilier, hôtellerie, assurance, clinique, école |
+| ✅ | Fiche entreprise (identité, horaires, localisation, offres, FAQ) partagée par tous les agents |
+| ✅ | Modèles métier : compétences communes + modèles commerce, immobilier, hôtellerie, assurance, clinique, école |
 
 ### Phase 2 — Omnicanal
 

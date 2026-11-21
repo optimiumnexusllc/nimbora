@@ -236,6 +236,13 @@ class WorkflowConfigurationDefaults(BaseModel):
     language_detection: LanguageDetectionConfiguration = Field(
         default_factory=LanguageDetectionConfiguration
     )
+    use_business_profile: bool = Field(
+        default=True,
+        description=(
+            "Append the company card (identity, hours, offers, FAQ, skills) "
+            "to this agent's prompts."
+        ),
+    )
     tts_cache_enabled: bool = Field(
         default=False,
         description="Reuse generated speech for repeated phrases. Supports MiniMax TTS.",

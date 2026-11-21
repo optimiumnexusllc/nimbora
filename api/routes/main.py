@@ -18,6 +18,7 @@ from api.routes.privacy import router as privacy_router
 from api.routes.supervision import router as supervision_router
 from api.routes.actions import router as actions_router
 from api.routes.whatsapp_conversations import router as whatsapp_conversations_router
+from api.routes.business import router as business_router
 from api.routes.model_connections import router as model_connections_router
 from api.routes.node_types import router as node_types_router
 from api.routes.organization import router as organization_router
@@ -85,6 +86,7 @@ router.include_router(privacy_router)
 router.include_router(supervision_router)
 router.include_router(actions_router)
 router.include_router(whatsapp_conversations_router)
+router.include_router(business_router)
 router.include_router(contact_center_router)
 
 for _integration_router in all_routers():

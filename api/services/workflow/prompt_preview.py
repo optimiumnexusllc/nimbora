@@ -102,6 +102,13 @@ async def build_prompt_preview(
         else None
     )
     has_recordings = await db_client.has_active_recordings(organization_id)
+    from api.services.business.service import business_prompt_for_definition
+
+    business_profile, business_values = await business_prompt_for_definition(
+        organization_id, definition.workflow_configurations
+    )
+    if business_values and "business" not in initial:
+        initial = {**initial, "business": business_values}
     notices = [
         "Token counts are approximate UTF-8 size estimates; the provider decides cache eligibility."
     ]
@@ -159,6 +166,7 @@ async def build_prompt_preview(
                 format_prompt=lambda text: render_template(text, initial),
                 has_recordings=has_recordings,
                 prompt_variables=config,
+                business_profile=business_profile,
             )
             functions = await preview_node_functions(node, organization_id)
             tools = [function.to_default_dict() for function in functions]
@@ -176,6 +184,7 @@ async def build_prompt_preview(
                     and not is_builtin_variable(match.group(1).strip())
                     and match.group(1).strip().split(".")[-1] not in extraction_sources
                     and not render_template(match.group(0), context)
+                    and not render_template(match.group(0), initial)
                 }
             )
             nodes.append(
@@ -274,6 +283,11 @@ async def prewarm_published_prompts(*, organization_id, workflow_id, definition)
         live_tool_nodes = await _nodes_requiring_live_tools(graph, organization_id)
         tasks = []
         has_recordings = await db_client.has_active_recordings(organization_id)
+        from api.services.business.service import business_prompt_for_definition
+
+        business_profile, _ = await business_prompt_for_definition(
+            organization_id, configs
+        )
         for node in graph.nodes.values():
             if (
                 node.id == graph.global_node_id
@@ -287,6 +301,7 @@ async def prewarm_published_prompts(*, organization_id, workflow_id, definition)
                 format_prompt=lambda text: text,
                 has_recordings=has_recordings,
                 prompt_variables=config,
+                business_profile=business_profile,
             )
             functions = await preview_node_functions(node, organization_id)
             llm.configure_prompt_cache(

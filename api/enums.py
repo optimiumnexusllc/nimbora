@@ -184,6 +184,7 @@ class OrganizationConfigurationKey(Enum):
     CUSTOMER_MEMORY = "CUSTOMER_MEMORY"  # {"enabled": bool}: remember callers
     CUSTOMER_IDENTITY_SECRET = "CUSTOMER_IDENTITY_SECRET"  # signs web-chat identities
     PRIVACY = "PRIVACY"  # PII redaction, retention and recording policy
+    BUSINESS_PROFILE = "BUSINESS_PROFILE"  # company card read by every agent
 
 
 class UserConfigurationKey(Enum):
