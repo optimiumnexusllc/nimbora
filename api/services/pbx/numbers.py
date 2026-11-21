@@ -57,6 +57,10 @@ async def _pbx_destination(organization_id: int, action: MenuAction) -> dict:
 
     if action.type == "queue":
         return {"type": "queue", "queue_id": action.target_id}
+    if action.type == "group":
+        return {"type": "group", "group_id": action.target_id}
+    if action.type == "conference":
+        return {"type": "conference", "conference_id": action.target_id}
     if action.type == "user":
         return {"type": "user", "user_id": action.target_id}
     if action.type == "voicemail":

@@ -12,7 +12,17 @@ from api.db import db_client
 from api.db.models import UserModel
 from api.services.auth.depends import get_user
 from api.services.branding import brand
-from api.services.pbx import admin, ivr, numbers, outbound, permissions, trunks
+from api.services.pbx import (
+    admin,
+    conferences,
+    forwards,
+    groups,
+    ivr,
+    numbers,
+    outbound,
+    permissions,
+    trunks,
+)
 from api.services.pbx import service as pbx
 from api.services.pbx.client import PbxAuthError, PbxError, PbxUnavailable
 
@@ -774,6 +784,146 @@ async def set_restriction_users(
 @router.delete("/restrictions/{permission_id}", status_code=204)
 async def delete_restriction(permission_id: int, user: UserModel = Depends(get_user)):
     await _call(permissions.delete_restriction(_org(user), permission_id))
+    return Response(status_code=204)
+
+
+# ------------------------------------------------------ call groups
+
+
+class GroupRequest(BaseModel):
+    label: str = Field(min_length=1, max_length=128)
+    extension: str = Field(min_length=2, max_length=10)
+    strategy: str = "all"
+    ring_seconds: int = Field(default=20, ge=5, le=120)
+    user_uuids: list[str] = Field(default_factory=list, max_length=200)
+    fallback: ivr.MenuAction | None = None
+
+
+class GroupMembersRequest(BaseModel):
+    user_uuids: list[str] = Field(default_factory=list, max_length=200)
+
+
+class FallbackRequest(BaseModel):
+    fallback: ivr.MenuAction | None = None
+
+
+@router.get("/groups")
+async def list_groups(user: UserModel = Depends(get_user)) -> dict[str, Any]:
+    return {
+        "groups": await _call(groups.list_groups(_org(user))),
+        "strategies": groups.RING_STRATEGIES,
+    }
+
+
+@router.post("/groups", status_code=201)
+async def create_group(
+    request: GroupRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    return await _call(
+        groups.create_group(
+            _org(user),
+            groups.NewGroup(
+                **request.model_dump(exclude={"fallback"}), fallback=request.fallback
+            ),
+        )
+    )
+
+
+@router.put("/groups/{group_uuid}/members", status_code=204)
+async def set_group_members(
+    group_uuid: str, request: GroupMembersRequest, user: UserModel = Depends(get_user)
+):
+    await _call(groups.set_group_members(_org(user), group_uuid, request.user_uuids))
+    return Response(status_code=204)
+
+
+@router.put("/groups/{group_uuid}/fallback", status_code=204)
+async def set_group_fallback(
+    group_uuid: str, request: FallbackRequest, user: UserModel = Depends(get_user)
+):
+    """Nobody answers in the group → this destination (AI agent included)."""
+    await _call(groups.set_group_fallback(_org(user), group_uuid, request.fallback))
+    return Response(status_code=204)
+
+
+@router.delete("/groups/{group_uuid}", status_code=204)
+async def delete_group(group_uuid: str, user: UserModel = Depends(get_user)):
+    await _call(groups.delete_group(_org(user), group_uuid))
+    return Response(status_code=204)
+
+
+# ------------------------------------- forwards, do-not-disturb, no answer
+
+
+@router.get("/extensions/{user_id}/call-settings")
+async def read_call_settings(
+    user_id: int, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    return await _call(forwards.read_user_settings(_org(user), user_id))
+
+
+@router.put("/extensions/{user_id}/call-settings")
+async def save_call_settings(
+    user_id: int,
+    request: forwards.UserCallSettings,
+    user: UserModel = Depends(get_user),
+) -> dict[str, Any]:
+    """Forwards, do-not-disturb, and where unanswered calls go."""
+    return await _call(forwards.save_user_settings(_org(user), user_id, request))
+
+
+# ------------------------------------------------------ conferences
+
+
+class ConferenceRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    extension: str = Field(min_length=2, max_length=10)
+    pin: str = Field(default="", max_length=12)
+    admin_pin: str = Field(default="", max_length=12)
+    max_users: int = Field(default=0, ge=0, le=500)
+    record: bool = False
+    announce_join_leave: bool = True
+    announce_user_count: bool = True
+
+
+@router.get("/conferences")
+async def list_conferences(user: UserModel = Depends(get_user)) -> dict[str, Any]:
+    """Rooms with the people in them right now."""
+    return await _call(conferences.list_conferences(_org(user)))
+
+
+@router.post("/conferences", status_code=201)
+async def create_conference(
+    request: ConferenceRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    return await _call(
+        conferences.create_conference(
+            _org(user), conferences.NewConference(**request.model_dump())
+        )
+    )
+
+
+@router.delete("/conferences/{conference_id}", status_code=204)
+async def delete_conference(conference_id: int, user: UserModel = Depends(get_user)):
+    await _call(conferences.delete_conference(_org(user), conference_id))
+    return Response(status_code=204)
+
+
+@router.post(
+    "/conferences/{conference_id}/participants/{participant_id}/{action}",
+    status_code=204,
+)
+async def conference_participant_action(
+    conference_id: int,
+    participant_id: str,
+    action: Literal["mute", "unmute", "kick"],
+    user: UserModel = Depends(get_user),
+):
+    await _call(
+        conferences.participant_action(
+            _org(user), conference_id, participant_id, action
+        )
+    )
     return Response(status_code=204)
 
 

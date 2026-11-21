@@ -175,7 +175,14 @@ def _describe_destination(destination: dict | None) -> str:
 
 def _destination_target(destination: dict | None) -> int | None:
     destination = destination or {}
-    for key in ("queue_id", "user_id", "voicemail_id", "ivr_id", "group_id"):
+    for key in (
+        "queue_id",
+        "user_id",
+        "voicemail_id",
+        "ivr_id",
+        "group_id",
+        "conference_id",
+    ):
         if destination.get(key) is not None:
             return destination[key]
     return None

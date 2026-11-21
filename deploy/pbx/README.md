@@ -19,7 +19,7 @@ clients, leurs employés et leurs téléphones ne voient que votre marque.
 ```
 
 - **Pilotage** : NIMBORA appelle les API REST du PBX avec un compte de service aux
-  droits minimaux (`integration-policy.json`, 79 ACL précises, aucun joker global ; relancer `scripts/create_service_account.py` après une mise à jour de NIMBORA met la politique à jour sans changer le mot de passe).
+  droits minimaux (`integration-policy.json`, 101 ACL précises, aucun joker global ; relancer `scripts/create_service_account.py` après une mise à jour de NIMBORA met la politique à jour sans changer le mot de passe).
 - **Agents IA** : un numéro du PBX est routé vers `Stasis(<app>,inbound,called=<numéro>)` ;
   NIMBORA reçoit l'appel par ARI et diffuse l'audio de l'agent IA par WebSocket.
 - **Événements** : le PBX envoie à NIMBORA les fins d'appel ; les appels humains

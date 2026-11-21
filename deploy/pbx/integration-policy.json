@@ -1,6 +1,6 @@
 {
   "name": "nimbora-integration",
-  "description": "Platform integration: PBX management and administration, voice menus, operator lines, call restrictions, AI routing, events",
+  "description": "Platform integration: PBX management and administration, voice menus, operator lines, call restrictions, groups, forwards, conferences, AI routing, events",
   "acl": [
     "auth.tenants.*.read",
     "confd.infos.read",
@@ -80,6 +80,28 @@
     "confd.callpermissions.create",
     "confd.callpermissions.*.delete",
     "confd.users.*.callpermissions.*.update",
-    "confd.users.*.callpermissions.*.delete"
+    "confd.users.*.callpermissions.*.delete",
+    "confd.groups.read",
+    "confd.groups.*.read",
+    "confd.groups.create",
+    "confd.groups.*.update",
+    "confd.groups.*.delete",
+    "confd.groups.*.members.users.update",
+    "confd.groups.*.extensions.*.update",
+    "confd.groups.*.fallbacks.update",
+    "confd.users.*.forwards.read",
+    "confd.users.*.forwards.update",
+    "confd.users.*.services.read",
+    "confd.users.*.services.update",
+    "confd.users.*.fallbacks.read",
+    "confd.users.*.fallbacks.update",
+    "confd.conferences.read",
+    "confd.conferences.create",
+    "confd.conferences.*.delete",
+    "confd.conferences.*.extensions.*.update",
+    "calld.conferences.*.participants.read",
+    "calld.conferences.*.participants.*.delete",
+    "calld.conferences.*.participants.*.mute.update",
+    "calld.conferences.*.participants.*.unmute.update"
   ]
 }

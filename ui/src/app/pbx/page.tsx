@@ -29,6 +29,8 @@ import {
     connectEventsApiV1PbxEventsConnectPost,
     getWorkflowsSummaryApiV1WorkflowSummaryGet,
     hangupCallApiV1PbxCallsCallIdHangupPost,
+    listConferencesApiV1PbxConferencesGet,
+    listGroupsApiV1PbxGroupsGet,
     listMenusApiV1PbxMenusGet,
     listOutboundRoutesApiV1PbxOutboundRoutesGet,
     listTelephonyConfigurationsApiV1OrganizationsTelephonyConfigsGet,
@@ -48,9 +50,12 @@ import type {
 } from "@/client/types.gen";
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
 import { AiOutboundCard } from "@/components/pbx/AiOutboundCard";
+import { CallSettingsDialog } from "@/components/pbx/CallSettingsDialog";
+import { ConferencesTab, type PbxConference } from "@/components/pbx/ConferencesTab";
 import { ConnectionDialog, type ConnectionForm } from "@/components/pbx/ConnectionDialog";
 import type { Destination, DestinationSources, PbxVoicemail } from "@/components/pbx/DestinationPicker";
 import { ExtensionsTab } from "@/components/pbx/ExtensionsTab";
+import { GroupsTab, type PbxGroup } from "@/components/pbx/GroupsTab";
 import { MenusTab } from "@/components/pbx/MenusTab";
 import { NumberDialog, type NumberEdit } from "@/components/pbx/NumberDialog";
 import { QueuesTab } from "@/components/pbx/QueuesTab";
@@ -67,6 +72,7 @@ import {
     type PbxNumber,
     type PbxOutboundRoute,
     type PbxTrunk,
+    type PbxUser,
 } from "@/components/pbx/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -104,6 +110,17 @@ export default function PbxPage() {
     const [workflows, setWorkflows] = useState<WorkflowSummaryResponse[]>([]);
     const [editing, setEditing] = useState(false);
     const [numberEdit, setNumberEdit] = useState<NumberEdit | null>(null);
+    const [callSettingsUser, setCallSettingsUser] = useState<PbxUser | null>(null);
+    const [groups, setGroups] = useState<{ groups: PbxGroup[]; strategies: Record<string, string>; error: string | null }>({
+        groups: [],
+        strategies: {},
+        error: null,
+    });
+    const [conferences, setConferences] = useState<{ conferences: PbxConference[]; live_error: string | null }>({
+        conferences: [],
+        live_error: null,
+    });
+    const [tab, setTab] = useState("calls");
     const [menus, setMenus] = useState<PbxMenu[]>([]);
     const [voicemails, setVoicemails] = useState<PbxVoicemail[]>([]);
     const [lines, setLines] = useState<{
@@ -129,6 +146,21 @@ export default function PbxPage() {
     const loadMenus = useCallback(async () => {
         const response = await listMenusApiV1PbxMenusGet();
         if (!response.error) setMenus((response.data as unknown as PbxMenu[]) ?? []);
+    }, []);
+
+    const loadGroups = useCallback(async () => {
+        const response = await listGroupsApiV1PbxGroupsGet();
+        if (response.error) {
+            setGroups((g) => ({ ...g, error: detailFromError(response.error, "Groupes indisponibles") }));
+            return;
+        }
+        const data = response.data as unknown as { groups: PbxGroup[]; strategies: Record<string, string> };
+        setGroups({ ...data, error: null });
+    }, []);
+
+    const loadConferences = useCallback(async () => {
+        const response = await listConferencesApiV1PbxConferencesGet();
+        if (!response.error) setConferences(response.data as unknown as { conferences: PbxConference[]; live_error: string | null });
     }, []);
 
     const loadVoicemails = useCallback(async () => {
@@ -173,15 +205,20 @@ export default function PbxPage() {
                 void loadInventory();
                 void loadMenus();
                 void loadVoicemails();
+                void loadGroups();
+                void loadConferences();
             }
         })();
-    }, [authLoading, user, loadConnection, loadInventory, loadMenus, loadVoicemails]);
+    }, [authLoading, user, loadConnection, loadInventory, loadMenus, loadVoicemails, loadGroups, loadConferences]);
 
     useEffect(() => {
         if (!connection?.configured) return;
-        const timer = setInterval(() => void loadInventory(), REFRESH_MS);
+        const timer = setInterval(() => {
+            void loadInventory();
+            if (tab === "conferences") void loadConferences();
+        }, REFRESH_MS);
         return () => clearInterval(timer);
-    }, [connection?.configured, loadInventory]);
+    }, [connection?.configured, loadInventory, loadConferences, tab]);
 
     const pbxName = connection?.brand.pbx_name ?? "Téléphonie d'entreprise";
 
@@ -291,6 +328,8 @@ export default function PbxPage() {
         workflows,
         menus: menus.map((m) => ({ id: m.id, name: m.name, published: Boolean(m.pbx_ivr_id) })),
         aiEnabled: Boolean(connection.ari_configuration_id),
+        groups: groups.groups.map((g) => ({ id: g.id, name: g.label, extensions: g.extensions })),
+        conferences: conferences.conferences.map((c) => ({ id: c.id, name: c.name, extensions: c.extensions })),
     };
     const menuByIvr = new Map(menus.filter((m) => m.pbx_ivr_id).map((m) => [m.pbx_ivr_id as number, m]));
     const currentDestination = (n: PbxNumber): Destination => {
@@ -303,6 +342,8 @@ export default function PbxPage() {
                 return menu ? { type: "menu", target_id: menu.id } : { type: "hangup", target_id: null };
             }
             case "queue":
+            case "group":
+            case "conference":
             case "user":
             case "voicemail":
                 return { type: n.destination_type, target_id: target };
@@ -387,8 +428,11 @@ export default function PbxPage() {
                 <Skeleton className="h-72 w-full" />
             ) : (
                 <Tabs
-                    defaultValue="calls"
+                    value={tab}
                     onValueChange={(v) => {
+                        setTab(v);
+                        if (v === "groups") void loadGroups();
+                        if (v === "conferences") void loadConferences();
                         if (v === "logs" && logs === null) void loadLogs();
                         if (v === "lines" && lines === null) void loadLines();
                         if (v === "menus") void loadMenus();
@@ -400,6 +444,8 @@ export default function PbxPage() {
                         <TabsTrigger value="agents">Agents ({inventory.agents.length})</TabsTrigger>
                         <TabsTrigger value="queues">Files ({inventory.queues.length})</TabsTrigger>
                         <TabsTrigger value="users">Postes ({inventory.users.length})</TabsTrigger>
+                        <TabsTrigger value="groups">Groupes ({groups.groups.length})</TabsTrigger>
+                        <TabsTrigger value="conferences">Conférences ({conferences.conferences.length})</TabsTrigger>
                         <TabsTrigger value="numbers">Numéros ({inventory.numbers.length})</TabsTrigger>
                         <TabsTrigger value="menus">Serveurs vocaux ({menus.length})</TabsTrigger>
                         <TabsTrigger value="lines">
@@ -529,7 +575,12 @@ export default function PbxPage() {
                     </TabsContent>
 
                     <TabsContent value="users">
-                        <ExtensionsTab users={inventory.users} error={errors.users} onChanged={() => void loadInventory()} />
+                        <ExtensionsTab
+                            users={inventory.users}
+                            error={errors.users}
+                            onChanged={() => void loadInventory()}
+                            onCallSettings={setCallSettingsUser}
+                        />
                     </TabsContent>
 
                     <TabsContent value="numbers">
@@ -643,6 +694,26 @@ export default function PbxPage() {
                         </PageSection>
                     </TabsContent>
 
+                    <TabsContent value="groups">
+                        <GroupsTab
+                            groups={groups.groups}
+                            strategies={groups.strategies}
+                            users={inventory.users}
+                            sources={sources}
+                            error={groups.error}
+                            onChanged={() => void loadGroups()}
+                        />
+                    </TabsContent>
+
+                    <TabsContent value="conferences">
+                        <ConferencesTab
+                            conferences={conferences.conferences}
+                            liveError={conferences.live_error}
+                            now={now}
+                            onChanged={() => void loadConferences()}
+                        />
+                    </TabsContent>
+
                     <TabsContent value="menus">
                         <MenusTab
                             menus={menus}
@@ -730,6 +801,7 @@ export default function PbxPage() {
                 />
             )}
 
+            <CallSettingsDialog user={callSettingsUser} onClose={() => setCallSettingsUser(null)} sources={sources} />
             <NumberDialog edit={numberEdit} onClose={() => setNumberEdit(null)} sources={sources} onDone={() => void loadInventory()} />
         </PageLayout>
     );

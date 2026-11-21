@@ -1931,6 +1931,44 @@ export type CompleteCallbackRequest = {
 };
 
 /**
+ * ConferenceRequest
+ */
+export type ConferenceRequest = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Extension
+     */
+    extension: string;
+    /**
+     * Pin
+     */
+    pin?: string;
+    /**
+     * Admin Pin
+     */
+    admin_pin?: string;
+    /**
+     * Max Users
+     */
+    max_users?: number;
+    /**
+     * Record
+     */
+    record?: boolean;
+    /**
+     * Announce Join Leave
+     */
+    announce_join_leave?: boolean;
+    /**
+     * Announce User Count
+     */
+    announce_user_count?: boolean;
+};
+
+/**
  * ConnectionRequest
  */
 export type ConnectionRequest = {
@@ -3836,6 +3874,13 @@ export type FallbackPolicyServiceSelection = {
 };
 
 /**
+ * FallbackRequest
+ */
+export type FallbackRequest = {
+    fallback?: MenuAction | null;
+};
+
+/**
  * FallbackRule[ServiceSelection]
  */
 export type FallbackRuleServiceSelection = {
@@ -3911,6 +3956,20 @@ export type FolderResponse = {
 };
 
 /**
+ * Forward
+ */
+export type Forward = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Destination
+     */
+    destination?: string;
+};
+
+/**
  * GraphConstraints
  *
  * Per-node-type graph rules. WorkflowGraph enforces these at validation.
@@ -3940,6 +3999,43 @@ export type GraphConstraints = {
      * Max Instances
      */
     max_instances?: number | null;
+};
+
+/**
+ * GroupMembersRequest
+ */
+export type GroupMembersRequest = {
+    /**
+     * User Uuids
+     */
+    user_uuids?: Array<string>;
+};
+
+/**
+ * GroupRequest
+ */
+export type GroupRequest = {
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Extension
+     */
+    extension: string;
+    /**
+     * Strategy
+     */
+    strategy?: string;
+    /**
+     * Ring Seconds
+     */
+    ring_seconds?: number;
+    /**
+     * User Uuids
+     */
+    user_uuids?: Array<string>;
+    fallback?: MenuAction | null;
 };
 
 /**
@@ -4906,7 +5002,7 @@ export type MenuAction = {
     /**
      * Type
      */
-    type?: 'queue' | 'user' | 'ai' | 'voicemail' | 'menu' | 'hangup';
+    type?: 'queue' | 'group' | 'user' | 'ai' | 'voicemail' | 'menu' | 'conference' | 'hangup';
     /**
      * Target Id
      */
@@ -4920,7 +5016,7 @@ export type MenuChoice = {
     /**
      * Type
      */
-    type?: 'queue' | 'user' | 'ai' | 'voicemail' | 'menu' | 'hangup';
+    type?: 'queue' | 'group' | 'user' | 'ai' | 'voicemail' | 'menu' | 'conference' | 'hangup';
     /**
      * Target Id
      */
@@ -10021,6 +10117,24 @@ export type UsageHistoryResponse = {
      * Total Pages
      */
     total_pages: number;
+};
+
+/**
+ * UserCallSettings
+ */
+export type UserCallSettings = {
+    unconditional?: Forward;
+    busy?: Forward;
+    noanswer?: Forward;
+    /**
+     * Dnd
+     */
+    dnd?: boolean;
+    unanswered?: MenuAction | null;
+    /**
+     * Unanswered Mode
+     */
+    unanswered_mode?: 'keep' | 'set';
 };
 
 /**
@@ -24566,6 +24680,502 @@ export type DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteResponses = {
 };
 
 export type DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteResponse = DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteResponses[keyof DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteResponses];
+
+export type ListGroupsApiV1PbxGroupsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/groups';
+};
+
+export type ListGroupsApiV1PbxGroupsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListGroupsApiV1PbxGroupsGetError = ListGroupsApiV1PbxGroupsGetErrors[keyof ListGroupsApiV1PbxGroupsGetErrors];
+
+export type ListGroupsApiV1PbxGroupsGetResponses = {
+    /**
+     * Response List Groups Api V1 Pbx Groups Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ListGroupsApiV1PbxGroupsGetResponse = ListGroupsApiV1PbxGroupsGetResponses[keyof ListGroupsApiV1PbxGroupsGetResponses];
+
+export type CreateGroupApiV1PbxGroupsPostData = {
+    body: GroupRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/groups';
+};
+
+export type CreateGroupApiV1PbxGroupsPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateGroupApiV1PbxGroupsPostError = CreateGroupApiV1PbxGroupsPostErrors[keyof CreateGroupApiV1PbxGroupsPostErrors];
+
+export type CreateGroupApiV1PbxGroupsPostResponses = {
+    /**
+     * Response Create Group Api V1 Pbx Groups Post
+     *
+     * Successful Response
+     */
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type CreateGroupApiV1PbxGroupsPostResponse = CreateGroupApiV1PbxGroupsPostResponses[keyof CreateGroupApiV1PbxGroupsPostResponses];
+
+export type SetGroupMembersApiV1PbxGroupsGroupUuidMembersPutData = {
+    body: GroupMembersRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Group Uuid
+         */
+        group_uuid: string;
+    };
+    query?: never;
+    url: '/api/v1/pbx/groups/{group_uuid}/members';
+};
+
+export type SetGroupMembersApiV1PbxGroupsGroupUuidMembersPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetGroupMembersApiV1PbxGroupsGroupUuidMembersPutError = SetGroupMembersApiV1PbxGroupsGroupUuidMembersPutErrors[keyof SetGroupMembersApiV1PbxGroupsGroupUuidMembersPutErrors];
+
+export type SetGroupMembersApiV1PbxGroupsGroupUuidMembersPutResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type SetGroupMembersApiV1PbxGroupsGroupUuidMembersPutResponse = SetGroupMembersApiV1PbxGroupsGroupUuidMembersPutResponses[keyof SetGroupMembersApiV1PbxGroupsGroupUuidMembersPutResponses];
+
+export type SetGroupFallbackApiV1PbxGroupsGroupUuidFallbackPutData = {
+    body: FallbackRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Group Uuid
+         */
+        group_uuid: string;
+    };
+    query?: never;
+    url: '/api/v1/pbx/groups/{group_uuid}/fallback';
+};
+
+export type SetGroupFallbackApiV1PbxGroupsGroupUuidFallbackPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetGroupFallbackApiV1PbxGroupsGroupUuidFallbackPutError = SetGroupFallbackApiV1PbxGroupsGroupUuidFallbackPutErrors[keyof SetGroupFallbackApiV1PbxGroupsGroupUuidFallbackPutErrors];
+
+export type SetGroupFallbackApiV1PbxGroupsGroupUuidFallbackPutResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type SetGroupFallbackApiV1PbxGroupsGroupUuidFallbackPutResponse = SetGroupFallbackApiV1PbxGroupsGroupUuidFallbackPutResponses[keyof SetGroupFallbackApiV1PbxGroupsGroupUuidFallbackPutResponses];
+
+export type DeleteGroupApiV1PbxGroupsGroupUuidDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Group Uuid
+         */
+        group_uuid: string;
+    };
+    query?: never;
+    url: '/api/v1/pbx/groups/{group_uuid}';
+};
+
+export type DeleteGroupApiV1PbxGroupsGroupUuidDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteGroupApiV1PbxGroupsGroupUuidDeleteError = DeleteGroupApiV1PbxGroupsGroupUuidDeleteErrors[keyof DeleteGroupApiV1PbxGroupsGroupUuidDeleteErrors];
+
+export type DeleteGroupApiV1PbxGroupsGroupUuidDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteGroupApiV1PbxGroupsGroupUuidDeleteResponse = DeleteGroupApiV1PbxGroupsGroupUuidDeleteResponses[keyof DeleteGroupApiV1PbxGroupsGroupUuidDeleteResponses];
+
+export type ReadCallSettingsApiV1PbxExtensionsUserIdCallSettingsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * User Id
+         */
+        user_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/extensions/{user_id}/call-settings';
+};
+
+export type ReadCallSettingsApiV1PbxExtensionsUserIdCallSettingsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadCallSettingsApiV1PbxExtensionsUserIdCallSettingsGetError = ReadCallSettingsApiV1PbxExtensionsUserIdCallSettingsGetErrors[keyof ReadCallSettingsApiV1PbxExtensionsUserIdCallSettingsGetErrors];
+
+export type ReadCallSettingsApiV1PbxExtensionsUserIdCallSettingsGetResponses = {
+    /**
+     * Response Read Call Settings Api V1 Pbx Extensions  User Id  Call Settings Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadCallSettingsApiV1PbxExtensionsUserIdCallSettingsGetResponse = ReadCallSettingsApiV1PbxExtensionsUserIdCallSettingsGetResponses[keyof ReadCallSettingsApiV1PbxExtensionsUserIdCallSettingsGetResponses];
+
+export type SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutData = {
+    body: UserCallSettings;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * User Id
+         */
+        user_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/extensions/{user_id}/call-settings';
+};
+
+export type SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutError = SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutErrors[keyof SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutErrors];
+
+export type SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutResponses = {
+    /**
+     * Response Save Call Settings Api V1 Pbx Extensions  User Id  Call Settings Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutResponse = SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutResponses[keyof SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutResponses];
+
+export type ListConferencesApiV1PbxConferencesGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/conferences';
+};
+
+export type ListConferencesApiV1PbxConferencesGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListConferencesApiV1PbxConferencesGetError = ListConferencesApiV1PbxConferencesGetErrors[keyof ListConferencesApiV1PbxConferencesGetErrors];
+
+export type ListConferencesApiV1PbxConferencesGetResponses = {
+    /**
+     * Response List Conferences Api V1 Pbx Conferences Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ListConferencesApiV1PbxConferencesGetResponse = ListConferencesApiV1PbxConferencesGetResponses[keyof ListConferencesApiV1PbxConferencesGetResponses];
+
+export type CreateConferenceApiV1PbxConferencesPostData = {
+    body: ConferenceRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/conferences';
+};
+
+export type CreateConferenceApiV1PbxConferencesPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateConferenceApiV1PbxConferencesPostError = CreateConferenceApiV1PbxConferencesPostErrors[keyof CreateConferenceApiV1PbxConferencesPostErrors];
+
+export type CreateConferenceApiV1PbxConferencesPostResponses = {
+    /**
+     * Response Create Conference Api V1 Pbx Conferences Post
+     *
+     * Successful Response
+     */
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type CreateConferenceApiV1PbxConferencesPostResponse = CreateConferenceApiV1PbxConferencesPostResponses[keyof CreateConferenceApiV1PbxConferencesPostResponses];
+
+export type DeleteConferenceApiV1PbxConferencesConferenceIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Conference Id
+         */
+        conference_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/conferences/{conference_id}';
+};
+
+export type DeleteConferenceApiV1PbxConferencesConferenceIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteConferenceApiV1PbxConferencesConferenceIdDeleteError = DeleteConferenceApiV1PbxConferencesConferenceIdDeleteErrors[keyof DeleteConferenceApiV1PbxConferencesConferenceIdDeleteErrors];
+
+export type DeleteConferenceApiV1PbxConferencesConferenceIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteConferenceApiV1PbxConferencesConferenceIdDeleteResponse = DeleteConferenceApiV1PbxConferencesConferenceIdDeleteResponses[keyof DeleteConferenceApiV1PbxConferencesConferenceIdDeleteResponses];
+
+export type ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Conference Id
+         */
+        conference_id: number;
+        /**
+         * Participant Id
+         */
+        participant_id: string;
+        /**
+         * Action
+         */
+        action: 'mute' | 'unmute' | 'kick';
+    };
+    query?: never;
+    url: '/api/v1/pbx/conferences/{conference_id}/participants/{participant_id}/{action}';
+};
+
+export type ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostError = ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostErrors[keyof ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostErrors];
+
+export type ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostResponse = ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostResponses[keyof ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostResponses];
 
 export type ResetPasswordApiV1PbxPasswordResetPostData = {
     body: PasswordResetRequest;

@@ -17,6 +17,9 @@ const mocks = vi.hoisted(() => ({
     trunks: vi.fn(),
     routes: vi.fn(),
     aiOutbound: vi.fn(),
+    groups: vi.fn(),
+    conferences: vi.fn(),
+    callSettings: vi.fn(),
     restrictions: vi.fn(),
     unroute: vi.fn(),
     branding: vi.fn(),
@@ -42,6 +45,9 @@ vi.mock("@/client/sdk.gen", () => ({
     listTrunksApiV1PbxTrunksGet: mocks.trunks,
     listOutboundRoutesApiV1PbxOutboundRoutesGet: mocks.routes,
     readAiOutboundApiV1PbxAiOutboundGet: mocks.aiOutbound,
+    listGroupsApiV1PbxGroupsGet: mocks.groups,
+    listConferencesApiV1PbxConferencesGet: mocks.conferences,
+    readCallSettingsApiV1PbxExtensionsUserIdCallSettingsGet: mocks.callSettings,
     listRestrictionsApiV1PbxRestrictionsGet: mocks.restrictions,
     unrouteNumberApiV1PbxRoutesNumberDelete: mocks.unroute,
     applyBrandingApiV1PbxBrandingApplyPost: mocks.branding,
@@ -61,7 +67,7 @@ const connected = {
     branding_applied_at: null, events_connected: false,
 };
 const inventory = {
-    users: [{ uuid: "u-1", name: "Koffi Yao", extension: "1001", email: "koffi@ivoire-immo.ci", enabled: true }],
+    users: [{ id: 1, uuid: "u-1", name: "Koffi Yao", extension: "1001", email: "koffi@ivoire-immo.ci", enabled: true }],
     queues: [{ id: 1, name: "Ventes", extensions: ["3001"], members: 2 }],
     agents: [{ id: 7, number: "1001", name: "Koffi Yao", logged: true, paused: false, paused_reason: null, extension: "1001" }],
     numbers: [
@@ -91,6 +97,18 @@ beforeEach(() => {
     });
     mocks.aiOutbound.mockResolvedValue({
         data: { mode: "routes", trunk_id: null, dial_string_template: "Local/{number}@to-extern", number_format: "national", country_code: "225", national_prefix: "", caller_id: "+2252722000000", example: { number: "+2250707112233", dial_string: "Local/0707112233@to-extern" } },
+    });
+    mocks.groups.mockResolvedValue({
+        data: {
+            strategies: { all: "Tous les postes en même temps", linear: "Dans l'ordre de la liste" },
+            groups: [{ id: 30, uuid: "g-1", label: "Accueil", extensions: ["4001"], strategy: "linear", ring_seconds: 15, members: [{ uuid: "u-1", name: "Koffi Yao" }], fallback: { type: "ai", target_id: 4, workflow_name: "Accueil" } }],
+        },
+    });
+    mocks.conferences.mockResolvedValue({
+        data: { live_error: null, conferences: [{ id: 60, name: "Point hebdo", extensions: ["5001"], has_pin: true, has_admin_pin: false, max_users: 10, record: false, participants: [{ id: "p-1", name: "Aya", number: "1002", muted: true, admin: false, joined_at: null }] }] },
+    });
+    mocks.callSettings.mockResolvedValue({
+        data: { user_id: 1, name: "Koffi Yao", dnd: true, unanswered: null, forwards: { unconditional: { enabled: false, destination: "" }, busy: { enabled: false, destination: "" }, noanswer: { enabled: true, destination: "1002" } } },
     });
     mocks.restrictions.mockResolvedValue({
         data: { presets: [], restrictions: [{ id: 70, name: "Accueil", mode: "deny", patterns: ["_00."], enabled: true, has_pin: true, users: [{ uuid: "u-1", name: "Koffi Yao" }] }] },
@@ -224,5 +242,24 @@ describe("pbx page", () => {
         expect(mocks.events).toHaveBeenCalled();
         fireEvent.mouseDown(screen.getByRole("tab", { name: /Journal/ }));
         expect(await screen.findByText(/Manqué/)).toBeTruthy();
+    });
+
+    it("shows call groups, live conferences and a user's forwards", async () => {
+        render(<PbxPage />);
+        await screen.findByTestId("pbx-call");
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Groupes/ }));
+        const group = await screen.findByTestId("pbx-group");
+        expect(group.textContent).toContain("1. Koffi Yao");
+        expect(group.textContent).toContain("Agent IA « Accueil »");
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Conférences/ }));
+        const room = await screen.findByTestId("pbx-conference");
+        expect(room.textContent).toContain("1 en ligne");
+        expect(within(room).getByRole("button", { name: "Rendre la parole à Aya" })).toBeTruthy();
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Postes/ }));
+        fireEvent.click(await screen.findByRole("button", { name: "Renvois de Koffi Yao" }));
+        await screen.findByTestId("call-settings");
+        expect(mocks.callSettings).toHaveBeenCalledWith({ path: { user_id: 1 } });
+        expect((screen.getByRole("switch", { name: "Ne pas déranger" }) as HTMLButtonElement).getAttribute("data-state")).toBe("checked");
+        expect((screen.getByLabelText("Numéro du renvoi si pas de réponse") as HTMLInputElement).value).toBe("1002");
     });
 });

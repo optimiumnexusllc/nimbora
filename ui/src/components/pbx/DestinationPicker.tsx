@@ -6,17 +6,20 @@ import { cn } from "@/lib/utils";
 
 import type { PbxQueue, PbxUser } from "./types";
 
-export type DestinationType = "queue" | "user" | "ai" | "voicemail" | "menu" | "hangup";
+export type DestinationType = "queue" | "group" | "user" | "ai" | "voicemail" | "menu" | "conference" | "hangup";
 export type Destination = { type: DestinationType; target_id: number | null };
 export type PbxVoicemail = { id: number; name: string; number: string | null };
 export type MenuOption = { id: number; name: string; published: boolean };
+export type NamedTarget = { id: number; name: string; extensions?: string[] };
 
 export const DESTINATION_LABELS: Record<DestinationType, string> = {
     ai: "Agent IA",
     queue: "File d'attente",
+    group: "Groupe d'appel",
     user: "Poste",
     voicemail: "Messagerie",
     menu: "Autre menu vocal",
+    conference: "Salle de conférence",
     hangup: "Raccrocher",
 };
 
@@ -27,7 +30,12 @@ export type DestinationSources = {
     workflows: WorkflowSummaryResponse[];
     menus: MenuOption[];
     aiEnabled: boolean;
+    groups?: NamedTarget[];
+    conferences?: NamedTarget[];
 };
+
+const named = (items: NamedTarget[] | undefined) =>
+    (items ?? []).map((t) => ({ id: t.id, label: `${t.name}${t.extensions?.[0] ? ` (${t.extensions[0]})` : ""}` }));
 
 export function targetsFor(type: DestinationType, sources: DestinationSources): { id: number; label: string }[] {
     switch (type) {
@@ -41,6 +49,10 @@ export function targetsFor(type: DestinationType, sources: DestinationSources): 
             return sources.voicemails.map((v) => ({ id: v.id, label: `${v.name}${v.number ? ` (${v.number})` : ""}` }));
         case "ai":
             return sources.workflows.map((w) => ({ id: w.id, label: w.name }));
+        case "group":
+            return named(sources.groups);
+        case "conference":
+            return named(sources.conferences);
         case "menu":
             return sources.menus.map((m) => ({ id: m.id, label: m.published ? m.name : `${m.name} (non publié)` }));
         default:
@@ -72,7 +84,10 @@ export function DestinationPicker({
     className?: string;
 }) {
     const types = (allowed ?? (Object.keys(DESTINATION_LABELS) as DestinationType[])).filter(
-        (t) => t !== "ai" || sources.aiEnabled,
+        (t) =>
+            (t !== "ai" || sources.aiEnabled) &&
+            (t !== "group" || (sources.groups ?? []).length > 0) &&
+            (t !== "conference" || (sources.conferences ?? []).length > 0),
     );
     const targets = targetsFor(value.type, sources).filter((t) => value.type !== "menu" || t.id !== excludeMenuId);
     return (

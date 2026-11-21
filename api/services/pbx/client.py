@@ -547,6 +547,106 @@ class PbxClient:
             "confd", "DELETE", f"/users/{user_id}/callpermissions/{permission_id}"
         )
 
+    # ------------------------------------------------------ call groups
+
+    async def groups(self) -> list[dict]:
+        return await self._items("confd", "/groups", limit=500)
+
+    async def group(self, group_uuid: str) -> dict:
+        return await self.request("confd", "GET", f"/groups/{group_uuid}")
+
+    async def create_group(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/groups", json=body)
+
+    async def update_group(self, group_uuid: str, body: dict) -> None:
+        await self.request("confd", "PUT", f"/groups/{group_uuid}", json=body)
+
+    async def delete_group(self, group_uuid: str) -> None:
+        await self.request("confd", "DELETE", f"/groups/{group_uuid}")
+
+    async def set_group_users(self, group_uuid: str, users: list[dict]) -> None:
+        """``users``: ``[{"uuid": …, "priority": n}]`` — replaces the members."""
+        await self.request(
+            "confd",
+            "PUT",
+            f"/groups/{group_uuid}/members/users",
+            json={"users": users},
+        )
+
+    async def associate_group_extension(
+        self, group_uuid: str, extension_id: int
+    ) -> None:
+        await self.request(
+            "confd", "PUT", f"/groups/{group_uuid}/extensions/{extension_id}"
+        )
+
+    async def set_group_fallbacks(self, group_uuid: str, fallbacks: dict) -> None:
+        await self.request(
+            "confd", "PUT", f"/groups/{group_uuid}/fallbacks", json=fallbacks
+        )
+
+    # ------------------------------------------ forwards, DND, fallbacks
+
+    async def user_forwards(self, user_id: int | str) -> dict:
+        return await self.request("confd", "GET", f"/users/{user_id}/forwards")
+
+    async def set_user_forwards(self, user_id: int | str, forwards: dict) -> None:
+        await self.request("confd", "PUT", f"/users/{user_id}/forwards", json=forwards)
+
+    async def user_services(self, user_id: int | str) -> dict:
+        return await self.request("confd", "GET", f"/users/{user_id}/services")
+
+    async def set_user_services(self, user_id: int | str, services: dict) -> None:
+        await self.request("confd", "PUT", f"/users/{user_id}/services", json=services)
+
+    async def user_fallbacks(self, user_id: int | str) -> dict:
+        return await self.request("confd", "GET", f"/users/{user_id}/fallbacks")
+
+    async def set_user_fallbacks(self, user_id: int | str, fallbacks: dict) -> None:
+        await self.request(
+            "confd", "PUT", f"/users/{user_id}/fallbacks", json=fallbacks
+        )
+
+    # ------------------------------------------------------ conferences
+
+    async def conferences(self) -> list[dict]:
+        return await self._items("confd", "/conferences", limit=500)
+
+    async def create_conference(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/conferences", json=body)
+
+    async def delete_conference(self, conference_id: int) -> None:
+        await self.request("confd", "DELETE", f"/conferences/{conference_id}")
+
+    async def associate_conference_extension(
+        self, conference_id: int, extension_id: int
+    ) -> None:
+        await self.request(
+            "confd",
+            "PUT",
+            f"/conferences/{conference_id}/extensions/{extension_id}",
+        )
+
+    async def conference_participants(self, conference_id: int) -> list[dict]:
+        return await self._items("calld", f"/conferences/{conference_id}/participants")
+
+    async def kick_participant(self, conference_id: int, participant_id: str) -> None:
+        await self.request(
+            "calld",
+            "DELETE",
+            f"/conferences/{conference_id}/participants/{participant_id}",
+        )
+
+    async def mute_participant(
+        self, conference_id: int, participant_id: str, muted: bool
+    ) -> None:
+        action = "mute" if muted else "unmute"
+        await self.request(
+            "calld",
+            "PUT",
+            f"/conferences/{conference_id}/participants/{participant_id}/{action}",
+        )
+
     async def send_password_reset_email(self, login: str) -> None:
         """Ask the PBX to e-mail a reset link (white-label template)."""
         try:
@@ -688,4 +788,29 @@ REQUIRED_ACL: dict[str, str] = {
     "delete_call_permission": "confd.callpermissions.{callpermission_id}.delete",
     "associate_user_call_permission": "confd.users.{user_id}.callpermissions.{call_permission_id}.update",
     "dissociate_user_call_permission": "confd.users.{user_id}.callpermissions.{call_permission_id}.delete",
+    # call groups
+    "groups": "confd.groups.read",
+    "group": "confd.groups.{group_uuid}.read",
+    "create_group": "confd.groups.create",
+    "update_group": "confd.groups.{group_uuid}.update",
+    "delete_group": "confd.groups.{group_uuid}.delete",
+    "set_group_users": "confd.groups.{group_uuid}.members.users.update",
+    "associate_group_extension": "confd.groups.{group_uuid}.extensions.{extension_id}.update",
+    "set_group_fallbacks": "confd.groups.{group_uuid}.fallbacks.update",
+    # forwards, do-not-disturb, no-answer destinations
+    "user_forwards": "confd.users.{user_id}.forwards.read",
+    "set_user_forwards": "confd.users.{user_id}.forwards.update",
+    "user_services": "confd.users.{user_id}.services.read",
+    "set_user_services": "confd.users.{user_id}.services.update",
+    "user_fallbacks": "confd.users.{user_id}.fallbacks.read",
+    "set_user_fallbacks": "confd.users.{user_id}.fallbacks.update",
+    # conferences
+    "conferences": "confd.conferences.read",
+    "create_conference": "confd.conferences.create",
+    "delete_conference": "confd.conferences.{conference_id}.delete",
+    "associate_conference_extension": "confd.conferences.{conference_id}.extensions.{extension_id}.update",
+    "conference_participants": "calld.conferences.{conference_id}.participants.read",
+    "kick_participant": "calld.conferences.{conference_id}.participants.{participant_id}.delete",
+    "mute_participant_mute": "calld.conferences.{conference_id}.participants.{participant_id}.mute.update",
+    "mute_participant_unmute": "calld.conferences.{conference_id}.participants.{participant_id}.unmute.update",
 }

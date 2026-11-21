@@ -28,13 +28,17 @@ IVR_METADATA_KEY = "pbx_ivr"
 DIGIT_WORDS = {"*": "étoile", "#": "dièse"}
 DIGIT_KEYS = {"*": "star", "#": "hash"}
 
-ActionType = Literal["queue", "user", "ai", "voicemail", "menu", "hangup"]
+ActionType = Literal[
+    "queue", "group", "user", "ai", "voicemail", "menu", "conference", "hangup"
+]
 ACTION_LABELS = {
     "queue": "File d'attente",
+    "group": "Groupe d'appel",
     "user": "Poste",
     "ai": "Agent IA",
     "voicemail": "Messagerie",
     "menu": "Autre menu",
+    "conference": "Salle de conférence",
     "hangup": "Raccrocher",
 }
 
@@ -202,6 +206,10 @@ async def _destination(
 
     if action.type == "queue":
         return {"type": "queue", "queue_id": action.target_id}
+    if action.type == "group":
+        return {"type": "group", "group_id": action.target_id}
+    if action.type == "conference":
+        return {"type": "conference", "conference_id": action.target_id}
     if action.type == "user":
         return {"type": "user", "user_id": action.target_id}
     if action.type == "voicemail":

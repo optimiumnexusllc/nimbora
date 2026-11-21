@@ -159,6 +159,13 @@ class FakePbx:
         self.outcalls: list[dict] = []
         self.fail_trunk_association = False
         self.call_permissions: list[dict] = []
+        self.groups: list[dict] = []
+        self.user_forwards: dict[int, dict] = {}
+        self.user_services: dict[int, dict] = {}
+        self.user_fallbacks: dict[int, dict] = {}
+        self.conferences: list[dict] = []
+        self.participants: dict[int, list[dict]] = {}
+        self.participant_actions: list[tuple[int, str, str]] = []
         self._next = 100
 
     # ------------------------------------------------------------------
@@ -840,6 +847,164 @@ class FakePbx:
                         "lastname": user.get("lastname"),
                     }
                 )
+            return httpx.Response(204)
+
+        # ----- call groups
+        if path == f"{prefix}/groups" and method == "GET":
+            return httpx.Response(
+                200, json={"items": self.groups, "total": len(self.groups)}
+            )
+        if path == f"{prefix}/groups" and method == "POST":
+            if not re.fullmatch(r"[-_.a-zA-Z0-9 ]+", body.get("label") or ""):
+                return httpx.Response(400, json=["Input Error - field 'label'"])
+            group = {
+                "id": self._id(),
+                "uuid": str(uuid.uuid4()),
+                "name": f"grp-{self._next}",
+                "extensions": [],
+                "members": {"users": [], "extensions": []},
+                "fallbacks": {
+                    "noanswer_destination": None,
+                    "congestion_destination": None,
+                },
+                **body,
+            }
+            self.groups.append(group)
+            return httpx.Response(201, json=group)
+        m = re.fullmatch(rf"{prefix}/groups/([0-9a-f-]+)(/.*)?", path)
+        if m:
+            group = next((g for g in self.groups if g["uuid"] == m.group(1)), None)
+            if group is None:
+                return httpx.Response(404, json=["Resource Not Found - Group"])
+            rest = m.group(2) or ""
+            if rest == "" and method == "GET":
+                return httpx.Response(200, json=group)
+            if rest == "" and method == "DELETE":
+                self.groups.remove(group)
+                return httpx.Response(204)
+            if rest == "/members/users" and method == "PUT":
+                users = []
+                for member in body.get("users") or []:
+                    user = next(
+                        (u for u in self.users if u["uuid"] == member["uuid"]), None
+                    )
+                    if user is None:
+                        return httpx.Response(404, json=["Resource Not Found - User"])
+                    users.append(
+                        {
+                            "uuid": user["uuid"],
+                            "firstname": user.get("firstname"),
+                            "lastname": user.get("lastname"),
+                            "priority": member.get("priority", 0),
+                        }
+                    )
+                group["members"]["users"] = users
+                return httpx.Response(204)
+            em = re.fullmatch(r"/extensions/(\d+)", rest)
+            if em and method == "PUT":
+                extension = next(
+                    (e for e in self.extensions if e["id"] == int(em.group(1))), None
+                )
+                if extension is None:
+                    return httpx.Response(404, json=["Resource Not Found - Extension"])
+                group["extensions"].append(extension)
+                return httpx.Response(204)
+            if rest == "/fallbacks" and method == "PUT":
+                group["fallbacks"].update(body)
+                return httpx.Response(204)
+
+        # ----- forwards, services, fallbacks
+        m = re.fullmatch(rf"{prefix}/users/(\d+)/(forwards|services|fallbacks)", path)
+        if m:
+            user_id = int(m.group(1))
+            if not any(u.get("id") == user_id for u in self.users):
+                return httpx.Response(404, json=["Resource Not Found - User"])
+            store = {
+                "forwards": self.user_forwards,
+                "services": self.user_services,
+                "fallbacks": self.user_fallbacks,
+            }[m.group(2)]
+            if method == "GET":
+                defaults = {
+                    "forwards": {
+                        k: {"enabled": False, "destination": None}
+                        for k in ("busy", "noanswer", "unconditional")
+                    },
+                    "services": {
+                        "dnd": {"enabled": False},
+                        "incallfilter": {"enabled": False},
+                    },
+                    "fallbacks": {
+                        k: None
+                        for k in (
+                            "noanswer_destination",
+                            "busy_destination",
+                            "congestion_destination",
+                            "fail_destination",
+                        )
+                    },
+                }[m.group(2)]
+                return httpx.Response(200, json={**defaults, **store.get(user_id, {})})
+            if m.group(2) == "forwards":
+                for forward in body.values():
+                    if forward.get("enabled") and not forward.get("destination"):
+                        return httpx.Response(400, json=["Input Error - destination"])
+            store[user_id] = body
+            return httpx.Response(204)
+
+        # ----- conferences
+        if path == f"{prefix}/conferences" and method == "GET":
+            return httpx.Response(
+                200, json={"items": self.conferences, "total": len(self.conferences)}
+            )
+        if path == f"{prefix}/conferences" and method == "POST":
+            for pin in (body.get("pin"), body.get("admin_pin")):
+                if pin is not None and not str(pin).isdigit():
+                    return httpx.Response(400, json=["Input Error - field 'pin'"])
+            conference = {"id": self._id(), "extensions": [], **body}
+            self.conferences.append(conference)
+            return httpx.Response(201, json=conference)
+        m = re.fullmatch(rf"{prefix}/conferences/(\d+)", path)
+        if m and method == "DELETE":
+            conference = next(
+                (c for c in self.conferences if c["id"] == int(m.group(1))), None
+            )
+            if conference is None:
+                return httpx.Response(404, json=["Resource Not Found - Conference"])
+            self.conferences.remove(conference)
+            return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/conferences/(\d+)/extensions/(\d+)", path)
+        if m and method == "PUT":
+            conference = next(
+                (c for c in self.conferences if c["id"] == int(m.group(1))), None
+            )
+            extension = next(
+                (e for e in self.extensions if e["id"] == int(m.group(2))), None
+            )
+            if conference is None or extension is None:
+                return httpx.Response(404, json=["Resource Not Found"])
+            conference["extensions"].append(extension)
+            return httpx.Response(204)
+        m = re.fullmatch(
+            r"/api/calld/1.0/conferences/(\d+)/participants(?:/([^/]+)(?:/(mute|unmute))?)?",
+            path,
+        )
+        if m:
+            conference_id = int(m.group(1))
+            if not any(c["id"] == conference_id for c in self.conferences):
+                return httpx.Response(404, json={"message": "No such conference"})
+            people = self.participants.get(conference_id, [])
+            if m.group(2) is None:
+                return httpx.Response(200, json={"items": people, "total": len(people)})
+            participant = next((p for p in people if p["id"] == m.group(2)), None)
+            if participant is None:
+                return httpx.Response(404, json={"message": "No such participant"})
+            action = m.group(3) or "kick"
+            self.participant_actions.append((conference_id, participant["id"], action))
+            if action == "kick":
+                people.remove(participant)
+            else:
+                participant["muted"] = action == "mute"
             return httpx.Response(204)
 
         if path == "/api/calld/1.0/trunks":

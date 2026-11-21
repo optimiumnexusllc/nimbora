@@ -40,7 +40,7 @@ The install script:
 - generates every secret, so the installer's public default passwords are never used;
 - leaves out the engine's own web UI;
 - firewalls ARI (port 5039) to NIMBORA only and AMI (port 5038) to the server itself, over IPv4 and IPv6;
-- creates the service account. Its policy grants only the 79 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
+- creates the service account. Its policy grants only the 101 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
 
 See `deploy/pbx/README.md` for every option and what the white label changes.
 
@@ -137,6 +137,60 @@ The PBX keeps a single schedule per company. When the hours change, open the dia
   <img src="/images/screenshots/pbx-schedule.webp" alt="Opening hours dialog with numbers to cover and the after-hours destination" />
 </Frame>
 
+### Call groups
+
+**Groupes → Nouveau groupe** gives several extensions one internal number. Choose how they ring:
+
+- all at once;
+- in list order (the order is set by moving members up and down);
+- each in turn, or the one idle the longest;
+- the one with the fewest calls, or at random.
+
+**Sonnerie** is how long each extension rings. When members ring one after another, the group waits long enough for every member to ring once.
+
+**Si personne ne décroche** sends the call on to an AI agent, a voicemail, a queue, an extension or a voice menu. AI agents take the call with `Stasis(<app>,inbound,called=nimbora-g<group>)`. **Membres** and **Sans réponse** change a group later.
+
+The PBX accepts only unaccented letters in group names, so "Équipe accueil" is saved as "Equipe accueil".
+
+Numbers, voice menu keys and fallbacks can all lead to a group.
+
+### Forwards, do-not-disturb and unanswered calls
+
+**Postes → Renvois** sets how one extension handles its calls:
+
+- **Renvois**:
+  - **Toujours** forwards every call;
+  - **Si occupé** forwards when the extension is already on a call;
+  - **Si pas de réponse** forwards after it has rung.
+
+  The destination is a phone number or an extension.
+- **Ne pas déranger**: the extension stops ringing.
+- **Quand personne ne décroche**: where calls go when the extension does not answer, is busy or is unreachable. That can be a voicemail, a colleague, a queue, a group, a voice menu, or **an AI agent** that answers in the person's place and takes a message (`called=nimbora-u<user>`).
+
+<Frame caption="An extension's forwards, and an AI agent answering when nobody picks up">
+  <img src="/images/screenshots/pbx-forwards.webp" alt="Forwards dialog with do-not-disturb, a no-answer forward and an AI agent for unanswered calls" />
+</Frame>
+
+### Conference rooms
+
+**Conférences → Nouvelle salle** creates a meeting room with an internal number. You can also set:
+
+- a participant PIN and an organizer PIN (4 to 12 digits, and they must differ);
+- a maximum number of participants;
+- arrival announcements and recording.
+
+PINs are never sent back by the API. To let outside callers dial in, point a public number at the room from **Numéros**.
+
+While a meeting runs, each room lists who is in it and since when. Organizers are marked with a crown. You can mute, unmute or remove any participant. The list refreshes every 10 seconds while the tab is open.
+
+<Frame caption="Call groups with an AI agent behind them, and a live conference room">
+  <img src="/images/screenshots/pbx-groups.webp" alt="Call groups showing members in ringing order and the AI agent that answers when nobody picks up" />
+</Frame>
+
+<Frame caption="Live conference: participants, organizer, muted microphones">
+  <img src="/images/screenshots/pbx-conferences.webp" alt="Conference rooms with the participants connected, their duration and microphone controls" />
+</Frame>
+
 ### Voice menus
 
 **Serveurs vocaux → Nouveau menu** opens a visual editor for menus like "for sales, press 1". Each menu has:
@@ -147,7 +201,7 @@ The PBX keeps a single schedule per company. When the hours change, open the dia
 - a message for keys that lead nowhere, how long to wait for a key, and how many tries;
 - a destination for callers who press nothing or keep pressing wrong keys.
 
-A choice can lead to a queue, an extension, a voicemail, another menu, a hang-up, or **an AI agent**. Put an AI agent as the fallback and no caller hangs up without an answer.
+A choice can lead to a queue, a call group, an extension, a voicemail, a conference room, another menu, a hang-up, or **an AI agent**. Put an AI agent as the fallback and no caller hangs up without an answer.
 
 The editor shows the menu as the caller lives it: the messages, the phone keypad with the keys in use, and where each key leads. **Écouter** plays any message in telephone quality before you publish.
 
