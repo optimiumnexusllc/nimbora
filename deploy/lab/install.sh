@@ -80,6 +80,11 @@ done
 
 runs() { [[ -z "$ONLY" ]] || [[ ",$ONLY," == *",$1,"* ]]; }
 
+# Without --secrets-file, a file at the default place is picked up as soon as
+# it exists, whichever phases run: drop it there later and re-run `--only nimbora`.
+DEFAULT_SECRETS_FILE="$STATE_DIR/secrets.env"
+[[ -n "$SECRETS_FILE" ]] || SECRETS_FILE="$DEFAULT_SECRETS_FILE"
+
 # set_kv FILE KEY VALUE — replace or append KEY=VALUE (value quoted if needed)
 set_kv() {
     local file=$1 key=$2 value=$3 tmp
@@ -124,9 +129,6 @@ if runs preflight; then
     avail_mb="$(awk '/MemAvailable/{print int($2/1024)}' /proc/meminfo)"
     (( avail_mb >= 7000 )) || warn "Seulement ${avail_mb} Mo disponibles ; le PBX (${PBX_MEMORY}) et la pile NIMBORA (~3 Go) seront serrés."
     [[ -z "$SECRETS_FILE" || -f "$SECRETS_FILE" ]] || die "Fichier de secrets introuvable : $SECRETS_FILE"
-    # Without --secrets-file, a file at the default place is picked up when it
-    # appears: drop it there later and re-run `--only nimbora`.
-    [[ -n "$SECRETS_FILE" ]] || SECRETS_FILE="$STATE_DIR/secrets.env"
 
     install -d -m 700 "$STATE_DIR"
     for k in APP_DOMAIN PBX_DOMAIN BRAND COMPANY PUBLIC_IF PUBLIC_IP INCUS_BRIDGE BRIDGE_CIDR PBX_IP PBX_NAME \

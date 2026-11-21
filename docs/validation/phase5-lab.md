@@ -39,7 +39,12 @@ exposé (réseau privé 10.250.0.0/24, `--nimbora-ip` = adresse de l'hôte sur l
 
 Snapshot A de l'hébergeur pris avant l'installation d'Incus.
 
-## Rapport d'étape 2 — Incus, pare-feu, PBX (21 novembre 2026, en cours)
+## Rapport d'étape 2 — Incus, pare-feu, PBX, pile NIMBORA (21 novembre 2026)
+
+État à la fin de l'étape : PBX installé et réglé dans le conteneur, pile NIMBORA démarrée
+et saine, aucun service existant touché (15 conteneurs Coolify toujours `healthy`, Odoo,
+Kaevorin et les autres processus inchangés), 7 Go de RAM encore disponibles. **Arrêt pour le
+snapshot B** avant d'écrire dans le dossier dynamique de Traefik.
 
 | Date | Action | Résultat |
 |---|---|---|
@@ -49,10 +54,62 @@ Snapshot A de l'hébergeur pris avant l'installation d'Incus.
 | 21/11 13:28 | Conteneur `nimbora-pbx` Debian 12 lancé, IP fixe 10.250.0.10, limites 2 vCPU / 4 Go | ✅ |
 | 21/11 13:39 | `deploy/pbx/install.sh` dans le conteneur : moteur Wazo 26.11 installé (150 tâches), tous les services `wazo-service status` en marche, puis échec à « Create tenant » | ❌ 🐛 n° 2 |
 | 21/11 13:45 | Asterisk 22.12.0 du moteur : `module show like websocket` → `chan_websocket.so` **Running**, `res_websocket_client.so` **Running**, `res_pjsip_transport_websocket.so` Running | ✅ ligne 🧪 « modules `chan_websocket` / `res_websocket_client` » |
-| 21/11 13:50 | Relance `--only pbx` avec le correctif n° 2 | en cours |
+| 21/11 13:50 | Relance `--only pbx` avec le correctif n° 2 : tenant « Entreprise test » créé, marque blanche appliquée (en-tête SIP `NIMBORA-Voice`, page d'accueil « NIMBORA Voice »), nftables ARI/AMI, compte de service `nimbora-integration` à **110 ACL** | ✅ |
+| 21/11 15:25 | `pbx_nat.py` : `external_media_address` et `external_signaling_address` = IP publique, `local_net` 10.250.0.0/24 sur `transport-udp` et `transport-wss`, RTP 10000-20000 confirmé (`rtp show settings`), Asterisk redémarré | ✅ |
+| 21/11 15:40 | `install.sh --only nimbora` : `.env` généré, override Compose, `docker compose up` | ❌ 🐛 n° 3 (image MinIO) puis ✅ |
+| 21/11 15:55 | Pile saine : postgres, redis, minio, api (`/api/v1/health` → `ok`, 1.51.0), ui, coturn (3478/5349 TCP+UDP, 49152-49200/udp publiés) ; aucun autre port publié | ✅ |
+| 21/11 16:00 | API → ARI du PBX (`10.250.0.10:5039`) | ❌ 🐛 n° 5 puis ✅ (401 = joignable, authentification attendue) |
+| 21/11 16:00 | ARI depuis un conteneur d'un autre réseau Docker (`coolify`) | ✅ bloqué (règle 8 de `DOCKER-USER`) |
+| 21/11 16:00 | PBX → `https://app.<domaine>` par Traefik (épingle à cheveux) | ✅ 503 de Traefik, attendu avant la phase traefik : le chemin réseau fonctionne |
+| 21/11 16:00 | API → `https://10.250.0.10` (nginx du moteur, certificat auto-signé) | ✅ répond |
 
 Services existants pendant l'étape : 15 conteneurs toujours `healthy`, mémoire disponible
-stable autour de 10,7 Go (conteneur PBX : 1,6 Go pendant l'installation).
+10,7 Go avant la pile NIMBORA, 7,0 Go après (conteneur PBX : 1,6 Go pendant l'installation).
+
+### 🐛 n° 3 — images MinIO introuvables (bloque toute installation neuve)
+
+**Symptôme** : `docker compose up` → `quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z` :
+`401 UNAUTHORIZED` ; `minio/minio` sur Docker Hub : `pull access denied` ; `minio/minio:latest`
+et `quay.io/minio/minio:latest` absents aussi. MinIO a retiré ses images publiques.
+**Correction** (`docker-compose.yaml`, `docker-compose-local.yaml`,
+`deploy/enterprise/docker-compose.yml`) : image par défaut `bitnamilegacy/minio:2025.4.22`,
+build Bitnami de **la même version** (binaire `minio DEVELOPMENT.2025-04-22T22-12-26Z`, `mc`
+inclus). L'image Bitnami est prévue pour l'utilisateur 1001 sous `/bitnami` : elle tourne en
+root avec `minio server /data` pour garder la disposition officielle et les volumes
+existants ; la variable `MC_HOST_local` fournit l'alias du contrôle de santé `mc ready local`
+que l'image officielle définissait seule. `MINIO_IMAGE` reste surchargeable. Vérifié par un
+conteneur d'essai (`mc ready local` → « The cluster 'local' is ready ») puis par la pile.
+Test : `test_minio_image_is_pullable_and_health_check_has_its_alias`.
+
+### 🐛 n° 4 — fichier de secrets par défaut ignoré selon les phases jouées
+
+**Symptôme** : `--only nimbora` affiche « Aucun fichier de secrets () ».
+**Cause** : le chemin par défaut (`/etc/nimbora-lab/secrets.env`) n'était calculé que dans la
+phase `preflight`. **Correction** : calculé pour toute exécution ; un fichier déposé plus
+tard est repris au prochain `--only nimbora`.
+
+### 🐛 n° 5 — l'ARI reste sur 127.0.0.1 malgré `b2bua_listen_address = 0.0.0.0`
+
+**Symptôme** : depuis la plateforme, `10.250.0.10:5039` → `connection refused` ; dans le
+conteneur, `ss -tlnp` montre `127.0.0.1:5039`.
+**Cause** : le rôle `b2bua` du moteur n'écrit `/etc/asterisk/http.d/10-engine-api.conf` que si
+`b2bua_listen_address` **et** `b2bua_port_http` sont définis ; le kit ne donnait que
+l'adresse. Sur un serveur dédié, la plateforme n'aurait jamais pu joindre l'ARI.
+**Correction** dans `deploy/pbx/install.sh` : `b2bua_port_http = 5039` dans l'inventaire ;
+`b2bua_port_sysconfd` volontairement absent (wazo-sysconfd n'a pas d'authentification et
+resterait sinon exposé sur la même adresse). Appliqué à chaud sur le PBX du laboratoire avec
+le même fichier que celui du rôle, puis `module reload http`. Test :
+`test_pbx_inventory_defines_ari_port_with_its_address`.
+
+### Observation de sécurité (à traiter, non corrigée ici)
+
+Dans le conteneur, plusieurs services du moteur écoutent sur toutes les interfaces :
+RabbitMQ (5672, 25672, 4369 epmd), Postfix (25), `chan_skinny` (2000), wazo-phoned
+(9498/9499), wazo-provd HTTP (8667), nginx (80/443). Au laboratoire, seuls Traefik (443) et la
+plateforme atteignent le conteneur, et les autres réseaux Docker sont bloqués. Sur un
+**serveur dédié exposé**, le kit `deploy/pbx/` ne filtre que l'ARI et l'AMI : les ports
+ci-dessus dépendent du pare-feu de l'hébergeur. Amélioration proposée : étendre la table
+nftables du kit à RabbitMQ, epmd, SCCP et SMTP (localhost seulement) et documenter la liste.
 
 ### 🐛 n° 1 — `firewall.sh` échoue au premier lancement
 
