@@ -117,3 +117,39 @@ def test_pbx_inventory_defines_ari_port_with_its_address():
     # sysconfd has no authentication: its port must NOT be set, or the same
     # address would expose it.
     assert "b2bua_port_sysconfd" not in inventory
+
+
+def run_pbx_install_argument_parsing(*args: str) -> subprocess.CompletedProcess:
+    """Run deploy/pbx/install.sh's real option parsing and validation, nothing else.
+
+    The script is executed up to (and including) its argument checks, with the
+    root/Debian checks neutralised, then prints the inventory line it would
+    write for the tenant. No package is installed, nothing is written.
+    """
+    script = (DEPLOY / "pbx" / "install.sh").read_text()
+    head = script[: script.index('echo "==> Paquets de base"')]
+    head = head.replace("[[ $EUID -eq 0 ]]", "true").replace(
+        "grep -q 'VERSION_CODENAME=bookworm' /etc/os-release", "true"
+    )
+    head += '\nprintf "tenant_name = %s\\n" "$(ansible_quote "$COMPANY")"\n'
+    return subprocess.run(
+        ["bash", "-c", head + ' "$@"', "install.sh", *args], capture_output=True, text=True
+    )
+
+
+def test_pbx_install_accepts_company_name_with_spaces():
+    result = run_pbx_install_argument_parsing(
+        "--nimbora-url", "https://app.example.com", "--nimbora-ip", "203.0.113.10",
+        "--company", "OPTIMIUM NEXUS LLC",
+    )
+    assert result.returncode == 0, result.stderr + result.stdout
+    assert 'tenant_name = \'"OPTIMIUM NEXUS LLC"\'' in result.stdout
+
+
+def test_pbx_install_refuses_company_name_with_quotes():
+    result = run_pbx_install_argument_parsing(
+        "--nimbora-url", "https://app.example.com", "--nimbora-ip", "203.0.113.10",
+        "--company", 'Ivoire "Immo"',
+    )
+    assert result.returncode == 1
+    assert "guillemet" in result.stdout + result.stderr
