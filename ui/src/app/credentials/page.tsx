@@ -23,6 +23,7 @@ const TYPE_LABELS: Record<WebhookCredentialType, string> = {
     bearer_token: "Bearer Token",
     basic_auth: "Basic Auth",
     custom_header: "Custom Header",
+    service_account: "Google service account",
 };
 
 const typeLabel = (type: string) => TYPE_LABELS[type as WebhookCredentialType] ?? type;

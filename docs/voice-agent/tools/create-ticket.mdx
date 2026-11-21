@@ -1,0 +1,23 @@
+---
+title: "Create Ticket"
+description: "Open a support ticket from the call, give the caller its number, and let callers ask where their tickets stand."
+---
+
+- **create**: opens a ticket with:
+  - a subject;
+  - a detailed description, which includes the caller's number and the call reference;
+  - a priority;
+  - a category, if you defined some.
+
+  The agent then gives the caller the ticket number, for example **#1042**.
+- **lookup**: tells callers the status of their tickets ("en attente d'une information", "résolu"…). It reads out the resolution you wrote. Callers only hear about tickets opened from their own number.
+
+## Helpdesks
+
+| Helpdesk | Setup |
+|---|---|
+| **NIMBORA tickets** | Built in: **Activité → Tickets**. Set the status, priority and resolution there. |
+| **Zendesk** | Domain `acme.zendesk.com`, *Basic Auth* credential: `agent@acme.com/token` as username, the API token as password |
+| **Freshdesk** | Domain `acme.freshdesk.com`, *Basic Auth* credential: the API key as username, `X` as password |
+
+For Zendesk and Freshdesk, NIMBORA keeps a copy of each ticket (number, link) and asks the helpdesk for the live status when a caller follows up. Tickets are tagged `nimbora`.

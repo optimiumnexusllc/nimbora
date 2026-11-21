@@ -1,0 +1,34 @@
+---
+title: "Send Message"
+description: "Send the caller an SMS, a WhatsApp message or an e-mail during the call: address, payment link, confirmation, tracking number."
+---
+
+| Channel | Provider | Credential |
+|---|---|---|
+| SMS | Twilio | *Basic Auth*: Account SID as username, Auth Token as password |
+| SMS | Any gateway (HTTP) | Optional: API key, bearer token, custom header |
+| WhatsApp | Twilio | Same as SMS. The sender is your WhatsApp Business number. |
+| E-mail | SMTP | *Basic Auth*: mailbox login |
+
+With the **HTTP gateway**, NIMBORA sends a `POST` with the JSON `{"to", "from", "message", "channel"}` and the credential's authentication. Use it for local operators and SMS APIs. If the response JSON has an `id` or `message_id`, it is kept as the provider reference.
+
+## Content
+
+- **Without a template**, the agent writes the message.
+- **With a template**, the agent only fills `{{details}}`. `{{customer_name}}` and the call's extracted variables are filled in automatically, for example:
+
+  ```
+  Bonjour {{customer_name}}, voici votre lien de paiement : {{details}}
+  ```
+
+## Safeguards
+
+- SMS and WhatsApp go to the **caller's own number**. A different number given by the caller is only allowed if you turn that option on.
+- E-mail addresses are validated. The agent is told to spell them back first.
+- There is a limit of **3 messages per call** by default.
+- Every attempt is logged in **Activité → Messages**, failures included.
+- A tool that is not fully configured tells the agent so, instead of failing silently.
+
+<Note>
+WhatsApp only delivers free-form messages within 24 hours of the customer's last message. Outside that window, use an approved template.
+</Note>

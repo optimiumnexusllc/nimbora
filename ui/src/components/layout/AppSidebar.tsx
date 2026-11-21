@@ -7,6 +7,7 @@ import {
   Brain,
   ChevronLeft,
   ChevronRight,
+  ClipboardList,
   Database,
   FileText,
   Headphones,
@@ -157,6 +158,11 @@ const NAV_SECTIONS: SidebarNavSection[] = [
         title: "Clients",
         url: "/customers",
         icon: Users,
+      },
+      {
+        title: "Activité",
+        url: "/activity",
+        icon: ClipboardList,
       },
       {
         title: "Confidentialité",

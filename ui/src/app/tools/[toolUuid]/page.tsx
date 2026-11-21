@@ -11,10 +11,13 @@ import {
     updateToolApiV1ToolsToolUuidPut,
 } from "@/client/sdk.gen";
 import type {
+    BookAppointmentConfig,
+    CreateTicketConfig,
     EndCallConfig,
     HttpApiToolDefinition,
     RecordingResponseSchema,
     ScheduleCallbackConfig,
+    SendMessageConfig,
     ToolResponse,
     TransferAgentConfig,
     TransferCallConfig,
@@ -50,6 +53,14 @@ import { TOOL_DOCUMENTATION_URLS } from "@/constants/documentation";
 import { detailFromError } from "@/lib/apiError";
 import { useAuth } from "@/lib/auth";
 import { enterpriseApi } from "@/lib/enterpriseApi";
+
+import {
+    BookAppointmentToolConfig,
+    CreateTicketToolConfig,
+    SendMessageToolConfig,
+} from "./components/ActionToolConfigs";
+
+const ACTION_TOOL_TYPES = new Set<string>(["book_appointment", "send_message", "create_ticket"]);
 
 import {
     type ContextDestinationRuleRow,
@@ -167,6 +178,8 @@ export default function ToolDetailPage() {
     const [callbackWorkflowId, setCallbackWorkflowId] = useState("");
     const [callbackDelayMinutes, setCallbackDelayMinutes] = useState(0);
     const [callbackQueues, setCallbackQueues] = useState<CallbackQueueOption[] | null>(null);
+    // Calendar, message and ticket tools keep their whole config in one object.
+    const [actionConfig, setActionConfig] = useState<Record<string, unknown>>({});
 
     // Transfer Call form state
     const [transferDestinationSource, setTransferDestinationSource] =
@@ -325,6 +338,8 @@ export default function ToolDetailPage() {
                 setTransferContextDestinationRules([]);
                 setTransferFallbackDestination("");
             }
+        } else if (ACTION_TOOL_TYPES.has(tool.category)) {
+            setActionConfig({ ...((tool.definition?.config as Record<string, unknown> | undefined) ?? {}) });
         } else if (tool.category === "schedule_callback") {
             const config = tool.definition?.config as ScheduleCallbackConfig | undefined;
             setCallbackAssignTo(config?.assign_to ?? "human");
@@ -660,6 +675,17 @@ export default function ToolDetailPage() {
                         schema_version: 1,
                         type: "calculator",
                     },
+                };
+            } else if (ACTION_TOOL_TYPES.has(tool.category)) {
+                requestBody = {
+                    name,
+                    description: description || undefined,
+                    definition: {
+                        schema_version: 1,
+                        type: tool.category,
+                        messages: [],
+                        config: actionConfig,
+                    } as unknown as UpdateToolRequest["definition"],
                 };
             } else if (tool.category === "schedule_callback") {
                 requestBody = {
@@ -1041,6 +1067,34 @@ const data = await response.json();`;
                         onDescriptionChange={setDescription}
                         title="Calculator Configuration"
                         subtitle="Built-in calculator for arithmetic operations. No additional configuration needed."
+                    />
+                ) : tool.category === "book_appointment" ? (
+                    <BookAppointmentToolConfig
+                        toolUuid={tool.tool_uuid}
+                        name={name}
+                        onNameChange={setName}
+                        description={description}
+                        onDescriptionChange={setDescription}
+                        config={actionConfig as BookAppointmentConfig}
+                        onChange={(c) => setActionConfig(c as Record<string, unknown>)}
+                    />
+                ) : tool.category === "send_message" ? (
+                    <SendMessageToolConfig
+                        name={name}
+                        onNameChange={setName}
+                        description={description}
+                        onDescriptionChange={setDescription}
+                        config={actionConfig as SendMessageConfig}
+                        onChange={(c) => setActionConfig(c as Record<string, unknown>)}
+                    />
+                ) : tool.category === "create_ticket" ? (
+                    <CreateTicketToolConfig
+                        name={name}
+                        onNameChange={setName}
+                        description={description}
+                        onDescriptionChange={setDescription}
+                        config={actionConfig as CreateTicketConfig}
+                        onChange={(c) => setActionConfig(c as Record<string, unknown>)}
                     />
                 ) : isScheduleCallbackTool ? (
                     <ScheduleCallbackToolConfig

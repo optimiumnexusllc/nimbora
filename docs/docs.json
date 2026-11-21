@@ -80,6 +80,9 @@
                       "voice-agent/tools/call-transfer",
                       "voice-agent/tools/transfer-agent",
                       "voice-agent/tools/schedule-callback",
+                      "voice-agent/tools/book-appointment",
+                      "voice-agent/tools/send-message",
+                      "voice-agent/tools/create-ticket",
                       "voice-agent/tools/end-call"
                     ]
                   },

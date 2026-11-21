@@ -23,8 +23,10 @@ async def create_tool(request: CreateToolRequest) -> dict[str, Any]:
     The request schema is the same `CreateToolRequest` used by the REST API
     and generated SDKs, and it is authoritative for the tool categories you
     can create: `http_api`, `end_call`, `transfer_call`, `transfer_agent`,
-    `calculator`, and `mcp`. Read the `definition` union rather than this
-    list if the two ever disagree.
+    `calculator`, `schedule_callback`, `book_appointment` (calendar: free
+    slots, book, cancel), `send_message` (SMS, WhatsApp or e-mail),
+    `create_ticket` (helpdesk ticket and follow-up), and `mcp`. Read the
+    `definition` union rather than this list if the two ever disagree.
 
     `transfer_agent` hands the live call to another NIMBORA agent by
     `config.workflow_id` (an integer agent id, not a phone number or SIP

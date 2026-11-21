@@ -267,6 +267,13 @@ class CustomToolManager:
         elif tool.category == ToolCategory.SCHEDULE_CALLBACK.value:
             timeout_secs = 10.0
             handler = self._create_schedule_callback_handler(tool, function_name)
+        elif tool.category in {
+            ToolCategory.BOOK_APPOINTMENT.value,
+            ToolCategory.SEND_MESSAGE.value,
+            ToolCategory.CREATE_TICKET.value,
+        }:
+            timeout_secs = 25.0
+            handler = self._create_action_handler(tool, function_name)
         else:
             timeout_ms = ((tool.definition or {}).get("config", {}) or {}).get(
                 "timeout_ms", 5000
@@ -392,6 +399,44 @@ class CustomToolManager:
             await function_call_params.result_callback(result)
 
         return schedule_callback_handler
+
+    def _create_action_handler(self, tool: Any, function_name: str):
+        """Calendar, messaging and ticket tools (services/actions)."""
+
+        async def action_handler(function_call_params: FunctionCallParams) -> None:
+            from api.services.actions.common import ActionContext
+            from api.services.actions.dispatch import run_action
+
+            logger.info(f"Action tool EXECUTED: {function_name} ({tool.category})")
+            try:
+                organization_id = await self.get_organization_id()
+                workflow_run = await db_client.get_workflow_run(
+                    self._engine._workflow_run_id, organization_id=organization_id
+                )
+                ctx = ActionContext(
+                    organization_id=organization_id,
+                    tool_uuid=str(tool.tool_uuid),
+                    tool_name=tool.name,
+                    workflow_run_id=getattr(workflow_run, "id", None),
+                    initial_context=dict(
+                        getattr(workflow_run, "initial_context", None) or {}
+                    ),
+                    gathered_context=dict(
+                        getattr(self._engine, "_gathered_context", None) or {}
+                    ),
+                )
+                result = await run_action(
+                    tool.category,
+                    ctx,
+                    (tool.definition or {}).get("config") or {},
+                    function_call_params.arguments or {},
+                )
+            except Exception as e:
+                logger.error(f"Action tool '{function_name}' failed: {e}")
+                result = {"status": "error", "error": "The action failed"}
+            await function_call_params.result_callback(result)
+
+        return action_handler
 
     def _create_mcp_handler(self, session: "McpToolSession", function_name: str):
         """Create a handler that proxies an LLM function call to a live MCP

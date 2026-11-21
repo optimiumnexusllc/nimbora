@@ -224,6 +224,7 @@ class WebhookCredentialType(Enum):
     BEARER_TOKEN = "bearer_token"  # Bearer token auth
     BASIC_AUTH = "basic_auth"  # Username/password
     CUSTOM_HEADER = "custom_header"  # Custom header key-value
+    SERVICE_ACCOUNT = "service_account"  # Google service account JSON key
 
 
 class ToolCategory(Enum):
@@ -235,6 +236,9 @@ class ToolCategory(Enum):
     TRANSFER_AGENT = "transfer_agent"  # Hand the live call to another NIMBORA agent
     CALCULATOR = "calculator"  # Built-in calculator tool
     SCHEDULE_CALLBACK = "schedule_callback"  # Promise a callback (human team or AI)
+    BOOK_APPOINTMENT = "book_appointment"  # Calendar: free slots, book, cancel
+    SEND_MESSAGE = "send_message"  # SMS, WhatsApp or e-mail
+    CREATE_TICKET = "create_ticket"  # Helpdesk ticket: create, follow up
     NATIVE = "native"  # Built-in integrations (future: dtmf_input)
     INTEGRATION = "integration"  # Third-party integrations (future: Google Calendar, Salesforce, etc.)
     MCP = "mcp"  # Customer-provided MCP server exposing a tool catalog

@@ -127,6 +127,24 @@ export type ActiveCallsResponse = {
 };
 
 /**
+ * ActivitySummary
+ */
+export type ActivitySummary = {
+    /**
+     * Upcoming Appointments
+     */
+    upcoming_appointments: number;
+    /**
+     * Messages Today
+     */
+    messages_today: number;
+    /**
+     * Open Tickets
+     */
+    open_tickets: number;
+};
+
+/**
  * AgentCreateRequest
  */
 export type AgentCreateRequest = {
@@ -306,6 +324,64 @@ export type AppendTextChatMessageRequest = {
 };
 
 /**
+ * AppointmentResponse
+ */
+export type AppointmentResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Calendar Key
+     */
+    calendar_key: string;
+    /**
+     * Calendar Name
+     */
+    calendar_name: string | null;
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * Start At
+     */
+    start_at: string;
+    /**
+     * End At
+     */
+    end_at: string;
+    /**
+     * Customer Name
+     */
+    customer_name: string | null;
+    /**
+     * Phone
+     */
+    phone: string | null;
+    /**
+     * Email
+     */
+    email: string | null;
+    /**
+     * Reason
+     */
+    reason: string | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Workflow Run Id
+     */
+    workflow_run_id: number | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+};
+
+/**
  * AuthResponse
  */
 export type AuthResponse = {
@@ -452,6 +528,98 @@ export type BodyTranscribeAudioApiV1WorkflowRecordingsTranscribePost = {
      * Language
      */
     language?: string;
+};
+
+/**
+ * BookAppointmentConfig
+ *
+ * Book appointments in a calendar during the call.
+ *
+ * ``nimbora`` keeps the agenda in NIMBORA (Activité → Rendez-vous);
+ * ``caldav`` works with Nextcloud, iCloud, Zimbra, SOGo, Radicale… (basic
+ * auth credential); ``google`` uses a service-account credential with the
+ * calendar shared to it.
+ */
+export type BookAppointmentConfig = {
+    /**
+     * Provider
+     */
+    provider?: 'nimbora' | 'caldav' | 'google';
+    /**
+     * Credential Uuid
+     */
+    credential_uuid?: string | null;
+    /**
+     * Calendar Url
+     *
+     * CalDAV calendar collection URL.
+     */
+    calendar_url?: string | null;
+    /**
+     * Calendar Id
+     *
+     * Google calendar ID (e-mail form).
+     */
+    calendar_id?: string | null;
+    /**
+     * Calendar Name
+     */
+    calendar_name?: string | null;
+    /**
+     * Timezone
+     */
+    timezone?: string | null;
+    /**
+     * Slot Minutes
+     */
+    slot_minutes?: number;
+    /**
+     * Buffer Minutes
+     */
+    buffer_minutes?: number;
+    /**
+     * Min Notice Minutes
+     */
+    min_notice_minutes?: number;
+    /**
+     * Horizon Days
+     */
+    horizon_days?: number;
+    /**
+     * Opening Hours
+     */
+    opening_hours?: {
+        [key: string]: Array<string>;
+    };
+    /**
+     * Allow Cancel
+     */
+    allow_cancel?: boolean;
+};
+
+/**
+ * BookAppointmentToolDefinition
+ */
+export type BookAppointmentToolDefinition = {
+    /**
+     * Schema Version
+     *
+     * Schema version.
+     */
+    schema_version?: number;
+    /**
+     * Messages
+     *
+     * Configured speech. An empty list disables announcements. HTTP/MCP choose one start entry and one entry per delayed timing at random. End-call and transfer tools support one start entry only.
+     */
+    messages?: Array<ToolStartTextMessage | ToolStartAudioMessage | ToolDelayedTextMessage | ToolDelayedAudioMessage>;
+    /**
+     * Type
+     *
+     * Tool type.
+     */
+    type: 'book_appointment';
+    config?: BookAppointmentConfig;
 };
 
 /**
@@ -1726,6 +1894,71 @@ export type CreateTextChatSessionRequest = {
 };
 
 /**
+ * CreateTicketConfig
+ *
+ * Open (and follow up) support tickets during the call.
+ *
+ * ``nimbora`` is the built-in helpdesk (Activité → Tickets); ``zendesk``
+ * (credential: basic auth "email/token" + API token) and ``freshdesk``
+ * (basic auth: API key + "X") push the ticket to those helpdesks.
+ */
+export type CreateTicketConfig = {
+    /**
+     * Provider
+     */
+    provider?: 'nimbora' | 'zendesk' | 'freshdesk';
+    /**
+     * Credential Uuid
+     */
+    credential_uuid?: string | null;
+    /**
+     * Domain
+     *
+     * e.g. acme.zendesk.com
+     */
+    domain?: string | null;
+    /**
+     * Categories
+     */
+    categories?: Array<string>;
+    /**
+     * Default Priority
+     */
+    default_priority?: 'low' | 'normal' | 'high' | 'urgent';
+    /**
+     * Allow Lookup
+     *
+     * Let callers ask the status of their tickets.
+     */
+    allow_lookup?: boolean;
+};
+
+/**
+ * CreateTicketToolDefinition
+ */
+export type CreateTicketToolDefinition = {
+    /**
+     * Schema Version
+     *
+     * Schema version.
+     */
+    schema_version?: number;
+    /**
+     * Messages
+     *
+     * Configured speech. An empty list disables announcements. HTTP/MCP choose one start entry and one entry per delayed timing at random. End-call and transfer tools support one start entry only.
+     */
+    messages?: Array<ToolStartTextMessage | ToolStartAudioMessage | ToolDelayedTextMessage | ToolDelayedAudioMessage>;
+    /**
+     * Type
+     *
+     * Tool type.
+     */
+    type: 'create_ticket';
+    config?: CreateTicketConfig;
+};
+
+/**
  * CreateToolRequest
  *
  * Request schema for creating a reusable tool.
@@ -1748,7 +1981,7 @@ export type CreateToolRequest = {
      *
      * Tool category. Must match definition.type.
      */
-    category?: 'http_api' | 'end_call' | 'transfer_call' | 'transfer_agent' | 'calculator' | 'schedule_callback' | 'native' | 'integration' | 'mcp';
+    category?: 'http_api' | 'end_call' | 'transfer_call' | 'transfer_agent' | 'calculator' | 'schedule_callback' | 'book_appointment' | 'send_message' | 'create_ticket' | 'native' | 'integration' | 'mcp';
     /**
      * Icon
      *
@@ -1779,6 +2012,12 @@ export type CreateToolRequest = {
     } & CalculatorToolDefinition) | ({
         type: 'schedule_callback';
     } & ScheduleCallbackToolDefinition) | ({
+        type: 'book_appointment';
+    } & BookAppointmentToolDefinition) | ({
+        type: 'send_message';
+    } & SendMessageToolDefinition) | ({
+        type: 'create_ticket';
+    } & CreateTicketToolDefinition) | ({
         type: 'mcp';
     } & McpToolDefinition);
 };
@@ -6137,6 +6376,143 @@ export type ScheduleConfigResponse = {
 };
 
 /**
+ * SendMessageConfig
+ *
+ * Send an SMS, a WhatsApp message or an e-mail during the call.
+ *
+ * ``twilio`` (SMS / WhatsApp, basic-auth credential: Account SID + Auth
+ * Token), ``http`` (any SMS gateway: POST JSON {to, from, message, channel}
+ * with the tool credential), ``smtp`` (e-mail, basic-auth credential).
+ */
+export type SendMessageConfig = {
+    /**
+     * Channel
+     */
+    channel?: 'sms' | 'whatsapp' | 'email';
+    /**
+     * Provider
+     */
+    provider?: 'twilio' | 'http' | 'smtp';
+    /**
+     * Credential Uuid
+     */
+    credential_uuid?: string | null;
+    /**
+     * Sender
+     *
+     * Number, WhatsApp number or e-mail.
+     */
+    sender?: string;
+    /**
+     * Gateway Url
+     */
+    gateway_url?: string | null;
+    /**
+     * Smtp Host
+     */
+    smtp_host?: string | null;
+    /**
+     * Smtp Port
+     */
+    smtp_port?: number;
+    /**
+     * Smtp Security
+     */
+    smtp_security?: 'starttls' | 'ssl' | 'none';
+    /**
+     * Subject
+     */
+    subject?: string | null;
+    /**
+     * Template
+     *
+     * Message text with {{variables}}; the agent fills {{details}}.
+     */
+    template?: string | null;
+    /**
+     * Allow Other Recipient
+     *
+     * Let the agent send to a number the caller gives (SMS/WhatsApp).
+     */
+    allow_other_recipient?: boolean;
+    /**
+     * Max Per Call
+     */
+    max_per_call?: number;
+};
+
+/**
+ * SendMessageToolDefinition
+ */
+export type SendMessageToolDefinition = {
+    /**
+     * Schema Version
+     *
+     * Schema version.
+     */
+    schema_version?: number;
+    /**
+     * Messages
+     *
+     * Configured speech. An empty list disables announcements. HTTP/MCP choose one start entry and one entry per delayed timing at random. End-call and transfer tools support one start entry only.
+     */
+    messages?: Array<ToolStartTextMessage | ToolStartAudioMessage | ToolDelayedTextMessage | ToolDelayedAudioMessage>;
+    /**
+     * Type
+     *
+     * Tool type.
+     */
+    type: 'send_message';
+    config?: SendMessageConfig;
+};
+
+/**
+ * SentMessageResponse
+ */
+export type SentMessageResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Channel
+     */
+    channel: string;
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * Recipient
+     */
+    recipient: string;
+    /**
+     * Subject
+     */
+    subject: string | null;
+    /**
+     * Body
+     */
+    body: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Error
+     */
+    error: string | null;
+    /**
+     * Workflow Run Id
+     */
+    workflow_run_id: number | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+};
+
+/**
  * ServiceKeyResponse
  */
 export type ServiceKeyResponse = {
@@ -6258,6 +6634,30 @@ export type SignupRequest = {
      * Name
      */
     name?: string | null;
+};
+
+/**
+ * SlotPreviewResponse
+ */
+export type SlotPreviewResponse = {
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Slots
+     */
+    slots?: Array<{
+        [key: string]: string;
+    }>;
+    /**
+     * Timezone
+     */
+    timezone?: string | null;
+    /**
+     * Error
+     */
+    error?: string | null;
 };
 
 /**
@@ -7202,6 +7602,102 @@ export type TextChatTurnStreamEvent = {
 };
 
 /**
+ * TicketResponse
+ */
+export type TicketResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Number
+     */
+    number: number;
+    /**
+     * Provider
+     */
+    provider: string;
+    /**
+     * External Url
+     */
+    external_url: string | null;
+    /**
+     * Subject
+     */
+    subject: string;
+    /**
+     * Description
+     */
+    description: string | null;
+    /**
+     * Category
+     */
+    category: string | null;
+    /**
+     * Priority
+     */
+    priority: string;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Customer Name
+     */
+    customer_name: string | null;
+    /**
+     * Phone
+     */
+    phone: string | null;
+    /**
+     * Email
+     */
+    email: string | null;
+    /**
+     * Resolution
+     */
+    resolution: string | null;
+    /**
+     * Assigned User Id
+     */
+    assigned_user_id: number | null;
+    /**
+     * Workflow Run Id
+     */
+    workflow_run_id: number | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+    /**
+     * Updated At
+     */
+    updated_at: string | null;
+};
+
+/**
+ * TicketUpdateRequest
+ */
+export type TicketUpdateRequest = {
+    /**
+     * Status
+     */
+    status?: 'open' | 'pending' | 'solved' | 'closed' | null;
+    /**
+     * Priority
+     */
+    priority?: 'low' | 'normal' | 'high' | 'urgent' | null;
+    /**
+     * Resolution
+     */
+    resolution?: string | null;
+    /**
+     * Assigned User Id
+     */
+    assigned_user_id?: number | null;
+};
+
+/**
  * TimeSlotRequest
  */
 export type TimeSlotRequest = {
@@ -8115,6 +8611,12 @@ export type UpdateToolRequest = {
     } & CalculatorToolDefinition) | ({
         type: 'schedule_callback';
     } & ScheduleCallbackToolDefinition) | ({
+        type: 'book_appointment';
+    } & BookAppointmentToolDefinition) | ({
+        type: 'send_message';
+    } & SendMessageToolDefinition) | ({
+        type: 'create_ticket';
+    } & CreateTicketToolDefinition) | ({
         type: 'mcp';
     } & McpToolDefinition) | null;
     /**
@@ -8578,7 +9080,7 @@ export type VonageConfigurationRequest = {
  *
  * Webhook credential authentication types
  */
-export type WebhookCredentialType = 'none' | 'api_key' | 'bearer_token' | 'basic_auth' | 'custom_header';
+export type WebhookCredentialType = 'none' | 'api_key' | 'bearer_token' | 'basic_auth' | 'custom_header' | 'service_account';
 
 /**
  * WhatsAppConfigurationRequest
@@ -19832,6 +20334,310 @@ export type SpyApiV1SupervisionSpyPostResponses = {
 };
 
 export type SpyApiV1SupervisionSpyPostResponse = SpyApiV1SupervisionSpyPostResponses[keyof SpyApiV1SupervisionSpyPostResponses];
+
+export type ListAppointmentsApiV1ActionsAppointmentsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * View
+         */
+        view?: 'upcoming' | 'past' | 'all';
+    };
+    url: '/api/v1/actions/appointments';
+};
+
+export type ListAppointmentsApiV1ActionsAppointmentsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListAppointmentsApiV1ActionsAppointmentsGetError = ListAppointmentsApiV1ActionsAppointmentsGetErrors[keyof ListAppointmentsApiV1ActionsAppointmentsGetErrors];
+
+export type ListAppointmentsApiV1ActionsAppointmentsGetResponses = {
+    /**
+     * Response List Appointments Api V1 Actions Appointments Get
+     *
+     * Successful Response
+     */
+    200: Array<AppointmentResponse>;
+};
+
+export type ListAppointmentsApiV1ActionsAppointmentsGetResponse = ListAppointmentsApiV1ActionsAppointmentsGetResponses[keyof ListAppointmentsApiV1ActionsAppointmentsGetResponses];
+
+export type CancelAppointmentApiV1ActionsAppointmentsAppointmentIdCancelPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Appointment Id
+         */
+        appointment_id: number;
+    };
+    query?: never;
+    url: '/api/v1/actions/appointments/{appointment_id}/cancel';
+};
+
+export type CancelAppointmentApiV1ActionsAppointmentsAppointmentIdCancelPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CancelAppointmentApiV1ActionsAppointmentsAppointmentIdCancelPostError = CancelAppointmentApiV1ActionsAppointmentsAppointmentIdCancelPostErrors[keyof CancelAppointmentApiV1ActionsAppointmentsAppointmentIdCancelPostErrors];
+
+export type CancelAppointmentApiV1ActionsAppointmentsAppointmentIdCancelPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: AppointmentResponse;
+};
+
+export type CancelAppointmentApiV1ActionsAppointmentsAppointmentIdCancelPostResponse = CancelAppointmentApiV1ActionsAppointmentsAppointmentIdCancelPostResponses[keyof CancelAppointmentApiV1ActionsAppointmentsAppointmentIdCancelPostResponses];
+
+export type PreviewSlotsApiV1ActionsCalendarsToolUuidPreviewPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Tool Uuid
+         */
+        tool_uuid: string;
+    };
+    query?: never;
+    url: '/api/v1/actions/calendars/{tool_uuid}/preview';
+};
+
+export type PreviewSlotsApiV1ActionsCalendarsToolUuidPreviewPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PreviewSlotsApiV1ActionsCalendarsToolUuidPreviewPostError = PreviewSlotsApiV1ActionsCalendarsToolUuidPreviewPostErrors[keyof PreviewSlotsApiV1ActionsCalendarsToolUuidPreviewPostErrors];
+
+export type PreviewSlotsApiV1ActionsCalendarsToolUuidPreviewPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SlotPreviewResponse;
+};
+
+export type PreviewSlotsApiV1ActionsCalendarsToolUuidPreviewPostResponse = PreviewSlotsApiV1ActionsCalendarsToolUuidPreviewPostResponses[keyof PreviewSlotsApiV1ActionsCalendarsToolUuidPreviewPostResponses];
+
+export type ListMessagesApiV1ActionsMessagesGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/actions/messages';
+};
+
+export type ListMessagesApiV1ActionsMessagesGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListMessagesApiV1ActionsMessagesGetError = ListMessagesApiV1ActionsMessagesGetErrors[keyof ListMessagesApiV1ActionsMessagesGetErrors];
+
+export type ListMessagesApiV1ActionsMessagesGetResponses = {
+    /**
+     * Response List Messages Api V1 Actions Messages Get
+     *
+     * Successful Response
+     */
+    200: Array<SentMessageResponse>;
+};
+
+export type ListMessagesApiV1ActionsMessagesGetResponse = ListMessagesApiV1ActionsMessagesGetResponses[keyof ListMessagesApiV1ActionsMessagesGetResponses];
+
+export type ListTicketsApiV1ActionsTicketsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * View
+         */
+        view?: 'open' | 'closed' | 'all';
+    };
+    url: '/api/v1/actions/tickets';
+};
+
+export type ListTicketsApiV1ActionsTicketsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListTicketsApiV1ActionsTicketsGetError = ListTicketsApiV1ActionsTicketsGetErrors[keyof ListTicketsApiV1ActionsTicketsGetErrors];
+
+export type ListTicketsApiV1ActionsTicketsGetResponses = {
+    /**
+     * Response List Tickets Api V1 Actions Tickets Get
+     *
+     * Successful Response
+     */
+    200: Array<TicketResponse>;
+};
+
+export type ListTicketsApiV1ActionsTicketsGetResponse = ListTicketsApiV1ActionsTicketsGetResponses[keyof ListTicketsApiV1ActionsTicketsGetResponses];
+
+export type UpdateTicketApiV1ActionsTicketsTicketIdPatchData = {
+    body: TicketUpdateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Ticket Id
+         */
+        ticket_id: number;
+    };
+    query?: never;
+    url: '/api/v1/actions/tickets/{ticket_id}';
+};
+
+export type UpdateTicketApiV1ActionsTicketsTicketIdPatchErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateTicketApiV1ActionsTicketsTicketIdPatchError = UpdateTicketApiV1ActionsTicketsTicketIdPatchErrors[keyof UpdateTicketApiV1ActionsTicketsTicketIdPatchErrors];
+
+export type UpdateTicketApiV1ActionsTicketsTicketIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: TicketResponse;
+};
+
+export type UpdateTicketApiV1ActionsTicketsTicketIdPatchResponse = UpdateTicketApiV1ActionsTicketsTicketIdPatchResponses[keyof UpdateTicketApiV1ActionsTicketsTicketIdPatchResponses];
+
+export type SummaryApiV1ActionsSummaryGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/actions/summary';
+};
+
+export type SummaryApiV1ActionsSummaryGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SummaryApiV1ActionsSummaryGetError = SummaryApiV1ActionsSummaryGetErrors[keyof SummaryApiV1ActionsSummaryGetErrors];
+
+export type SummaryApiV1ActionsSummaryGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ActivitySummary;
+};
+
+export type SummaryApiV1ActionsSummaryGetResponse = SummaryApiV1ActionsSummaryGetResponses[keyof SummaryApiV1ActionsSummaryGetResponses];
 
 export type ListQueuesApiV1ContactCenterQueuesGetData = {
     body?: never;

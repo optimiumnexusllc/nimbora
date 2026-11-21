@@ -1,0 +1,37 @@
+---
+title: "Book Appointment"
+description: "The agent offers free slots, books the one the caller picks, and lists or cancels the caller's appointments: NIMBORA agenda, CalDAV or Google Calendar."
+---
+
+## What the agent does
+
+1. **find_slots**: asks the calendar for free slots, optionally on a given day or after a given time. It reads two or three of them out ("mardi 24 novembre à 10h").
+2. **book**: books the slot the caller picks. The slot is checked again at that moment, because someone may have just taken it.
+3. **my_appointments** / **cancel**: tells the caller about their upcoming appointments and cancels one. Callers can only cancel appointments booked from their own number.
+
+The agent never invents availability. Two calls booking the same slot at the same second cannot both succeed: the second caller is offered another slot.
+
+## Calendars
+
+| Calendar | Setup |
+|---|---|
+| **NIMBORA agenda** | Nothing to configure. Bookings appear in **Activité → Rendez-vous**. |
+| **CalDAV** | Nextcloud, iCloud, Zimbra, SOGo, Radicale, Fastmail… Enter the calendar collection URL and a *Basic Auth* credential (user + app password). Recurring events are expanded by the server. |
+| **Google Calendar** | Create a service account in Google Cloud, download its JSON key, then add it as a *Google service account* credential. Share the calendar with the service account e-mail ("Make changes to events"). Enter the calendar ID. |
+
+Whatever the calendar, every booking is also listed in **Activité → Rendez-vous**. You can cancel it there; that also removes it from CalDAV or Google.
+
+## Opening hours and rules
+
+| Setting | Default |
+|---|---|
+| Opening hours | Monday–Friday, 09:00–12:00 and 14:00–18:00 |
+| Slot length | 30 min |
+| Buffer between appointments | 0 min |
+| Minimum notice | 60 min |
+| Booking horizon | 30 days |
+| Time zone | The organization's |
+
+Hours are read in the calendar's time zone, so daylight saving time never shifts "09:00". Transparent ("free") and cancelled events do not block slots.
+
+**Test the calendar** in the tool editor connects with the saved settings and shows the next free slots.

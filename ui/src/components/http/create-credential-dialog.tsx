@@ -24,6 +24,7 @@ import {
     SelectTrigger,
     SelectValue,
 } from "@/components/ui/select";
+import { Textarea } from "@/components/ui/textarea";
 import { detailFromError } from "@/lib/apiError";
 import { useAuth } from "@/lib/auth";
 
@@ -40,6 +41,7 @@ interface CredentialField {
     label: string;
     placeholder: string;
     isSecret?: boolean;
+    multiline?: boolean;
 }
 
 const getCredentialDataFields = (type: WebhookCredentialType): CredentialField[] => {
@@ -62,6 +64,16 @@ const getCredentialDataFields = (type: WebhookCredentialType): CredentialField[]
             return [
                 { key: "header_name", label: "Header Name", placeholder: "X-Custom-Header" },
                 { key: "header_value", label: "Header Value", placeholder: "header-value", isSecret: true },
+            ];
+        case "service_account":
+            return [
+                {
+                    key: "service_account_json",
+                    label: "Service account JSON key",
+                    placeholder: '{ "type": "service_account", "project_id": "…", "private_key": "…" }',
+                    isSecret: true,
+                    multiline: true,
+                },
             ];
         default:
             return [];
@@ -210,6 +222,7 @@ function CredentialDialogForm({
                                 <SelectItem value="api_key">API Key</SelectItem>
                                 <SelectItem value="basic_auth">Basic Auth</SelectItem>
                                 <SelectItem value="custom_header">Custom Header</SelectItem>
+                                <SelectItem value="service_account">Google service account</SelectItem>
                             </SelectContent>
                         </Select>
                     </div>
@@ -236,19 +249,37 @@ function CredentialDialogForm({
                     {needsAuthentication && fields.map((field) => (
                         <div key={field.key} className="grid gap-2">
                             <Label htmlFor={`cred-${field.key}`}>{field.label}</Label>
-                            <Input
-                                id={`cred-${field.key}`}
-                                type={field.isSecret ? "password" : "text"}
-                                autoComplete="off"
-                                value={credentialData[field.key] || ""}
-                                onChange={(e) =>
-                                    setCredentialData((prev) => ({
-                                        ...prev,
-                                        [field.key]: e.target.value,
-                                    }))
-                                }
-                                placeholder={field.placeholder}
-                            />
+                            {field.multiline ? (
+                                <Textarea
+                                    id={`cred-${field.key}`}
+                                    rows={6}
+                                    autoComplete="off"
+                                    spellCheck={false}
+                                    className="font-mono text-xs"
+                                    value={credentialData[field.key] || ""}
+                                    onChange={(e) =>
+                                        setCredentialData((prev) => ({
+                                            ...prev,
+                                            [field.key]: e.target.value,
+                                        }))
+                                    }
+                                    placeholder={field.placeholder}
+                                />
+                            ) : (
+                                <Input
+                                    id={`cred-${field.key}`}
+                                    type={field.isSecret ? "password" : "text"}
+                                    autoComplete="off"
+                                    value={credentialData[field.key] || ""}
+                                    onChange={(e) =>
+                                        setCredentialData((prev) => ({
+                                            ...prev,
+                                            [field.key]: e.target.value,
+                                        }))
+                                    }
+                                    placeholder={field.placeholder}
+                                />
+                            )}
                         </div>
                     ))}
                 </fieldset>

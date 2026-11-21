@@ -95,6 +95,26 @@ def validate_credential_data(
                 detail="Custom Header credential requires 'header_name' and 'header_value' fields",
             )
 
+    elif credential_type == WebhookCredentialType.SERVICE_ACCOUNT:
+        import json
+
+        try:
+            info = json.loads(credential_data.get("service_account_json") or "")
+        except (TypeError, ValueError) as exc:
+            raise HTTPException(
+                status_code=400,
+                detail="Service account credential requires the JSON key file content",
+            ) from exc
+        if (
+            not isinstance(info, dict)
+            or info.get("type") != "service_account"
+            or not info.get("private_key")
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="This is not a Google service-account JSON key",
+            )
+
 
 def build_credential_response(credential) -> CredentialResponse:
     """Build a response from a credential model (excluding sensitive data)."""

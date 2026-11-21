@@ -2091,3 +2091,108 @@ class PrivacyRequestModel(Base):
     __table_args__ = (
         Index("ix_privacy_requests_org_created", "organization_id", "created_at"),
     )
+
+
+class AppointmentModel(Base):
+    """An appointment booked by an AI agent (any calendar provider).
+
+    For external calendars (CalDAV, Google) this is the booking log that
+    lets the agent cancel and the team see what the agents booked.
+    """
+
+    __tablename__ = "appointments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    calendar_key = Column(String(64), nullable=False)  # tool UUID
+    calendar_name = Column(String(128), nullable=True)
+    provider = Column(String(16), nullable=False, default="nimbora")
+    external_id = Column(String(255), nullable=True)
+    start_at = Column(DateTime(timezone=True), nullable=False)
+    end_at = Column(DateTime(timezone=True), nullable=False)
+    customer_name = Column(String(128), nullable=True)
+    phone = Column(String(32), nullable=True)
+    email = Column(String(255), nullable=True)
+    reason = Column(Text, nullable=True)
+    status = Column(String(16), nullable=False, default="booked")
+    workflow_run_id = Column(
+        Integer, ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    canceled_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index(
+            "ix_appointments_calendar_time",
+            "organization_id",
+            "calendar_key",
+            "start_at",
+        ),
+    )
+
+
+class SentMessageModel(Base):
+    """SMS, WhatsApp or e-mail sent by an AI agent during a call."""
+
+    __tablename__ = "sent_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    channel = Column(String(16), nullable=False)  # sms | whatsapp | email
+    provider = Column(String(16), nullable=False)
+    recipient = Column(String(255), nullable=False)
+    subject = Column(String(255), nullable=True)
+    body = Column(Text, nullable=False)
+    status = Column(String(16), nullable=False, default="sent")
+    provider_message_id = Column(String(255), nullable=True)
+    error = Column(Text, nullable=True)
+    tool_uuid = Column(String(64), nullable=True)
+    workflow_run_id = Column(
+        Integer, ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    __table_args__ = (
+        Index("ix_sent_messages_org_created", "organization_id", "created_at"),
+    )
+
+
+class TicketModel(Base):
+    """Support ticket opened by an AI agent (NIMBORA helpdesk or external)."""
+
+    __tablename__ = "tickets"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    number = Column(Integer, nullable=False)  # per-organization, said to callers
+    provider = Column(String(16), nullable=False, default="nimbora")
+    external_id = Column(String(255), nullable=True)
+    external_url = Column(String(512), nullable=True)
+    subject = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String(64), nullable=True)
+    priority = Column(String(16), nullable=False, default="normal")
+    status = Column(String(16), nullable=False, default="open")
+    customer_name = Column(String(128), nullable=True)
+    phone = Column(String(32), nullable=True)
+    email = Column(String(255), nullable=True)
+    resolution = Column(Text, nullable=True)
+    assigned_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    workflow_run_id = Column(
+        Integer, ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    __table_args__ = (
+        UniqueConstraint("organization_id", "number", name="uq_tickets_org_number"),
+        Index("ix_tickets_org_status", "organization_id", "status"),
+    )

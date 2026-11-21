@@ -53,6 +53,24 @@ Chaque appelant est reconnu à son numéro. L'agent reprend la conversation là 
 arrêtée (« Bonjour Awa, votre colis est-il bien arrivé ? »). Fiches clients, historique des
 échanges, notes et étiquettes, effacement à la demande.
 
+### ⚡ Des agents qui agissent : rendez-vous, messages, tickets
+
+Pendant l'appel, l'agent ne se contente pas de répondre : il **fait**.
+
+- **Prend rendez-vous** : il propose les créneaux réellement libres, réserve celui que le client
+  choisit, retrouve ou annule ses rendez-vous. Agenda NIMBORA intégré, **CalDAV** (Nextcloud,
+  iCloud, Zimbra, SOGo…) ou **Google Agenda**, avec horaires d'ouverture, délai de prévenance et
+  protection contre les doubles réservations.
+- **Envoie un SMS, un WhatsApp ou un e-mail** : adresse, lien de paiement, confirmation, numéro de
+  suivi. Twilio, n'importe quelle passerelle SMS (HTTP) ou SMTP, avec modèles et limite par appel.
+- **Ouvre un ticket** et donne son numéro au client, puis lui dit où en est sa demande lors des appels
+  suivants. Helpdesk NIMBORA intégré, **Zendesk** ou **Freshdesk**.
+
+Tout ce que les agents ont fait se retrouve dans la page **Activité**.
+
+<p align="center"><img src="docs/images/screenshots/activity.webp" alt="Rendez-vous pris par les agents" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/calendar-tool.webp" alt="Configuration de l'agenda" width="88%"></p>
+
 ### 📅 Rappels automatiques : aucun client perdu
 
 - L'agent IA **planifie un rappel** à l'heure choisie par le client (« demain 10 h »).
@@ -87,7 +105,8 @@ swahili, haoussa, yoruba, lingala…
 | | |
 |---|---|
 | **Agents vocaux IA** | Éditeur visuel de workflows, appels entrants et sortants, campagnes, outils HTTP / MCP / intégrations, base de connaissances, extraction de données, QA automatique |
-| **Outils de l'agent** | Transfert vers un humain ou un autre agent, planification de rappel, fin d'appel, calculatrice, appels d'API, serveurs MCP |
+| **Outils de l'agent** | Prise de rendez-vous (NIMBORA, CalDAV, Google Agenda), SMS / WhatsApp / e-mail, tickets (NIMBORA, Zendesk, Freshdesk), transfert vers un humain ou un autre agent, rappel, fin d'appel, calculatrice, appels d'API, serveurs MCP |
+| **Activité** | Rendez-vous, messages envoyés et tickets ouverts par les agents, avec annulation, statut et résolution |
 | **Centre d'appels humain** | Files d'attente Asterisk, postes avec softphone WebRTC dans le navigateur, pauses avec motif, fiches de passation, rappels en un clic |
 | **Supervision** | Indicateurs en direct, suivi mot à mot des appels IA, consignes soufflées à l'IA, reprise en main, écoute / chuchotement / intervention |
 | **Mémoire et clients** | Reconnaissance des appelants, historique, résumé et humeur de chaque appel, langue préférée |
@@ -123,6 +142,7 @@ flowchart LR
 | `api/services/customer_memory/` | Mémoire client |
 | `api/services/language/` | Détection de langue, voix par langue |
 | `api/services/privacy/` | Masquage, conservation, export et effacement RGPD |
+| `api/services/actions/` | Actions des agents : agenda (créneaux, CalDAV, Google), messages, tickets |
 | `ui/` | Interface Next.js 15 / React 19, charte NIMBORA (`ui/scripts/brand/`) |
 | `pipecat/` | Moteur de pipeline vocal (STT → LLM → TTS) |
 | `deploy/enterprise/` | Déploiement Docker Compose : Caddy, Asterisk, coturn, Ollama, Speaches |
@@ -154,6 +174,7 @@ Principaux réglages de la plateforme :
 
 - [Centre d'appels humain](docs/contact-center/overview.mdx) et [supervision en direct](docs/contact-center/supervision.mdx)
 - [Planifier un rappel](docs/voice-agent/tools/schedule-callback.mdx)
+- [Prendre rendez-vous](docs/voice-agent/tools/book-appointment.mdx), [envoyer un message](docs/voice-agent/tools/send-message.mdx), [ouvrir un ticket](docs/voice-agent/tools/create-ticket.mdx)
 - [Détection automatique de la langue](docs/voice-agent/languages.mdx)
 - [Confidentialité, RGPD et PCI](docs/configurations/privacy.mdx)
 - [Référence de l'API](docs/api-reference/openapi.json)
@@ -168,7 +189,7 @@ Principaux réglages de la plateforme :
 | ✅ | Détection automatique de la langue |
 | ✅ | Masquage des données personnelles et RGPD |
 | ✅ | Console de supervision en direct |
-| 🔜 | Actions prêtes à l'emploi : agenda (CalDAV, Google), SMS / WhatsApp / e-mail, tickets |
+| ✅ | Actions prêtes à l'emploi : agenda (CalDAV, Google), SMS / WhatsApp / e-mail, tickets |
 | 🔜 | Routage intelligent (compétences, langue, client VIP, conseiller habituel) |
 | 🔜 | Contrôle qualité des appels humains |
 | 🔜 | Tableau de bord des tendances (motifs d'appel, sentiment, résolution) |

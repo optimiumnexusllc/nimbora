@@ -3,13 +3,16 @@
 import {
     ArrowLeftRight,
     Calculator,
+    CalendarCheck,
     CalendarClock,
     Cog,
     Globe,
     type LucideIcon,
+    MessageSquareText,
     PhoneForwarded,
     PhoneOff,
     Puzzle,
+    Ticket as TicketIcon,
 } from "lucide-react";
 import { type ReactNode } from "react";
 
@@ -38,6 +41,9 @@ export type ToolCategory =
     | "transfer_agent"
     | "calculator"
     | "schedule_callback"
+    | "book_appointment"
+    | "send_message"
+    | "create_ticket"
     | "native"
     | "integration"
     | "mcp";
@@ -186,6 +192,45 @@ export const TOOL_CATEGORIES: ToolCategoryConfig[] = [
         },
     },
     {
+        value: "book_appointment",
+        label: "Book Appointment",
+        description: "Offer free slots from a calendar (NIMBORA, CalDAV, Google), book, list and cancel appointments",
+        icon: CalendarCheck,
+        iconName: "calendar-check",
+        iconColor: "#22C55E",
+        autoFill: {
+            name: "Book Appointment",
+            description:
+                "Book an appointment when the caller wants one. First find free slots, offer two or three, then book the slot the caller chooses. Also lists or cancels the caller's appointments.",
+        },
+    },
+    {
+        value: "send_message",
+        label: "Send Message",
+        description: "Send the caller an SMS, a WhatsApp message or an e-mail during the call",
+        icon: MessageSquareText,
+        iconName: "message-square-text",
+        iconColor: "#0EA5E9",
+        autoFill: {
+            name: "Send Message",
+            description:
+                "Send the caller a written message with information they need to keep (address, link, reference). Ask before sending.",
+        },
+    },
+    {
+        value: "create_ticket",
+        label: "Create Ticket",
+        description: "Open a support ticket (NIMBORA, Zendesk, Freshdesk) and tell callers where their tickets stand",
+        icon: TicketIcon,
+        iconName: "ticket",
+        iconColor: "#F97316",
+        autoFill: {
+            name: "Create Ticket",
+            description:
+                "Open a support ticket when the request cannot be solved during the call, then give the caller the ticket number. Also tells callers the status of their tickets.",
+        },
+    },
+    {
         value: "mcp",
         label: "MCP Server",
         description: "Connect a customer MCP server; its tools become available to the agent",
@@ -246,6 +291,12 @@ export function getToolTypeLabel(category: string): string {
             return "Calculator Tool";
         case "schedule_callback":
             return "Schedule Callback Tool";
+        case "book_appointment":
+            return "Book Appointment Tool";
+        case "send_message":
+            return "Send Message Tool";
+        case "create_ticket":
+            return "Create Ticket Tool";
         case "native":
             return "Native Tool";
         case "integration":
@@ -390,6 +441,10 @@ export function createToolDefinition(category: ToolCategory): ToolDefinition {
             return createCalculatorDefinition();
         case "schedule_callback":
             return createScheduleCallbackDefinition();
+        case "book_appointment":
+        case "send_message":
+        case "create_ticket":
+            return { schema_version: 1, type: category, messages: [], config: {} } as unknown as ToolDefinition;
         case "http_api":
         default:
             return createHttpApiDefinition();

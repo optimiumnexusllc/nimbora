@@ -182,6 +182,15 @@ def tool_to_function_schema(tool: Any) -> dict[str, Any]:
         }
         required = ["preferred_time", "reason"]
 
+    elif definition.get("type") in {
+        "book_appointment",
+        "send_message",
+        "create_ticket",
+    }:
+        from api.services.actions.schemas import action_function_parameters
+
+        properties, required = action_function_parameters(definition)
+
     function_name = custom_tool_function_name(tool.name)
 
     return {

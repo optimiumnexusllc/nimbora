@@ -302,6 +302,12 @@ export default function ToolsPage() {
                 return <Badge variant="secondary">Calculator</Badge>;
             case "schedule_callback":
                 return <Badge variant="secondary">Callback</Badge>;
+            case "book_appointment":
+                return <Badge variant="secondary">Calendar</Badge>;
+            case "send_message":
+                return <Badge variant="secondary">Message</Badge>;
+            case "create_ticket":
+                return <Badge variant="secondary">Ticket</Badge>;
             case "native":
                 return <Badge variant="secondary">Native</Badge>;
             case "integration":

@@ -8,6 +8,7 @@ when the same schema is surfaced through MCP or SDK authoring flows.
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Annotated, Any, Literal
 
@@ -34,6 +35,9 @@ ToolCategoryValue = Literal[
     "transfer_agent",
     "calculator",
     "schedule_callback",
+    "book_appointment",
+    "send_message",
+    "create_ticket",
     "native",
     "integration",
     "mcp",
@@ -775,6 +779,182 @@ class ScheduleCallbackToolDefinition(ToolDefinitionBase):
     )
 
 
+_WEEKDAYS = ("mon", "tue", "wed", "thu", "fri", "sat", "sun")
+_RANGE_RE = re.compile(r"^([01]\d|2[0-3]):[0-5]\d-([01]\d|2[0-4]):[0-5]\d$")
+
+
+def _default_opening_hours() -> dict[str, list[str]]:
+    return {day: ["09:00-12:00", "14:00-18:00"] for day in _WEEKDAYS[:5]}
+
+
+class BookAppointmentConfig(BaseModel):
+    """Book appointments in a calendar during the call.
+
+    ``nimbora`` keeps the agenda in NIMBORA (Activité → Rendez-vous);
+    ``caldav`` works with Nextcloud, iCloud, Zimbra, SOGo, Radicale… (basic
+    auth credential); ``google`` uses a service-account credential with the
+    calendar shared to it.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: Literal["nimbora", "caldav", "google"] = "nimbora"
+    credential_uuid: str | None = Field(default=None, max_length=36)
+    calendar_url: str | None = Field(
+        default=None, max_length=1000, description="CalDAV calendar collection URL."
+    )
+    calendar_id: str | None = Field(
+        default=None, max_length=255, description="Google calendar ID (e-mail form)."
+    )
+    calendar_name: str | None = Field(default=None, max_length=128)
+    timezone: str | None = Field(default=None, max_length=64)
+    slot_minutes: int = Field(default=30, ge=5, le=480)
+    buffer_minutes: int = Field(default=0, ge=0, le=240)
+    min_notice_minutes: int = Field(default=60, ge=0, le=20160)
+    horizon_days: int = Field(default=30, ge=1, le=365)
+    opening_hours: dict[str, list[str]] = Field(default_factory=_default_opening_hours)
+    allow_cancel: bool = True
+
+    @field_validator("opening_hours")
+    @classmethod
+    def _hours(cls, value: dict[str, list[str]]) -> dict[str, list[str]]:
+        cleaned: dict[str, list[str]] = {}
+        for day, ranges in value.items():
+            if day not in _WEEKDAYS:
+                raise ValueError(f"Unknown day '{day}' (use mon..sun)")
+            for item in ranges:
+                if not _RANGE_RE.match(item) or item[:5] >= item[6:]:
+                    raise ValueError(f"Invalid opening range '{item}' (HH:MM-HH:MM)")
+            cleaned[day] = list(ranges)
+        return cleaned
+
+    @field_validator("timezone")
+    @classmethod
+    def _tz(cls, value: str | None) -> str | None:
+        if value:
+            from zoneinfo import ZoneInfo
+
+            try:
+                ZoneInfo(value)
+            except Exception as exc:
+                raise ValueError(f"Unknown time zone '{value}'") from exc
+        return value
+
+    @model_validator(mode="after")
+    def _provider_fields(self):
+        if self.provider == "caldav" and not (
+            self.calendar_url and self.credential_uuid
+        ):
+            raise ValueError("CalDAV needs calendar_url and a basic-auth credential")
+        if self.provider == "caldav" and not self.calendar_url.startswith(
+            ("https://", "http://")
+        ):
+            raise ValueError("calendar_url must be an http(s) URL")
+        if self.provider == "google" and not (
+            self.calendar_id and self.credential_uuid
+        ):
+            raise ValueError(
+                "Google Calendar needs calendar_id and a service-account credential"
+            )
+        return self
+
+
+class BookAppointmentToolDefinition(ToolDefinitionBase):
+    type: Literal["book_appointment"] = Field(description="Tool type.")
+    config: BookAppointmentConfig = Field(default_factory=BookAppointmentConfig)
+
+
+class SendMessageConfig(BaseModel):
+    """Send an SMS, a WhatsApp message or an e-mail during the call.
+
+    ``twilio`` (SMS / WhatsApp, basic-auth credential: Account SID + Auth
+    Token), ``http`` (any SMS gateway: POST JSON {to, from, message, channel}
+    with the tool credential), ``smtp`` (e-mail, basic-auth credential).
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    channel: Literal["sms", "whatsapp", "email"] = "sms"
+    provider: Literal["twilio", "http", "smtp"] = "twilio"
+    credential_uuid: str | None = Field(default=None, max_length=36)
+    sender: str = Field(
+        default="", max_length=255, description="Number, WhatsApp number or e-mail."
+    )
+    gateway_url: str | None = Field(default=None, max_length=1000)
+    smtp_host: str | None = Field(default=None, max_length=255)
+    smtp_port: int = Field(default=587, ge=1, le=65535)
+    smtp_security: Literal["starttls", "ssl", "none"] = "starttls"
+    subject: str | None = Field(default=None, max_length=255)
+    template: str | None = Field(
+        default=None,
+        max_length=1600,
+        description="Message text with {{variables}}; the agent fills {{details}}.",
+    )
+    allow_other_recipient: bool = Field(
+        default=False,
+        description="Let the agent send to a number the caller gives (SMS/WhatsApp).",
+    )
+    max_per_call: int = Field(default=3, ge=1, le=10)
+
+    @model_validator(mode="after")
+    def _provider_fields(self):
+        if self.channel == "email" and self.provider != "smtp":
+            raise ValueError("E-mail is sent with the smtp provider")
+        if self.channel != "email" and self.provider == "smtp":
+            raise ValueError("SMS and WhatsApp use the twilio or http provider")
+        # Missing sender, credential, host or gateway are reported when the
+        # tool runs: tools are created first, configured next.
+        if self.gateway_url and not self.gateway_url.startswith(
+            ("https://", "http://")
+        ):
+            raise ValueError("gateway_url must be an http(s) URL")
+        return self
+
+
+class SendMessageToolDefinition(ToolDefinitionBase):
+    type: Literal["send_message"] = Field(description="Tool type.")
+    config: SendMessageConfig = Field(default_factory=SendMessageConfig)
+
+
+class CreateTicketConfig(BaseModel):
+    """Open (and follow up) support tickets during the call.
+
+    ``nimbora`` is the built-in helpdesk (Activité → Tickets); ``zendesk``
+    (credential: basic auth "email/token" + API token) and ``freshdesk``
+    (basic auth: API key + "X") push the ticket to those helpdesks.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    provider: Literal["nimbora", "zendesk", "freshdesk"] = "nimbora"
+    credential_uuid: str | None = Field(default=None, max_length=36)
+    domain: str | None = Field(
+        default=None,
+        max_length=255,
+        pattern=r"^[a-z0-9][a-z0-9-]*\.(zendesk|freshdesk)\.com$",
+        description="e.g. acme.zendesk.com",
+    )
+    categories: list[str] = Field(default_factory=list, max_length=30)
+    default_priority: Literal["low", "normal", "high", "urgent"] = "normal"
+    allow_lookup: bool = Field(
+        default=True, description="Let callers ask the status of their tickets."
+    )
+
+    @model_validator(mode="after")
+    def _provider_fields(self):
+        if self.provider != "nimbora":
+            if not (self.domain and self.credential_uuid):
+                raise ValueError(f"{self.provider} needs a domain and a credential")
+            if not self.domain.endswith(f".{self.provider}.com"):
+                raise ValueError(f"The domain must end with .{self.provider}.com")
+        return self
+
+
+class CreateTicketToolDefinition(ToolDefinitionBase):
+    type: Literal["create_ticket"] = Field(description="Tool type.")
+    config: CreateTicketConfig = Field(default_factory=CreateTicketConfig)
+
+
 class McpToolDefinition(ToolDefinitionBase):
     """Persisted MCP tool definition."""
 
@@ -789,6 +969,9 @@ ToolDefinition = Annotated[
     | TransferAgentToolDefinition
     | CalculatorToolDefinition
     | ScheduleCallbackToolDefinition
+    | BookAppointmentToolDefinition
+    | SendMessageToolDefinition
+    | CreateTicketToolDefinition
     | McpToolDefinition,
     Field(discriminator="type"),
 ]
