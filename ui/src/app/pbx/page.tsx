@@ -59,6 +59,7 @@ import { GroupsTab, type PbxGroup } from "@/components/pbx/GroupsTab";
 import { MenusTab } from "@/components/pbx/MenusTab";
 import { NumberDialog, type NumberEdit } from "@/components/pbx/NumberDialog";
 import { QueuesTab } from "@/components/pbx/QueuesTab";
+import { RecordingsTab } from "@/components/pbx/RecordingsTab";
 import { RestrictionsSection } from "@/components/pbx/RestrictionsSection";
 import { ScheduleDialog } from "@/components/pbx/ScheduleDialog";
 import { TrunksTab } from "@/components/pbx/TrunksTab";
@@ -439,7 +440,7 @@ export default function PbxPage() {
                     }}
                     className="space-y-4"
                 >
-                    <TabsList className="flex-wrap">
+                    <TabsList className="h-auto flex-wrap justify-start [&>button]:flex-none">
                         <TabsTrigger value="calls">Appels en cours ({inventory.calls.length})</TabsTrigger>
                         <TabsTrigger value="agents">Agents ({inventory.agents.length})</TabsTrigger>
                         <TabsTrigger value="queues">Files ({inventory.queues.length})</TabsTrigger>
@@ -451,6 +452,7 @@ export default function PbxPage() {
                         <TabsTrigger value="lines">
                             <Cable className="size-3.5" /> Lignes opérateurs
                         </TabsTrigger>
+                        <TabsTrigger value="recordings">Enregistrements</TabsTrigger>
                         <TabsTrigger value="logs">Journal</TabsTrigger>
                     </TabsList>
 
@@ -743,6 +745,10 @@ export default function PbxPage() {
                                 <RestrictionsSection users={inventory.users} />
                             </div>
                         )}
+                    </TabsContent>
+
+                    <TabsContent value="recordings">
+                        <RecordingsTab users={inventory.users} />
                     </TabsContent>
 
                     <TabsContent value="logs">

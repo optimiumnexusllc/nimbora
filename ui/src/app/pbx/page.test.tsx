@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
     groups: vi.fn(),
     conferences: vi.fn(),
     callSettings: vi.fn(),
+    recordings: vi.fn(),
     restrictions: vi.fn(),
     unroute: vi.fn(),
     branding: vi.fn(),
@@ -48,6 +49,7 @@ vi.mock("@/client/sdk.gen", () => ({
     listGroupsApiV1PbxGroupsGet: mocks.groups,
     listConferencesApiV1PbxConferencesGet: mocks.conferences,
     readCallSettingsApiV1PbxExtensionsUserIdCallSettingsGet: mocks.callSettings,
+    listRecordingsApiV1PbxRecordingsGet: mocks.recordings,
     listRestrictionsApiV1PbxRestrictionsGet: mocks.restrictions,
     unrouteNumberApiV1PbxRoutesNumberDelete: mocks.unroute,
     applyBrandingApiV1PbxBrandingApplyPost: mocks.branding,
@@ -109,6 +111,9 @@ beforeEach(() => {
     });
     mocks.callSettings.mockResolvedValue({
         data: { user_id: 1, name: "Koffi Yao", dnd: true, unanswered: null, forwards: { unconditional: { enabled: false, destination: "" }, busy: { enabled: false, destination: "" }, noanswer: { enabled: true, destination: "1002" } } },
+    });
+    mocks.recordings.mockResolvedValue({
+        data: { total: 0, items: [], synced_at: null, policy: { incoming_external: true, outgoing_external: false, internal: false, user_uuids: null, import_enabled: true, transcribe: true, remove_from_pbx: false } },
     });
     mocks.restrictions.mockResolvedValue({
         data: { presets: [], restrictions: [{ id: 70, name: "Accueil", mode: "deny", patterns: ["_00."], enabled: true, has_pin: true, users: [{ uuid: "u-1", name: "Koffi Yao" }] }] },
@@ -261,5 +266,9 @@ describe("pbx page", () => {
         expect(mocks.callSettings).toHaveBeenCalledWith({ path: { user_id: 1 } });
         expect((screen.getByRole("switch", { name: "Ne pas déranger" }) as HTMLButtonElement).getAttribute("data-state")).toBe("checked");
         expect((screen.getByLabelText("Numéro du renvoi si pas de réponse") as HTMLInputElement).value).toBe("1002");
+        fireEvent.keyDown(document.activeElement ?? document.body, { key: "Escape" });
+        fireEvent.mouseDown(screen.getByRole("tab", { name: /Enregistrements/ }));
+        await screen.findByTestId("recording-policy");
+        expect((screen.getByRole("switch", { name: "Transcrire les appels" }) as HTMLButtonElement).getAttribute("data-state")).toBe("checked");
     });
 });

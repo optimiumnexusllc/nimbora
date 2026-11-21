@@ -622,6 +622,22 @@ def _human_call_interaction(cdr: dict[str, Any]) -> tuple[str | None, dict[str, 
     }
 
 
+async def _schedule_recording_import(connection, cdr: dict) -> None:
+    """Copy the call's recordings in the background (the sweep catches up)."""
+    policy = connection.recording_policy or {}
+    if not policy or not policy.get("import_enabled", True):
+        return
+    try:
+        from api.tasks.arq import enqueue_job
+        from api.tasks.function_names import FunctionNames
+
+        await enqueue_job(
+            FunctionNames.IMPORT_PBX_RECORDINGS, connection.organization_id, cdr
+        )
+    except Exception:  # noqa: BLE001 - the 10-minute sweep imports it later
+        logger.opt(exception=True).warning("Recording import not queued")
+
+
 async def handle_event(connection, event_name: str | None, payload: Any) -> str:
     """Process one webhook delivery; returns what was done (for logs/tests)."""
     from api.db import db_client
@@ -648,6 +664,8 @@ async def handle_event(connection, event_name: str | None, payload: Any) -> str:
     ):
         return "duplicate"
 
+    if data.get("recordings"):
+        await _schedule_recording_import(connection, data)
     phone, fields = _human_call_interaction(data)
     if not phone:
         return "no_customer"

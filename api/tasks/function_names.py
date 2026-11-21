@@ -8,3 +8,4 @@ class FunctionNames:
     DELIVER_WEBHOOK = "deliver_webhook"
     COMPLETE_INACTIVE_TEXT_CHAT_SESSION = "complete_inactive_text_chat_session"
     FINALIZE_COMPLETED_TEXT_CHAT = "finalize_completed_text_chat"
+    IMPORT_PBX_RECORDINGS = "import_pbx_recordings"

@@ -278,6 +278,11 @@ async def erase_subject(
         counts["callbacks"] += await db_client.delete_callbacks_for_suffix(
             organization_id, suffix
         )
+        from api.services.pbx.recordings import erase_for_phone
+
+        removed = await erase_for_phone(organization_id, phone)
+        if removed:
+            counts["human_call_recordings"] += removed
         return await db_client.update_privacy_request(
             organization_id,
             request.id,
@@ -370,11 +375,29 @@ async def export_subject(
         }
         for c in await db_client.list_callbacks_for_suffix(organization_id, suffix)
     ]
+    from api.services.customer_memory.service import normalize_phone
+
+    normalized = normalize_phone(phone) or ""
+    human_calls = [
+        {
+            "date": _iso(r.started_at),
+            "direction": r.direction,
+            "with": r.destination_name if r.direction == "inbound" else r.source_name,
+            "duration_seconds": r.duration_seconds,
+            "recording_kept": True,
+            "transcript": r.transcript,
+        }
+        for r in await db_client.list_pbx_recordings_for_phone(
+            organization_id,
+            sorted({normalized, normalized.lstrip("+"), f"+{normalized.lstrip('+')}"}),
+        )
+    ]
     counts = {
         "customer_profiles": len(profile_data),
         "calls": len(calls),
         "handoffs": len(handoffs),
         "callbacks": len(callbacks),
+        "human_call_recordings": len(human_calls),
     }
     await db_client.create_privacy_request(
         organization_id=organization_id,
@@ -394,6 +417,7 @@ async def export_subject(
         "calls": calls,
         "handoffs": handoffs,
         "callbacks": callbacks,
+        "human_call_recordings": human_calls,
         "notes": (
             "Recordings and transcripts are available on request; this export "
             "lists whether each call still holds them."
@@ -470,6 +494,14 @@ async def apply_retention(
                 counts[f"{kind}s"] += 1
             if len(runs) < 200:
                 break
+    if settings.recording_retention_days:
+        from api.services.pbx.recordings import purge_before
+
+        removed = await purge_before(
+            organization_id, now - timedelta(days=settings.recording_retention_days)
+        )
+        if removed:
+            counts["human_call_recordings"] += removed
     if settings.customer_memory_retention_days:
         before = now - timedelta(days=settings.customer_memory_retention_days)
         counts["interactions"] += await db_client.delete_customer_interactions_before(

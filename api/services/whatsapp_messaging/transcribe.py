@@ -30,6 +30,8 @@ def _extension(mime: str) -> str:
         "audio/mp4": "m4a",
         "audio/amr": "amr",
         "audio/aac": "aac",
+        "audio/wav": "wav",
+        "audio/x-wav": "wav",
     }.get(mime.split(";")[0].strip(), "ogg")
 
 

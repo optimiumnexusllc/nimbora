@@ -9,7 +9,11 @@ from api.db.privacy_client import PrivacyClient
 from api.db.actions_client import ActionsClient
 from api.db.whatsapp_conversation_client import WhatsAppConversationClient
 from api.db.blocked_number_client import BlockedNumberClient
-from api.db.pbx_client import PbxConnectionClient, PbxIvrMenuClient
+from api.db.pbx_client import (
+    PbxCallRecordingClient,
+    PbxConnectionClient,
+    PbxIvrMenuClient,
+)
 from api.db.embed_token_client import EmbedTokenClient
 from api.db.folder_client import FolderClient
 from api.db.integration_client import IntegrationClient
@@ -74,6 +78,7 @@ class DBClient(
     PbxConnectionClient,
     PbxIvrMenuClient,
     BlockedNumberClient,
+    PbxCallRecordingClient,
 ):
     """
     Unified database client that combines all specialized database operations.

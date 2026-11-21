@@ -166,6 +166,9 @@ class FakePbx:
         self.conferences: list[dict] = []
         self.participants: dict[int, list[dict]] = {}
         self.participant_actions: list[tuple[int, str, str]] = []
+        self.user_settings: dict[str, dict] = {}
+        self.recording_media: dict[str, bytes] = {}
+        self.deleted_media: list[str] = []
         self._next = 100
 
     # ------------------------------------------------------------------
@@ -849,6 +852,20 @@ class FakePbx:
                 )
             return httpx.Response(204)
 
+        # ----- single user (partial update, as the engine does)
+        m = re.fullmatch(rf"{prefix}/users/([0-9a-z-]+)", path)
+        if m and method in ("GET", "PUT") and not m.group(1).isdigit():
+            user = next((u for u in self.users if u["uuid"] == m.group(1)), None)
+            if user is None:
+                return httpx.Response(404, json=["Resource Not Found - User"])
+            settings = self.user_settings.setdefault(user["uuid"], {})
+            if method == "GET":
+                return httpx.Response(200, json={**user, **settings})
+            if "firstname" in body and not body["firstname"]:
+                return httpx.Response(400, json=["Input Error - firstname"])
+            settings.update(body)
+            return httpx.Response(204)
+
         # ----- call groups
         if path == f"{prefix}/groups" and method == "GET":
             return httpx.Response(
@@ -1038,13 +1055,26 @@ class FakePbx:
             self.agent_actions.append((parts[-2], parts[-1], body or {}))
             return httpx.Response(204)
         if path == "/api/call-logd/1.0/cdr":
+            items = self.cdr
+            if request.url.params.get("recorded") == "true":
+                items = [c for c in items if c.get("recordings")]
             return httpx.Response(
                 200,
-                json={
-                    "items": self.cdr,
-                    "total": len(self.cdr),
-                    "filtered": len(self.cdr),
-                },
+                json={"items": items, "total": len(self.cdr), "filtered": len(items)},
+            )
+        m = re.fullmatch(r"/api/call-logd/1.0/cdr/(\d+)/recordings/([^/]+)/media", path)
+        if m:
+            uuid_ = m.group(2)
+            if uuid_ not in self.recording_media:
+                return httpx.Response(404, json={"message": "No recording"})
+            if method == "DELETE":
+                del self.recording_media[uuid_]
+                self.deleted_media.append(uuid_)
+                return httpx.Response(204)
+            return httpx.Response(
+                200,
+                content=self.recording_media[uuid_],
+                headers={"Content-Type": "audio/wav"},
             )
         if path == "/api/webhookd/1.0/subscriptions" and method == "POST":
             sub = {"uuid": str(uuid.uuid4()), **body}

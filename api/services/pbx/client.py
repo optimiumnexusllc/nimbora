@@ -164,6 +164,7 @@ class PbxClient:
         tenant: bool = True,
         content: bytes | None = None,
         content_type: str | None = None,
+        raw: bool = False,
     ) -> Any:
         url = f"{SERVICES[service]}{path}"
         for attempt in (0, 1):
@@ -193,6 +194,8 @@ class PbxClient:
                 )
             if response.status_code >= 400:
                 raise PbxError(_error_message(response), status=response.status_code)
+            if raw:
+                return response.content
             if response.status_code == 204 or not response.content:
                 return None
             return response.json()
@@ -647,6 +650,41 @@ class PbxClient:
             f"/conferences/{conference_id}/participants/{participant_id}/{action}",
         )
 
+    # ------------------------------------------------- call recordings
+
+    async def user(self, user_uuid: str) -> dict:
+        return await self.request("confd", "GET", f"/users/{user_uuid}")
+
+    async def update_user(self, user_uuid: str, body: dict) -> None:
+        """Partial update: only the fields given change."""
+        await self.request("confd", "PUT", f"/users/{user_uuid}", json=body)
+
+    async def recorded_cdr(
+        self, limit: int = 100, since: str | None = None
+    ) -> list[dict]:
+        params: dict[str, Any] = {
+            "recorded": "true",
+            "limit": limit,
+            "order": "start",
+            "direction": "desc",
+        }
+        if since:
+            params["from"] = since
+        return await self._items("call_logd", "/cdr", **params)
+
+    async def recording_media(self, cdr_id: int, recording_uuid: str) -> bytes:
+        return await self.request(
+            "call_logd",
+            "GET",
+            f"/cdr/{cdr_id}/recordings/{recording_uuid}/media",
+            raw=True,
+        )
+
+    async def delete_recording_media(self, cdr_id: int, recording_uuid: str) -> None:
+        await self.request(
+            "call_logd", "DELETE", f"/cdr/{cdr_id}/recordings/{recording_uuid}/media"
+        )
+
     async def send_password_reset_email(self, login: str) -> None:
         """Ask the PBX to e-mail a reset link (white-label template)."""
         try:
@@ -813,4 +851,10 @@ REQUIRED_ACL: dict[str, str] = {
     "kick_participant": "calld.conferences.{conference_id}.participants.{participant_id}.delete",
     "mute_participant_mute": "calld.conferences.{conference_id}.participants.{participant_id}.mute.update",
     "mute_participant_unmute": "calld.conferences.{conference_id}.participants.{participant_id}.unmute.update",
+    # call recordings
+    "user": "confd.users.{user_id}.read",
+    "update_user": "confd.users.{user_id}.update",
+    "recorded_cdr": "call-logd.cdr.read",
+    "recording_media": "call-logd.cdr.{cdr_id}.recordings.{recording_uuid}.media.read",
+    "delete_recording_media": "call-logd.cdr.{cdr_id}.recordings.{recording_uuid}.media.delete",
 }

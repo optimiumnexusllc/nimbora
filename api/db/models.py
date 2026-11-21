@@ -2285,6 +2285,10 @@ class PbxConnectionModel(Base):
     last_error = Column(String(512), nullable=True)
     last_checked_at = Column(DateTime(timezone=True), nullable=True)
     branding_applied_at = Column(DateTime(timezone=True), nullable=True)
+    # What human calls are recorded, and what NIMBORA does with the files
+    # (import, transcription, removal from the PBX). See services/pbx/recordings.
+    recording_policy = Column(JSONB, nullable=False, default=dict)
+    recordings_synced_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime(timezone=True),
@@ -2358,4 +2362,43 @@ class BlockedNumberModel(Base):
     expires_at = Column(DateTime(timezone=True), nullable=True)
     hits = Column(Integer, nullable=False, default=0)
     last_hit_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
+class PbxCallRecordingModel(Base):
+    """A recording of a human call on the enterprise PBX, kept by NIMBORA.
+
+    The audio is copied to the platform's storage (optionally removed from
+    the PBX), transcribed with the organization's speech recognizer and masked
+    for payment data, and purged with the organization's retention policy.
+    """
+
+    __tablename__ = "pbx_call_recordings"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "recording_uuid", name="uq_pbx_recordings_org_uuid"
+        ),
+        Index("ix_pbx_recordings_org_started", "organization_id", "started_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    cdr_id = Column(Integer, nullable=False)
+    recording_uuid = Column(String(64), nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    duration_seconds = Column(Integer, nullable=True)
+    direction = Column(String(16), nullable=True)
+    source = Column(String(64), nullable=True)
+    source_name = Column(String(128), nullable=True)
+    destination = Column(String(64), nullable=True)
+    destination_name = Column(String(128), nullable=True)
+    customer_phone = Column(String(32), nullable=True, index=True)
+    storage_backend = Column(String(16), nullable=False)
+    storage_key = Column(String(512), nullable=False)
+    size_bytes = Column(Integer, nullable=True)
+    transcript = Column(Text, nullable=True)
+    transcript_status = Column(String(16), nullable=False, default="none")
+    removed_from_pbx = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

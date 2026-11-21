@@ -40,7 +40,7 @@ The install script:
 - generates every secret, so the installer's public default passwords are never used;
 - leaves out the engine's own web UI;
 - firewalls ARI (port 5039) to NIMBORA only and AMI (port 5038) to the server itself, over IPv4 and IPv6;
-- creates the service account. Its policy grants only the 101 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
+- creates the service account. Its policy grants only the 105 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
 
 See `deploy/pbx/README.md` for every option and what the white label changes.
 
@@ -282,6 +282,39 @@ The organization's [blocked numbers](/configurations/blocked-numbers) apply to e
 
 <Frame caption="AI outbound calls through the PBX, and call restrictions per extension">
   <img src="/images/screenshots/pbx-ai-outbound.webp" alt="Settings for AI outbound calls with the dialled number preview, and the list of call restrictions" />
+</Frame>
+
+### Recording human calls
+
+**Enregistrements** sets which calls between customers and your staff are recorded, and what NIMBORA does with the files. AI calls are recorded by the agent run, as before.
+
+**What the PBX records**:
+
+- calls received from outside, calls placed to outside, and calls between extensions;
+- on every extension, or only on the ones you tick.
+
+**Appliquer** turns the engine's recording switches on or off on each extension. It only changes extensions whose settings differ.
+
+<Warning>
+Tell callers that calls may be recorded, for example in a voice menu's greeting. Recording rules depend on your country.
+</Warning>
+
+**What the platform does with the recordings**:
+
+- **Copier les enregistrements**: each recording is copied to the platform's storage (MinIO or S3) when the call ends. The PBX's call-log webhook queues the copy, and a check every 10 minutes catches any that were missed (the last two days).
+- **Transcrire les appels**: the copy is transcribed with your organization's own speech recognizer (self-hosted Whisper, OpenAI-compatible or Deepgram). Card numbers, CVV, IBAN and social security numbers are **always masked** in the stored text. Recognizers often mishear digits, so any run of 13 to 19 digits is masked as a card number even if it fails the card checksum. The other categories of your privacy policy are masked too when masking is on.
+- **Retirer du PBX une fois copiés**: the recording is deleted from the PBX after the copy, so only one copy exists.
+
+The list shows who called whom, when, the direction and the duration. You can search by number, name, or a word that was said (in transcripts). **Écouter** plays a recording through a link that expires after 15 minutes.
+
+The privacy policy applies to these recordings:
+
+- the **recording retention** period deletes them, files included;
+- **erasing** a customer deletes their recordings;
+- an **access request** lists them, with their transcripts.
+
+<Frame caption="Human call recording: what is recorded, and the recordings kept with their masked transcript">
+  <img src="/images/screenshots/pbx-recordings.webp" alt="Recording policy and the list of recorded calls with playback and a transcript where the card number is masked" />
 </Frame>
 
 ### How AI calls flow

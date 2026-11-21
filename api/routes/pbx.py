@@ -21,6 +21,7 @@ from api.services.pbx import (
     numbers,
     outbound,
     permissions,
+    recordings,
     trunks,
 )
 from api.services.pbx import service as pbx
@@ -924,6 +925,63 @@ async def conference_participant_action(
             _org(user), conference_id, participant_id, action
         )
     )
+    return Response(status_code=204)
+
+
+# ------------------------------------------------- human call recordings
+
+
+@router.get("/recordings")
+async def list_recordings(
+    search: str | None = None,
+    limit: int = 50,
+    offset: int = 0,
+    user: UserModel = Depends(get_user),
+) -> dict[str, Any]:
+    """Human calls recorded on the PBX and kept by the platform."""
+    organization_id = _org(user)
+    connection = await db_client.get_pbx_connection(organization_id)
+    if connection is None:
+        raise HTTPException(status_code=404, detail="Aucun PBX connecté")
+    rows, total = await db_client.list_pbx_recordings(
+        organization_id,
+        search=(search or "").strip()[:64] or None,
+        limit=max(1, min(limit, 200)),
+        offset=max(0, offset),
+    )
+    return {
+        "items": [recordings.serialize(r) for r in rows],
+        "total": total,
+        "policy": recordings.policy_of(connection).model_dump(),
+        "synced_at": connection.recordings_synced_at,
+    }
+
+
+@router.put("/recordings/policy")
+async def save_recording_policy(
+    request: recordings.RecordingPolicy, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    """What is recorded on the extensions, and what the platform keeps."""
+    return await _call(recordings.save_policy(_org(user), request))
+
+
+@router.post("/recordings/sync")
+async def sync_recordings(user: UserModel = Depends(get_user)) -> dict[str, int]:
+    return await _call(recordings.sync_recordings(_org(user)))
+
+
+@router.get("/recordings/{recording_id}/audio")
+async def recording_audio(
+    recording_id: int, user: UserModel = Depends(get_user)
+) -> dict[str, str]:
+    """A short-lived link to listen to the recording."""
+    return {"url": await _call(recordings.audio_url(_org(user), recording_id))}
+
+
+@router.delete("/recordings/{recording_id}", status_code=204)
+async def delete_recording(recording_id: int, user: UserModel = Depends(get_user)):
+    if not await recordings.delete_recording(_org(user), recording_id):
+        raise HTTPException(status_code=404, detail="Enregistrement introuvable")
     return Response(status_code=204)
 
 

@@ -59,6 +59,7 @@ REDIS_SETTINGS = RedisSettings(
 )
 
 from api.services.contact_center.callbacks import run_callback_scheduler
+from api.services.pbx.recordings import import_pbx_recordings, sync_all_recordings
 from api.services.privacy.service import run_retention_sweep
 from api.services.whatsapp_messaging.service import close_idle_conversations
 from api.tasks.campaign_tasks import (
@@ -91,6 +92,7 @@ class WorkerSettings:
         deliver_webhook,
         complete_inactive_text_chat_session,
         finalize_completed_text_chat,
+        func(import_pbx_recordings, timeout=600),
     ]
     cron_jobs = [
         # GDPR retention: purge recordings, transcripts and customer memory
@@ -108,6 +110,15 @@ class WorkerSettings:
             run_at_startup=False,
         ),
         cron(sweep_builder_runs, minute=set(range(60)), second=45, run_at_startup=True),
+        # Human call recordings from the enterprise PBX whose webhook was
+        # missed are imported here.
+        cron(
+            sync_all_recordings,
+            minute=set(range(3, 60, 10)),
+            second=5,
+            run_at_startup=False,
+            timeout=900,
+        ),
         cron(
             sweep_workflow_completions,
             minute=set(range(0, 60, 15)),

@@ -114,7 +114,10 @@ L'administration se fait aussi depuis NIMBORA :
   décroche, un agent IA ; **renvois** et **ne pas déranger** par poste, avec un agent IA qui
   répond à la place d'un collaborateur absent ;
 - **salles de conférence** à codes d'accès, avec en direct les participants, micro coupé ou non,
-  et la possibilité de les faire sortir.
+  et la possibilité de les faire sortir ;
+- **enregistrement des appels humains** : choix des appels et des postes enregistrés, copie
+  dans le stockage de la plateforme, transcription avec masquage des données bancaires,
+  recherche par mot prononcé, conservation et effacement RGPD.
 
 Aucun client ne reste sans réponse.
 
@@ -125,6 +128,7 @@ Aucun client ne reste sans réponse.
 <p align="center"><img src="docs/images/screenshots/pbx-lines.webp" alt="Lignes opérateurs et routes sortantes" width="88%"></p>
 <p align="center"><img src="docs/images/screenshots/pbx-groups.webp" alt="Groupes d'appel avec un agent IA quand personne ne décroche" width="88%"></p>
 <p align="center"><img src="docs/images/screenshots/pbx-conferences.webp" alt="Salles de conférence et participants en direct" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/pbx-recordings.webp" alt="Enregistrements des appels humains avec transcription masquée" width="88%"></p>
 <p align="center"><img src="docs/images/screenshots/pbx-ai-outbound.webp" alt="Appels sortants des agents IA par le PBX et restrictions d'appel" width="88%"></p>
 
 ### 💬 WhatsApp : l'agent répond aussi aux messages
@@ -188,7 +192,8 @@ swahili, haoussa, yoruba, lingala…
   e-mails (même dictés), téléphones et adresses IP dans tout ce qui est conservé.
 - **Mode PCI** : l'agent IA n'entend jamais un numéro de carte, ni la supervision, ni les journaux.
 - **Durées de conservation** des enregistrements, transcriptions et de la mémoire client, purge quotidienne.
-- **Droit d'accès et droit à l'effacement** à partir d'un numéro, avec registre des demandes.
+- **Droit d'accès et droit à l'effacement** à partir d'un numéro, avec registre des demandes,
+  appels humains enregistrés sur le PBX compris.
 - **Numéros bloqués et opposition** : un client qui dit « ne m'appelez plus » n'est plus jamais
   appelé, ni par une campagne ni par un rappel ; les appelants indésirables sont raccrochés avant
   tout agent, sur tous les opérateurs.
@@ -216,7 +221,7 @@ swahili, haoussa, yoruba, lingala…
 | **Confidentialité** | Masquage des données personnelles, mode PCI, journaux masqués, durées de conservation, export et effacement RGPD |
 | **SaaS multi-entreprises** | Offres et abonnements, essai gratuit, quotas de minutes, limites par client, paiement Stripe optionnel, console opérateur |
 | **Téléphonie** | Asterisk (SIP), Twilio, Vonage, Telnyx, Plivo, WhatsApp… |
-| **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; création de postes en une action et import CSV ; files avec débordement vers un agent IA ; horaires de l'entreprise appliqués aux numéros ; **serveurs vocaux en éditeur visuel**, messages dits par la voix de l'entreprise, touche « parler à l'agent IA » ; numéros vers IA, menu, file, poste ou messagerie ; **lignes opérateurs SIP** et routes sortantes avec relais et numéro présenté ; **appels sortants des agents IA par les lignes du PBX** ; restrictions d'appel par poste ; **groupes d'appel**, renvois, ne-pas-déranger et agent IA quand un poste ne répond pas ; **salles de conférence** avec participants en direct ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 101 ACL) |
+| **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; création de postes en une action et import CSV ; files avec débordement vers un agent IA ; horaires de l'entreprise appliqués aux numéros ; **serveurs vocaux en éditeur visuel**, messages dits par la voix de l'entreprise, touche « parler à l'agent IA » ; numéros vers IA, menu, file, poste ou messagerie ; **lignes opérateurs SIP** et routes sortantes avec relais et numéro présenté ; **appels sortants des agents IA par les lignes du PBX** ; restrictions d'appel par poste ; **groupes d'appel**, renvois, ne-pas-déranger et agent IA quand un poste ne répond pas ; **salles de conférence** avec participants en direct ; **enregistrement des appels humains** copiés, transcrits et masqués ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 105 ACL) |
 | **Marque blanche** | Nom de la plateforme et du PBX centralisés (`BRAND_*`), e-mails et page de réinitialisation à la marque, en-têtes SIP |
 | **Sécurité** | Isolation stricte entre entreprises, protection SSRF, secrets générés à l'installation, télémétrie désactivée |
 
@@ -366,7 +371,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Routage d'un numéro du PBX vers un agent IA (`Stasis(app,inbound,called=…)`), sans jamais écraser une destination existante ; retrait propre des deux côtés |
 | ✅ | Console : appels en cours (raccrocher), agents (pause, reprise, déconnexion), files, postes, numéros, journal des appels ; pannes partielles affichées par section |
 | ✅ | Événements du PBX : chaque appel humain rejoint l'historique client multicanal (appels manqués compris), dédoublonné, sans doublonner les appels IA |
-| ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **101 ACL** (testé contre le code) |
+| ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **105 ACL** (testé contre le code) |
 | ✅ | Marque blanche : e-mails d'authentification en français à votre nom (fini `noreply@wazo.community` et le lien vers `app.wazo.io`), page `/pbx-password` à la marque (sans SSRF), en-têtes SIP `User-Agent`/`Server`, page d'accueil, bannière |
 | ✅ | Conformité : moteur GPL-3.0 non modifié, licences conservées sur le serveur, `NOTICE.md` ; NIMBORA (BSD-2) reste un programme distinct |
 | 🧪 | Validation sur un PBX réel : modules `chan_websocket` / `res_websocket_client` de l'Asterisk du moteur, appel IA de bout en bout, livraison des webhooks |
@@ -395,7 +400,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | **Salles de conférence** : code participants et code organisateur (jamais renvoyés), places, annonces, enregistrement ; **en direct** : participants, durée, organisateurs, micro coupé ou rendu, exclusion ; numéro public vers une salle |
 | 🔜 | Horaires des routes sortantes, interception d'appel, parcage, interphone |
 | 🔜 | Compétences des agents et routage par compétence entre IA et conseillers |
-| 🔜 | Enregistrements des appels humains dans le stockage NIMBORA, avec masquage PCI et durées de conservation |
+| ✅ | **Enregistrements des appels humains** : appels reçus, émis ou internes, sur tous les postes ou certains ; copie dans le stockage de la plateforme (webhook + rattrapage toutes les 10 min), retrait du PBX optionnel (copie unique), **transcription masquée** (cartes, CVV, IBAN, n° de sécurité sociale toujours masqués), recherche par mot prononcé, écoute par lien temporaire, conservation, accès et effacement RGPD |
 
 **5.3 Centre d'appels humain unifié**
 

@@ -7073,6 +7073,40 @@ export type RecordingListResponseSchema = {
 };
 
 /**
+ * RecordingPolicy
+ */
+export type RecordingPolicy = {
+    /**
+     * Incoming External
+     */
+    incoming_external?: boolean;
+    /**
+     * Outgoing External
+     */
+    outgoing_external?: boolean;
+    /**
+     * Internal
+     */
+    internal?: boolean;
+    /**
+     * User Uuids
+     */
+    user_uuids?: Array<string> | null;
+    /**
+     * Import Enabled
+     */
+    import_enabled?: boolean;
+    /**
+     * Transcribe
+     */
+    transcribe?: boolean;
+    /**
+     * Remove From Pbx
+     */
+    remove_from_pbx?: boolean;
+};
+
+/**
  * RecordingResponseSchema
  *
  * Response schema for a single recording.
@@ -25176,6 +25210,240 @@ export type ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipan
 };
 
 export type ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostResponse = ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostResponses[keyof ConferenceParticipantActionApiV1PbxConferencesConferenceIdParticipantsParticipantIdActionPostResponses];
+
+export type ListRecordingsApiV1PbxRecordingsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Search
+         */
+        search?: string | null;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/pbx/recordings';
+};
+
+export type ListRecordingsApiV1PbxRecordingsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListRecordingsApiV1PbxRecordingsGetError = ListRecordingsApiV1PbxRecordingsGetErrors[keyof ListRecordingsApiV1PbxRecordingsGetErrors];
+
+export type ListRecordingsApiV1PbxRecordingsGetResponses = {
+    /**
+     * Response List Recordings Api V1 Pbx Recordings Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ListRecordingsApiV1PbxRecordingsGetResponse = ListRecordingsApiV1PbxRecordingsGetResponses[keyof ListRecordingsApiV1PbxRecordingsGetResponses];
+
+export type SaveRecordingPolicyApiV1PbxRecordingsPolicyPutData = {
+    body: RecordingPolicy;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/recordings/policy';
+};
+
+export type SaveRecordingPolicyApiV1PbxRecordingsPolicyPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveRecordingPolicyApiV1PbxRecordingsPolicyPutError = SaveRecordingPolicyApiV1PbxRecordingsPolicyPutErrors[keyof SaveRecordingPolicyApiV1PbxRecordingsPolicyPutErrors];
+
+export type SaveRecordingPolicyApiV1PbxRecordingsPolicyPutResponses = {
+    /**
+     * Response Save Recording Policy Api V1 Pbx Recordings Policy Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SaveRecordingPolicyApiV1PbxRecordingsPolicyPutResponse = SaveRecordingPolicyApiV1PbxRecordingsPolicyPutResponses[keyof SaveRecordingPolicyApiV1PbxRecordingsPolicyPutResponses];
+
+export type SyncRecordingsApiV1PbxRecordingsSyncPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/recordings/sync';
+};
+
+export type SyncRecordingsApiV1PbxRecordingsSyncPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SyncRecordingsApiV1PbxRecordingsSyncPostError = SyncRecordingsApiV1PbxRecordingsSyncPostErrors[keyof SyncRecordingsApiV1PbxRecordingsSyncPostErrors];
+
+export type SyncRecordingsApiV1PbxRecordingsSyncPostResponses = {
+    /**
+     * Response Sync Recordings Api V1 Pbx Recordings Sync Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: number;
+    };
+};
+
+export type SyncRecordingsApiV1PbxRecordingsSyncPostResponse = SyncRecordingsApiV1PbxRecordingsSyncPostResponses[keyof SyncRecordingsApiV1PbxRecordingsSyncPostResponses];
+
+export type RecordingAudioApiV1PbxRecordingsRecordingIdAudioGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Recording Id
+         */
+        recording_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/recordings/{recording_id}/audio';
+};
+
+export type RecordingAudioApiV1PbxRecordingsRecordingIdAudioGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RecordingAudioApiV1PbxRecordingsRecordingIdAudioGetError = RecordingAudioApiV1PbxRecordingsRecordingIdAudioGetErrors[keyof RecordingAudioApiV1PbxRecordingsRecordingIdAudioGetErrors];
+
+export type RecordingAudioApiV1PbxRecordingsRecordingIdAudioGetResponses = {
+    /**
+     * Response Recording Audio Api V1 Pbx Recordings  Recording Id  Audio Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type RecordingAudioApiV1PbxRecordingsRecordingIdAudioGetResponse = RecordingAudioApiV1PbxRecordingsRecordingIdAudioGetResponses[keyof RecordingAudioApiV1PbxRecordingsRecordingIdAudioGetResponses];
+
+export type DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Recording Id
+         */
+        recording_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/recordings/{recording_id}';
+};
+
+export type DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteError = DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteErrors[keyof DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteErrors];
+
+export type DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteResponse = DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteResponses[keyof DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteResponses];
 
 export type ResetPasswordApiV1PbxPasswordResetPostData = {
     body: PasswordResetRequest;

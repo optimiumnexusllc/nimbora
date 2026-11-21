@@ -55,3 +55,14 @@ Both requests start from the person's phone number. Formats are matched on the l
 Every request is listed in the **register**. The register keeps a keyed hash and the last three digits only, never the full number.
 
 The same actions are available through the API: `GET/PUT /api/v1/privacy/settings`, `POST /api/v1/privacy/export`, `POST /api/v1/privacy/erasure`, `GET /api/v1/privacy/requests`.
+
+## Human calls on the enterprise PBX
+
+Recordings of calls between customers and your staff, imported from the [enterprise PBX](/integrations/telephony/enterprise-pbx#recording-human-calls), follow the same rules:
+
+- the recording retention period deletes them;
+- erasing a customer deletes them;
+- an access request lists them, with their transcripts.
+
+Their transcripts always mask payment data.
+
