@@ -38,7 +38,8 @@ PBX_NAME=nimbora-pbx PBX_MEMORY=4GiB PBX_CPU=2
 TRAEFIK_DYNAMIC_DIR=/data/coolify/proxy/dynamic TRAEFIK_NETWORK=coolify
 DEPLOY_DIR=/opt/nimbora-lab NIMBORA_BRIDGE=br-nimboralab NIMBORA_SUBNET=10.250.1.0/24
 FASTAPI_WORKERS=2 SECRETS_FILE=""
-RTP_RANGE=10000-20000 SIP_PUBLIC=0 UFW=0 SHARED_PBX=0
+RTP_RANGE=10000-20000 SIP_PUBLIC=0 UFW=0 SHARED_PBX=0 OBSERVABILITY=0
+OBS_PROMETHEUS_PORT=19090 OBS_GRAFANA_PORT=13001
 ONLY="" BUILD=1 FORCE_PBX=0
 
 # shellcheck disable=SC1090
@@ -66,6 +67,9 @@ while [[ $# -gt 0 ]]; do
         --no-sip-public) SIP_PUBLIC=0; shift ;;
         --ufw) UFW=1; shift ;;
         --shared-pbx) SHARED_PBX=1; shift ;;
+        --observability) OBSERVABILITY=1; shift ;;
+        --prometheus-port) OBS_PROMETHEUS_PORT="$2"; shift 2 ;;
+        --grafana-port) OBS_GRAFANA_PORT="$2"; shift 2 ;;
         --only) ONLY="$2"; shift 2 ;;
         --no-build) BUILD=0; shift ;;
         --force-pbx) FORCE_PBX=1; shift ;;
@@ -134,7 +138,7 @@ if runs preflight; then
     install -d -m 700 "$STATE_DIR"
     for k in APP_DOMAIN PBX_DOMAIN BRAND COMPANY PUBLIC_IF PUBLIC_IP INCUS_BRIDGE BRIDGE_CIDR PBX_IP PBX_NAME \
              PBX_MEMORY PBX_CPU TRAEFIK_DYNAMIC_DIR TRAEFIK_NETWORK TRAEFIK_BRIDGE DEPLOY_DIR NIMBORA_BRIDGE \
-             NIMBORA_SUBNET FASTAPI_WORKERS SECRETS_FILE RTP_RANGE SIP_PUBLIC UFW SHARED_PBX; do
+             NIMBORA_SUBNET FASTAPI_WORKERS SECRETS_FILE RTP_RANGE SIP_PUBLIC UFW SHARED_PBX OBSERVABILITY OBS_PROMETHEUS_PORT OBS_GRAFANA_PORT; do
         set_kv "$LAB_ENV" "$k" "${!k}"
     done
     chmod 600 "$LAB_ENV"
@@ -220,9 +224,11 @@ if runs pbx; then
     if [[ "$FORCE_PBX" == "1" ]] || ! incus exec "$PBX_NAME" -- test -f /etc/nimbora-pbx/service-account.json; then
         log "Installation du moteur dans le conteneur (20 à 40 minutes)"
         incus exec "$PBX_NAME" --env NIMBORA_URL="https://$APP_DOMAIN" -- bash -c \
-            "cd /opt/nimbora/deploy/pbx && ./install.sh --brand '$BRAND' --nimbora-url https://$APP_DOMAIN --nimbora-ip $(bridge_gateway) --company '$COMPANY' $([[ "$SHARED_PBX" == 1 ]] && echo --operator)"
+            "cd /opt/nimbora/deploy/pbx && ./install.sh --brand '$BRAND' --nimbora-url https://$APP_DOMAIN --nimbora-ip $(bridge_gateway) --company '$COMPANY' --trusted-proxy $(bridge_gateway) $([[ "$SHARED_PBX" == 1 ]] && echo --operator) $([[ "$OBSERVABILITY" == 1 ]] && echo --metrics-from $(bridge_gateway))"
     else
         ok "Moteur déjà installé (compte de service présent) ; --force-pbx pour relancer l'installateur"
+        # Options that may have changed since the install (proxy, exporter): firewall, fail2ban and exporter only.
+        incus exec "$PBX_NAME" -- bash -c "cd /opt/nimbora/deploy/pbx && ./install.sh --nimbora-url https://$APP_DOMAIN --nimbora-ip $(bridge_gateway) --trusted-proxy $(bridge_gateway) $([[ "$OBSERVABILITY" == 1 ]] && echo --metrics-from $(bridge_gateway)) --firewall-only >/dev/null"
     fi
     if [[ "$SHARED_PBX" == 1 ]] && ! incus exec "$PBX_NAME" -- test -f /etc/nimbora-pbx/provisioning-account.json; then
         # Shared PBX enabled after the engine was installed: the operator's
@@ -276,6 +282,10 @@ if runs nimbora; then
     ensure_secret "$ENV" MINIO_ROOT_USER "echo nimbora$(openssl rand -hex 6)"
     ensure_secret "$ENV" MINIO_ROOT_PASSWORD
     ensure_secret "$ENV" TELEPHONY_WS_TOKEN_SECRET
+    if [[ "$OBSERVABILITY" == 1 ]]; then
+        set_kv "$ENV" ENABLE_PROMETHEUS_METRICS true
+        ensure_secret "$ENV" NIMBORA_DEVOPS_SECRET
+    fi
     if [[ "$SHARED_PBX" == 1 && -f "$STATE_DIR/pbx-secrets.env" ]]; then
         # The operator's shared PBX (deploy/pbx --operator): the platform opens
         # one tenant per company through the private network.
@@ -345,6 +355,50 @@ if runs traefik; then
         done
         [[ "$issuer" == *"Let's Encrypt"* ]] && ok "Certificat Let's Encrypt pour $d" || warn "Pas encore de certificat Let's Encrypt pour $d (DNS ? port 80 ?)"
     done
+fi
+
+# ------------------------------------------------------------ observability
+if runs observability && [[ "$OBSERVABILITY" == 1 ]]; then
+    log "Prometheus et Grafana (deploy/observability) sur 127.0.0.1:$OBS_PROMETHEUS_PORT et :$OBS_GRAFANA_PORT"
+    OBS="$DEPLOY_DIR/observability"
+    install -d -m 750 "$OBS"
+    cp -r "$REPO_DIR/deploy/observability/." "$OBS/"
+    # Prometheus runs as nobody: the bind-mounted secret must be readable (the directory is not).
+    printf '%s' "$(get_kv "$DEPLOY_DIR/.env" NIMBORA_DEVOPS_SECRET)" > "$OBS/devops_secret"; chmod 644 "$OBS/devops_secret"
+    workers=""
+    for ((p = 8000; p < 8000 + FASTAPI_WORKERS; p++)); do workers+="\"nimbora_api:$p\","; done
+    printf '[{"targets": [%s], "labels": {"environment": "lab"}}]\n' "${workers%,}" > "$OBS/prometheus/targets.json"
+    printf '[{"targets": ["nimbora_api:8000"], "labels": {"environment": "lab"}}]\n' > "$OBS/prometheus/business-targets.json"
+    printf '[{"targets": ["%s:9100"], "labels": {"role": "pbx", "instance_name": "%s"}},\n {"targets": ["host.docker.internal:9100"], "labels": {"role": "platform", "instance_name": "%s"}}]\n' \
+        "$PBX_IP" "$PBX_NAME" "$(hostname)" > "$OBS/prometheus/node-targets.json"
+    cat > "$OBS/docker-compose.override.yml" <<OVERRIDE
+# Lab (deploy/lab/install.sh --observability): the stack's network to reach the API
+# by name and the PBX through the bridge the host firewall knows; local ports moved.
+services:
+  prometheus:
+    networks:
+      default: {}
+      nimbora:
+        gw_priority: 1
+    ports: !override ["127.0.0.1:${OBS_PROMETHEUS_PORT}:9090"]
+  grafana:
+    ports: !override ["127.0.0.1:${OBS_GRAFANA_PORT}:3000"]
+networks:
+  nimbora:
+    external: true
+    name: nimbora-lab_app-network
+OVERRIDE
+    [[ -f "$OBS/.env" ]] || { umask 077; echo "GRAFANA_ADMIN_PASSWORD=$(openssl rand -hex 12)" > "$OBS/.env"; }
+    # The platform host's own exporter, bound to the Docker gateway only (never public).
+    if ! dpkg -s prometheus-node-exporter >/dev/null 2>&1; then
+        apt-get update -q >/dev/null; DEBIAN_FRONTEND=noninteractive apt-get install -yq prometheus-node-exporter >/dev/null
+    fi
+    gw="$(docker network inspect bridge -f '{{(index .IPAM.Config 0).Gateway}}')"
+    printf 'ARGS="--web.listen-address=%s:9100 --collector.textfile.directory=/var/lib/prometheus/node-exporter"\n' "$gw" > /etc/default/prometheus-node-exporter
+    install -d -m 755 /var/lib/prometheus/node-exporter
+    systemctl enable prometheus-node-exporter >/dev/null 2>&1; systemctl restart prometheus-node-exporter
+    (cd "$OBS" && docker compose -p nimbora-lab-observability up -d --remove-orphans >/dev/null)
+    ok "Grafana : http://127.0.0.1:$OBS_GRAFANA_PORT (admin, mot de passe dans $OBS/.env) ; Prometheus : http://127.0.0.1:$OBS_PROMETHEUS_PORT/targets"
 fi
 
 # ------------------------------------------------------------------ summary

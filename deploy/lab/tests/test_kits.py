@@ -293,3 +293,16 @@ def test_pbx_firewall_only_also_installs_the_node_exporter():
     block = script[script.index('if [[ "$FIREWALL_ONLY" == 1 ]]; then'):]
     block = block[: block.index("exit 0")]
     assert "apply_monitoring" in block
+
+
+def test_lab_kit_observability_phase():
+    """--observability: metrics on in the stack, exporters on both hosts, Prometheus/Grafana on local ports."""
+    source = (DEPLOY / "lab" / "install.sh").read_text()
+    assert "--observability) OBSERVABILITY=1" in source
+    assert 'set_kv "$ENV" ENABLE_PROMETHEUS_METRICS true' in source
+    assert 'ensure_secret "$ENV" NIMBORA_DEVOPS_SECRET' in source
+    assert "echo --metrics-from $(bridge_gateway)" in source          # PBX exporter opened to the host only
+    assert "--trusted-proxy $(bridge_gateway)" in source               # the PBX logs the real client behind Traefik
+    assert 'chmod 644 "$OBS/devops_secret"' in source                  # readable by Prometheus (nobody)
+    assert "gw_priority: 1" in source                                  # reach the PBX via the stack bridge
+    assert "--web.listen-address=%s:9100" in source                    # host exporter never public
