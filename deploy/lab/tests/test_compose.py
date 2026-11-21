@@ -56,3 +56,16 @@ def test_compose_passes_the_white_label_variables_to_the_api(compose: Path):
     env = api_environment(compose)
     for name in ("BRAND_NAME", "BRAND_PBX_NAME", "BRAND_DOMAIN", "BRAND_SIP_USER_AGENT"):
         assert name in env, name
+
+
+@pytest.mark.parametrize("compose", [REPO / "docker-compose.yaml", DEPLOY / "enterprise" / "docker-compose.yml"], ids=lambda p: str(p.relative_to(REPO)))
+def test_compose_passes_every_shared_pbx_variable_to_the_api(compose: Path):
+    """Each PBX_PROVISIONING_* the API reads must be forwarded by compose."""
+    constants = (REPO / "api" / "constants.py").read_text()
+    names = set(re.findall(r"getenv\(\"(PBX_PROVISIONING_[A-Z_]+)\"", constants)) | set(
+        re.findall(r"_env_bool\(\"(PBX_PROVISIONING_[A-Z_]+)\"", constants)
+    )
+    assert names, "no PBX_PROVISIONING_* in api/constants.py"
+    env = api_environment(compose)
+    missing = sorted(n for n in names if n not in env)
+    assert not missing, missing
