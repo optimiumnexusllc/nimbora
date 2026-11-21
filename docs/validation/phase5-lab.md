@@ -276,6 +276,14 @@ par l'interne. Commit `4478631`, test `test_tenant_contexts_cover_what_the_platf
 Elle n'a été rouverte que quelques minutes pour créer les deux entreprises de test, puis
 refermée (vérifié après chaque bascule).
 
+**PR #2, connexion et inscription en français.** Interface construite depuis la branche
+`feat/auth-fr-signup-control`, lancée dans un conteneur jetable branché sur l'API du
+laboratoire (inscription fermée), captures Chromium : `/auth/login` entièrement en français
+(« Connexion », « Saisissez votre e-mail et votre mot de passe », « Se connecter ») ;
+`/auth/signup` affiche « Inscriptions fermées — Les comptes de cette plateforme sont créés par
+son administrateur… » au lieu du formulaire ; un mauvais mot de passe donne « E-mail ou mot de
+passe incorrect ». ✅ Captures jointes au rapport de session (non versionnées).
+
 **PR #3, minutes humaines : sens du champ `duration` du journal d'appels du moteur.**
 Outil : conteneur Incus jetable `nimbora-siptest` (Debian 12, baresip 1.0) sur le pont privé,
 deux clients SIP enregistrés sur les postes 1002 et 1003 (poste 1003 créé pour servir de
