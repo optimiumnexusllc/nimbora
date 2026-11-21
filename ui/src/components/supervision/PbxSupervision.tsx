@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Bot, Ear, Headphones, Mic, Pause, PhoneCall, Play, Settings2, ShieldAlert, Users } from "lucide-react";
+import { AlertTriangle, BellRing, Bot, Ear, Headphones, Mic, Pause, PhoneCall, Play, Settings2, ShieldAlert, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -60,6 +60,7 @@ export function PbxSupervision({
     supervisor,
     onSupervisorChange,
     onOpenSettings,
+    onOpenAlerts,
     onChanged,
 }: {
     live: PbxLive;
@@ -69,6 +70,7 @@ export function PbxSupervision({
     supervisor: string | null;
     onSupervisorChange: (uuid: string) => void;
     onOpenSettings: () => void;
+    onOpenAlerts?: () => void;
     onChanged: () => void;
 }) {
     const [busy, setBusy] = useState<string | null>(null);
@@ -171,10 +173,18 @@ export function PbxSupervision({
                         </span>
                     )}
                 </div>
-                <Button variant="outline" onClick={onOpenSettings}>
-                    <Settings2 className="mr-2 h-4 w-4" />
-                    Réglages de l&apos;écoute
-                </Button>
+                <span className="flex flex-wrap gap-2">
+                    {onOpenAlerts && (
+                        <Button variant="outline" onClick={onOpenAlerts}>
+                            <BellRing className="mr-2 h-4 w-4" />
+                            Alertes
+                        </Button>
+                    )}
+                    <Button variant="outline" onClick={onOpenSettings}>
+                        <Settings2 className="mr-2 h-4 w-4" />
+                        Réglages de l&apos;écoute
+                    </Button>
+                </span>
             </div>
 
             {errors.length > 0 && (

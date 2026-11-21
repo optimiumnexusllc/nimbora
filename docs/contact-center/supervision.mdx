@@ -91,6 +91,46 @@ How it works:
 
 Waiting callers come from the AMI `QueueStatus` action through `wazo-amid`, always asked about one named queue of the company. The engine's REST APIs do not list waiting callers.
 
+### Alerts
+
+**Alertes** (next to the listening settings) watches the queues so that nobody waits unnoticed. Three rules:
+
+| Rule | Raised when |
+|---|---|
+| Long wait | a caller has waited longer than the threshold you set (critical past twice the threshold) |
+| Queue full | more callers are waiting in one queue than the threshold you set |
+| No agent | callers are waiting and no agent of that queue is available, or none is logged in |
+
+You can watch every queue or a few of them. Alerts are:
+
+- **on the console**: red and orange banners at the top of **Supervision** and on the wall display. With **Recevoir les alertes dans le navigateur** (receive alerts in the browser), a browser notification also pops up when an alert starts, even in another tab;
+- **sent to people who are not looking**: a **webhook** such as Slack, Microsoft Teams, Google Chat or n8n, which receives `{"text": "…", "alert": {…}}`, and/or **e-mail** to the recipients you list. E-mail goes out through one of your agents' e-mail tools (a **Message** tool, SMTP, with its sender).
+
+A message goes out when an alert starts and when it ends (**Rétabli**, with how long it lasted). It is never sent twice within the delay you choose, so a queue going back and forth does not flood the channel. **Enregistrer et tester** (save and test) sends a test message. The **Journal** tab keeps the latest alerts and their ends.
+
+The worker checks every minute. The console reacts at once, on every live update.
+
+<Frame caption="Alerts on the console, and their settings">
+  <img src="/images/screenshots/supervision-alerts.webp" alt="Red and orange alert banners on the supervision console, and the alert settings dialog" />
+</Frame>
+
+### Wall display
+
+**Mur d'affichage** (wall display, at `/supervision/wall`) is made for a TV on the call-center floor. It shows, large and readable from across the room:
+
+- callers waiting and the longest wait;
+- agents available and on a call;
+- AI calls;
+- one tile per queue;
+- each agent's state;
+- the active alerts.
+
+It updates in real time and has a full-screen button.
+
+<Frame caption="The wall display">
+  <img src="/images/screenshots/supervision-wall.webp" alt="Wall display with alerts, totals, queue tiles and agents" />
+</Frame>
+
 ### Statistics
 
 **Statistiques des files et des conseillers** (queue and agent statistics) shows, for today, yesterday, 7 or 30 days:
@@ -130,4 +170,6 @@ The PBX computes these statistics every 6 hours, so the last hours may not be in
 | `POST /api/v1/pbx/supervision/spy` | Listen / whisper / barge on a PBX extension (`supervisor_user_uuid`, `target_user_uuid`, `mode`) |
 | `GET/PUT /api/v1/pbx/supervision/settings` | Listening on/off, modes, supervisors, protected extensions, service-level threshold |
 | `GET /api/v1/pbx/supervision/sessions` | Listening log |
+| `GET/PUT /api/v1/pbx/supervision/alerts` | Alert rules and channels, the company's e-mail tools, the latest alerts |
+| `POST /api/v1/pbx/supervision/alerts/test` | Send a test message on the configured channels |
 | `GET /api/v1/pbx/supervision/statistics?period=today\|yesterday\|7d\|30d` | Queue and agent statistics |

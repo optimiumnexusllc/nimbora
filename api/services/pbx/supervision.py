@@ -379,6 +379,9 @@ async def live(
         "errors": errors,
         "at": now.isoformat(),
     }
+    from api.services.pbx import alerts
+
+    state["alerts"] = alerts.evaluate(state, alerts.read_settings(connection))
     _live_cache[organization_id] = (read_at, state)
     return state
 

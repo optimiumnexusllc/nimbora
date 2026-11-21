@@ -64,9 +64,13 @@ Côté humains : appelants en attente file par file (en rouge au-delà du seuil 
 votre téléphone sonne, vous décrochez. L'écoute s'active entreprise par entreprise, après
 confirmation que les salariés sont informés, avec postes protégés et **journal des écoutes**.
 Statistiques des files et des conseillers : taux de décroché, niveau de service, attente moyenne,
-occupation.
+occupation. **Alertes** quand un client attend trop ou qu'une file n'a plus de conseiller : bandeau et
+notification du navigateur, **webhook** (Slack, Teams, Google Chat, n8n) et **e-mail**, au début et à la
+fin de chaque alerte. Et un **mur d'affichage** plein écran pour l'écran du plateau.
 
 <p align="center"><img src="docs/images/screenshots/supervision-unified.webp" alt="Supervision unifiée : appels IA, files et conseillers du PBX, écoute en un clic" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/supervision-wall.webp" alt="Mur d'affichage : alertes, totaux, files et conseillers en temps réel" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/supervision-alerts.webp" alt="Alertes de supervision dans la console et leurs réglages" width="88%"></p>
 <p align="center"><img src="docs/images/screenshots/supervision-stats-listening.webp" alt="Statistiques des files et des conseillers, réglages de l'écoute" width="88%"></p>
 <p align="center"><img src="docs/images/screenshots/supervision-live-call.webp" alt="Suivi d'un appel IA en direct" width="88%"></p>
 
@@ -461,7 +465,8 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | **NIMBORA Softphone** multiplateforme (Windows, macOS, Linux, Android, iOS, navigateur) : une application React + JsSIP dans une coque Tauri 2, enregistrée sur le poste du PBX en WebRTC ; appels entrants/sortants, sonnerie et notification, micro, attente, DTMF, transfert, second appel « occupé », messagerie, récents, annuaire (collègues, groupes, files), ne pas déranger et renvoi |
 | ✅ | Jumelage par **QR code** ou code à usage unique (15 min, anti-force brute), lien `nimbora-softphone://`, jeton d'appareil haché, **secret SIP lu sur le PBX à chaque démarrage et jamais stocké**, révocation par appareil, révocation automatique à la suppression du poste, adresse WebSocket/domaine SIP réglables |
 | ✅ | CI de compilation pour toutes les plateformes (`softphone.yml` : PWA, `.msi`/`.exe`, `.dmg` universel, `.deb`/`.rpm`/`.AppImage`, `.apk`, iOS simulateur), release sur tag `softphone-v*` ; paquet `.deb` Linux construit et lancé (≈ 2 Mo, lien `nimbora-softphone://` déclaré au bureau) ; inscription SIP et appel entrant validés contre un registraire WebSocket de test |
-| 🧪 | Appels réels sur un PBX du moteur (WebSocket `/api/asterisk/ws`, certificats), builds Windows/macOS/Android/iOS sur la CI |
+| ✅ | **Builds vérifiés sur la CI** pour les six cibles : PWA, Windows (`.msi`/`.exe`), macOS universel (`.dmg`, non signé sans certificat), Linux (`.deb`/`.rpm`/`.AppImage`), Android (`.apk`), iOS (simulateur) |
+| 🧪 | Appels réels sur un PBX du moteur (WebSocket `/api/asterisk/ws`, certificats) ; installation des paquets sur chaque système |
 | 🔜 | Appels entrants application fermée sur mobile (notifications push VoIP PushKit / FCM relayées par la plateforme), signature des builds (Apple, Windows, Play Store) |
 | 🔜 | Présence des collègues ; annuaire unifié (contacts du PBX + mémoire client) ; transfert avec consultation, conférence à trois |
 | ✅ | **Supervision unifiée IA + humains** : un seul écran pour les appels IA, le centre d'appels intégré et le PBX ; files du PBX en direct avec les **appelants en attente** (action AMI `QueueStatus` par `wazo-amid`, toujours sur une file nommée de l'entreprise), conseillers (en appel, sonne, en pause, déconnecté ; pause et reprise), conversations de tous les postes |
@@ -473,7 +478,8 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | **Fiche de passation chez l'humain** : dans NIMBORA Softphone dès la sonnerie (motif, résumé, humeur, prochaine étape, données, conversation ; version 1.1.0), en supervision sur l'appelant en attente et sous l'appel du conseiller ; numéro reconnu en format national ou international ; fiche close par le journal d'appels du PBX (décrochée / abandonnée) |
 | ✅ | **Appels manqués rappelés par un agent IA** : files seulement ou tous les appels entrants sans réponse, délai, heures d'ouverture et fermetures de « Mon entreprise », un rappel par client, numéros bloqués exclus, **annulé si le client a été servi entre-temps** ; un transfert de l'IA abandonné est rappelé avec le motif et le résumé de sa fiche ; derniers rappels affichés avec leur issue |
 | 🧪 | Passation et fiche sur un PBX réel (entrée par `Local/…` dans le contexte interne du tenant, nom présenté sur les postes, champs `destination_user_uuid` du journal d'appels) |
-| 🔜 | Alertes de supervision (attente au-delà du seuil, file sans conseiller) par notification et e-mail ; mur d'affichage plein écran |
+| ✅ | **Alertes de supervision** : attente trop longue (critique au-delà du double), file pleine, file sans conseiller disponible ou connecté ; files choisies ; bandeau et notification du navigateur en direct ; **webhook** (Slack, Teams, Google Chat, n8n) et **e-mail** par l'outil SMTP de l'entreprise, au début et à la fin (« Rétabli », durée), sans doublon dans le délai choisi, retours rapides silencieux ; test en un clic ; journal |
+| ✅ | **Mur d'affichage** plein écran (`/supervision/wall`) pour l'écran du plateau : alertes, totaux, tuiles par file, état de chaque conseiller, appels IA, en temps réel |
 
 **5.4 Multi-entreprises et exploitation**
 

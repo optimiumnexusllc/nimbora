@@ -341,6 +341,48 @@ export type AiOutboundRequest = {
 };
 
 /**
+ * AlertSettings
+ */
+export type AlertSettings = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Max Wait Seconds
+     */
+    max_wait_seconds?: number;
+    /**
+     * Max Waiting
+     */
+    max_waiting?: number;
+    /**
+     * No Agent
+     */
+    no_agent?: boolean;
+    /**
+     * Queue Ids
+     */
+    queue_ids?: Array<number>;
+    /**
+     * Webhook Url
+     */
+    webhook_url?: string;
+    /**
+     * Email Tool Uuid
+     */
+    email_tool_uuid?: string | null;
+    /**
+     * Email Recipients
+     */
+    email_recipients?: Array<string>;
+    /**
+     * Cooldown Minutes
+     */
+    cooldown_minutes?: number;
+};
+
+/**
  * AmbientNoiseConfigurationDefaults
  */
 export type AmbientNoiseConfigurationDefaults = {
@@ -26736,6 +26778,135 @@ export type ReadStatisticsApiV1PbxSupervisionStatisticsGetResponses = {
 };
 
 export type ReadStatisticsApiV1PbxSupervisionStatisticsGetResponse = ReadStatisticsApiV1PbxSupervisionStatisticsGetResponses[keyof ReadStatisticsApiV1PbxSupervisionStatisticsGetResponses];
+
+export type ReadAlertsApiV1PbxSupervisionAlertsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/supervision/alerts';
+};
+
+export type ReadAlertsApiV1PbxSupervisionAlertsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadAlertsApiV1PbxSupervisionAlertsGetError = ReadAlertsApiV1PbxSupervisionAlertsGetErrors[keyof ReadAlertsApiV1PbxSupervisionAlertsGetErrors];
+
+export type ReadAlertsApiV1PbxSupervisionAlertsGetResponses = {
+    /**
+     * Response Read Alerts Api V1 Pbx Supervision Alerts Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadAlertsApiV1PbxSupervisionAlertsGetResponse = ReadAlertsApiV1PbxSupervisionAlertsGetResponses[keyof ReadAlertsApiV1PbxSupervisionAlertsGetResponses];
+
+export type SaveAlertsApiV1PbxSupervisionAlertsPutData = {
+    body: AlertSettings;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/supervision/alerts';
+};
+
+export type SaveAlertsApiV1PbxSupervisionAlertsPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveAlertsApiV1PbxSupervisionAlertsPutError = SaveAlertsApiV1PbxSupervisionAlertsPutErrors[keyof SaveAlertsApiV1PbxSupervisionAlertsPutErrors];
+
+export type SaveAlertsApiV1PbxSupervisionAlertsPutResponses = {
+    /**
+     * Response Save Alerts Api V1 Pbx Supervision Alerts Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SaveAlertsApiV1PbxSupervisionAlertsPutResponse = SaveAlertsApiV1PbxSupervisionAlertsPutResponses[keyof SaveAlertsApiV1PbxSupervisionAlertsPutResponses];
+
+export type TestAlertsApiV1PbxSupervisionAlertsTestPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/supervision/alerts/test';
+};
+
+export type TestAlertsApiV1PbxSupervisionAlertsTestPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TestAlertsApiV1PbxSupervisionAlertsTestPostError = TestAlertsApiV1PbxSupervisionAlertsTestPostErrors[keyof TestAlertsApiV1PbxSupervisionAlertsTestPostErrors];
+
+export type TestAlertsApiV1PbxSupervisionAlertsTestPostResponses = {
+    /**
+     * Response Test Alerts Api V1 Pbx Supervision Alerts Test Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type TestAlertsApiV1PbxSupervisionAlertsTestPostResponse = TestAlertsApiV1PbxSupervisionAlertsTestPostResponses[keyof TestAlertsApiV1PbxSupervisionAlertsTestPostResponses];
 
 export type ListQueuesApiV1ContactCenterQueuesGetData = {
     body?: never;

@@ -91,3 +91,81 @@ async def read_statistics(
 ) -> dict[str, Any]:
     """Queue and agent statistics (answered rate, wait, service level)."""
     return await _call(supervision.statistics(_org(user), period))
+
+
+# ------------------------------------------------------------------ alerts
+
+
+class AlertSettings(BaseModel):
+    enabled: bool = False
+    max_wait_seconds: int = Field(default=120, ge=10, le=3600)
+    max_waiting: int = Field(default=5, ge=1, le=200)
+    no_agent: bool = True
+    queue_ids: list[int] = Field(default_factory=list, max_length=200)
+    webhook_url: str = Field(default="", max_length=500)
+    email_tool_uuid: str | None = Field(default=None, max_length=64)
+    email_recipients: list[str] = Field(default_factory=list, max_length=20)
+    cooldown_minutes: int = Field(default=15, ge=1, le=1440)
+
+
+async def _email_tools(organization_id: int) -> list[dict[str, Any]]:
+    from api.db import db_client
+
+    tools = await db_client.get_tools_for_organization(
+        organization_id, category="send_message"
+    )
+    return [
+        {"uuid": str(t.tool_uuid), "name": t.name}
+        for t in tools
+        if ((t.definition or {}).get("config") or {}).get("channel") == "email"
+        and ((t.definition or {}).get("config") or {}).get("provider") == "smtp"
+    ]
+
+
+@router.get("/alerts")
+async def read_alerts(user: UserModel = Depends(get_user)) -> dict[str, Any]:
+    """Alert rules and channels, the company's e-mail tools, the latest alerts."""
+    from api.services.pbx import alerts
+    from api.services.pbx.service import _connection
+
+    connection = await _call(_connection(_org(user)))
+    return {
+        "settings": alerts.read_settings(connection),
+        "email_tools": await _email_tools(_org(user)),
+        "log": await alerts.recent_log(_org(user)),
+    }
+
+
+@router.put("/alerts")
+async def save_alerts(
+    request: AlertSettings, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    from api.services.pbx import alerts
+
+    settings = await _call(alerts.save_settings(_org(user), request.model_dump()))
+    supervision.invalidate(_org(user))
+    return {"settings": settings}
+
+
+@router.post("/alerts/test")
+async def test_alerts(user: UserModel = Depends(get_user)) -> dict[str, Any]:
+    """Send a test message on the configured channels."""
+    from api.services.pbx import alerts
+    from api.services.pbx.service import _connection
+
+    connection = await _call(_connection(_org(user)))
+    settings = alerts.read_settings(connection)
+    if not settings["webhook_url"] and not settings["email_recipients"]:
+        from fastapi import HTTPException
+
+        raise HTTPException(
+            status_code=422,
+            detail="Configurez d'abord un webhook ou des destinataires.",
+        )
+    outcome = await alerts.notify(
+        _org(user),
+        settings,
+        "🔔 Test des alertes de supervision : ce canal recevra les alertes de vos files.",
+        {"event": "test"},
+    )
+    return {"channels": outcome}

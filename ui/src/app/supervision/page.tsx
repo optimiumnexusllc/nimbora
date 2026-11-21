@@ -8,16 +8,20 @@ import {
     Headset,
     Hourglass,
     MessageSquareQuote,
+    MonitorPlay,
     PhoneCall,
     Radio,
     UserCheck,
     Users,
 } from "lucide-react";
+import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
 import { readSettingsApiV1PbxSupervisionSettingsGet, spyApiV1SupervisionSpyPost } from "@/client/sdk.gen";
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
+import { AlertsBanner } from "@/components/supervision/AlertsBanner";
+import { AlertsDialog } from "@/components/supervision/AlertsDialog";
 import { formatDuration } from "@/components/supervision/format";
 import { ListeningSettingsDialog } from "@/components/supervision/ListeningSettingsDialog";
 import { LiveCallPanel,type LiveCallSummary } from "@/components/supervision/LiveCallPanel";
@@ -127,6 +131,7 @@ export default function SupervisionPage() {
     const [pbxTick, setPbxTick] = useState(0);
     const [settings, setSettings] = useState<(ListeningSettings & { extensions?: Extension[] }) | null>(null);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [alertsOpen, setAlertsOpen] = useState(false);
     const [supervisor, setSupervisor] = useState<string | null>(null);
     const settingsLoaded = useRef(false);
     const { ai: snapshot, pbx, mode, receivedAt, refresh } = useSupervisionStream({
@@ -214,6 +219,13 @@ export default function SupervisionPage() {
             title="Supervision"
             description="Tout ce qui se passe maintenant : appels IA, files d'attente et conseillers. Intervenez en un clic."
             actions={
+                <span className="flex flex-wrap items-center gap-3">
+                <Button asChild variant="outline" size="sm">
+                    <Link href="/supervision/wall" target="_blank">
+                        <MonitorPlay className="mr-1 h-4 w-4" />
+                        Mur d&apos;affichage
+                    </Link>
+                </Button>
                 <span className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="stream-mode">
                     <Radio
                         className={`h-4 w-4 ${mode === "live" ? "animate-pulse text-emerald-400" : "text-amber-400"}`}
@@ -223,6 +235,7 @@ export default function SupervisionPage() {
                         : mode === "polling"
                           ? "Actualisé toutes les 5 s"
                           : "Connexion au direct…"}
+                </span>
                 </span>
             }
         >
@@ -234,6 +247,8 @@ export default function SupervisionPage() {
                         : "La téléphonie de la plateforme n'est pas configurée : seuls les appels IA sont suivis."}
                 </div>
             )}
+
+            {live?.alerts && <AlertsBanner alerts={live.alerts} />}
 
             <div className="mb-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
                 <Kpi icon={Bot} label="Appels IA" value={k.ai_calls ?? 0} hint="en cours" />
@@ -329,6 +344,7 @@ export default function SupervisionPage() {
                     supervisor={supervisor}
                     onSupervisorChange={chooseSupervisor}
                     onOpenSettings={() => setSettingsOpen(true)}
+                    onOpenAlerts={() => setAlertsOpen(true)}
                     onChanged={refresh}
                 />
             )}
@@ -467,6 +483,14 @@ export default function SupervisionPage() {
             {live && (
                 <>
                     <QueueStatistics ready={Boolean(live)} />
+                    <AlertsDialog
+                        open={alertsOpen}
+                        onOpenChange={(open) => {
+                            setAlertsOpen(open);
+                            if (!open) refresh();
+                        }}
+                        queues={live.queues.map((q) => ({ id: q.id, name: q.name }))}
+                    />
                     <ListeningSettingsDialog
                         open={settingsOpen}
                         onOpenChange={setSettingsOpen}

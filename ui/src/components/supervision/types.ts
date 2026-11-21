@@ -61,6 +61,16 @@ export type PbxLiveAgent = {
     call: PbxCall | null;
 };
 
+export type SupervisionAlert = {
+    key: string;
+    kind: "long_wait" | "queue_full" | "no_agent";
+    level: "critical" | "warning";
+    queue_id: number;
+    queue_name: string;
+    value: number;
+    message: string;
+};
+
 export type PbxLive = {
     queues: PbxLiveQueue[];
     agents: PbxLiveAgent[];
@@ -76,6 +86,7 @@ export type PbxLive = {
     };
     listening: { enabled: boolean; modes: SpyMode[]; supervisors: string[] };
     errors: Record<string, string>;
+    alerts?: SupervisionAlert[];
     at?: string;
     /** Set when the PBX could not be read at all. */
     unavailable?: string;

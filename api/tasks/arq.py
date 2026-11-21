@@ -59,6 +59,7 @@ REDIS_SETTINGS = RedisSettings(
 )
 
 from api.services.contact_center.callbacks import run_callback_scheduler
+from api.services.pbx.alerts import run_alert_checks
 from api.services.pbx.recordings import import_pbx_recordings, sync_all_recordings
 from api.services.privacy.service import run_retention_sweep
 from api.services.whatsapp_messaging.service import close_idle_conversations
@@ -118,6 +119,15 @@ class WorkerSettings:
             second=5,
             run_at_startup=False,
             timeout=900,
+        ),
+        # Supervision alerts (long waits, queues without agents) for people
+        # not looking at the console: webhook and e-mail, start and end.
+        cron(
+            run_alert_checks,
+            minute=set(range(60)),
+            second=30,
+            run_at_startup=False,
+            timeout=120,
         ),
         cron(
             sweep_workflow_completions,
