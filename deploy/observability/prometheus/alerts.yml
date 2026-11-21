@@ -1,0 +1,75 @@
+# NIMBORA alert rules (Prometheus). Thresholds are starting points: adjust
+# them to your service levels.
+groups:
+  - name: nimbora-pbx
+    rules:
+      - alert: PbxDown
+        expr: nimbora_pbx_up == 0
+        for: 5m
+        labels: {severity: critical}
+        annotations:
+          summary: "PBX of company {{ $labels.organization_id }} unreachable"
+          description: "The platform's last check of this company's PBX failed for 5 minutes: calls, supervision and AI routing are affected."
+      - alert: PbxNotChecked
+        expr: nimbora_pbx_last_check_age_seconds > 1800
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "PBX of company {{ $labels.organization_id }} not checked for 30 min"
+      - alert: PbxEventsDisconnected
+        expr: nimbora_pbx_events_connected == 0
+        for: 1h
+        labels: {severity: warning}
+        annotations:
+          summary: "PBX of company {{ $labels.organization_id }} does not send its call events"
+          description: "Human calls are missing from the customer history and supervision is slower. Reconnect from Téléphonie d'entreprise → Recevoir les événements."
+      - alert: HumanMinutesNotSynced
+        expr: nimbora_pbx_usage_sync_age_seconds > 3 * 3600
+        for: 10m
+        labels: {severity: warning}
+        annotations:
+          summary: "Human minutes of company {{ $labels.organization_id }} not read for 3 h"
+          description: "The hourly catch-up of the PBX call logs is failing: invoices would miss calls."
+      - alert: SupervisionAlertsOpen
+        expr: sum by (organization_id, kind) (nimbora_pbx_alerts_active) > 0
+        for: 30m
+        labels: {severity: info}
+        annotations:
+          summary: "Supervision alert {{ $labels.kind }} open for 30 min (company {{ $labels.organization_id }})"
+
+  - name: nimbora-backups
+    rules:
+      - alert: PbxBackupTooOld
+        expr: time() - nimbora_pbx_backup_last_success_timestamp_seconds > 26 * 3600
+        labels: {severity: critical}
+        annotations:
+          summary: "No PBX backup for more than 26 h on {{ $labels.instance }}"
+      - alert: PbxBackupFailed
+        expr: nimbora_pbx_backup_last_failure_timestamp_seconds > nimbora_pbx_backup_last_success_timestamp_seconds
+        labels: {severity: critical}
+        annotations:
+          summary: "Last PBX backup failed on {{ $labels.instance }} (see /var/log/nimbora-pbx-backup.log)"
+      - alert: PlatformBackupTooOld
+        expr: time() - nimbora_platform_backup_last_success_timestamp_seconds > 26 * 3600
+        labels: {severity: critical}
+        annotations:
+          summary: "No platform backup for more than 26 h on {{ $labels.instance }}"
+      - alert: PlatformBackupFailed
+        expr: nimbora_platform_backup_last_failure_timestamp_seconds > nimbora_platform_backup_last_success_timestamp_seconds
+        labels: {severity: critical}
+        annotations:
+          summary: "Last platform backup failed on {{ $labels.instance }}"
+
+  - name: nimbora-platform
+    rules:
+      - alert: BusinessMetricsStale
+        expr: time() - nimbora_business_metrics_generated_timestamp_seconds > 600
+        labels: {severity: warning}
+        annotations:
+          summary: "Business metrics not computed for 10 min (API or database)"
+      - alert: HostDiskAlmostFull
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|overlay"} / node_filesystem_size_bytes{fstype!~"tmpfs|overlay"}) < 0.10
+        for: 15m
+        labels: {severity: warning}
+        annotations:
+          summary: "Less than 10 % disk left on {{ $labels.instance }} ({{ $labels.mountpoint }})"

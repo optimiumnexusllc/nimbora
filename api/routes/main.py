@@ -268,6 +268,32 @@ async def autoscale_metric(
     return AutoscaleMetricResponse(value=calls + max(0, buffer))
 
 
+@router.get("/metrics/business", include_in_schema=False)
+async def business_metrics(
+    x_nimbora_devops_secret: Annotated[
+        str | None,
+        Header(alias=NIMBORA_DEVOPS_SECRET_HEADER),
+    ] = None,
+) -> Response:
+    """Fleet-wide business metrics (PBX, subscriptions, minutes).
+
+    Reads the database: scrape it from one job, once a minute, not per worker.
+    """
+    from api.constants import ENABLE_PROMETHEUS_METRICS, NIMBORA_DEVOPS_SECRET
+
+    if not ENABLE_PROMETHEUS_METRICS:
+        raise HTTPException(status_code=404, detail="Metrics are disabled")
+    _verify_devops_secret(NIMBORA_DEVOPS_SECRET, x_nimbora_devops_secret)
+    from prometheus_client import CONTENT_TYPE_LATEST
+
+    from api.services.observability.business_metrics import render
+
+    return Response(
+        content=await render(),
+        headers={"Content-Type": CONTENT_TYPE_LATEST, "Cache-Control": "no-store"},
+    )
+
+
 @router.get("/metrics", include_in_schema=False)
 def prometheus_metrics(
     x_nimbora_devops_secret: Annotated[

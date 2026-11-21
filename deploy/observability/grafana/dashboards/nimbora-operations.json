@@ -1,0 +1,630 @@
+{
+  "uid": "nimbora-operations",
+  "title": "NIMBORA operations",
+  "tags": [
+    "nimbora"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "version": 1,
+  "refresh": "1m",
+  "time": {
+    "from": "now-24h",
+    "to": "now"
+  },
+  "panels": [
+    {
+      "id": 1,
+      "title": "PBX joignables",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 6,
+        "h": 5
+      },
+      "description": "Entreprises dont le PBX a répondu à la dernière vérification.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(nimbora_pbx_up)",
+          "legendFormat": "joignables",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "title": "PBX injoignables",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 0,
+        "w": 6,
+        "h": 5
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "count(nimbora_pbx_up == 0) or vector(0)",
+          "legendFormat": "injoignables",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "title": "Alertes de supervision ouvertes",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 6,
+        "h": 5
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum(nimbora_pbx_alerts_active) or vector(0)",
+          "legendFormat": "alertes",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "title": "Dernière sauvegarde du PBX",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 5
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 93600
+              },
+              {
+                "color": "red",
+                "value": 172800
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - max(nimbora_pbx_backup_last_success_timestamp_seconds)",
+          "legendFormat": "âge",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "title": "PBX par entreprise",
+      "type": "table",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 5,
+        "w": 12,
+        "h": 9
+      },
+      "description": "1 = oui. Une ligne par entreprise.",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "nimbora_pbx_up",
+          "legendFormat": "joignable",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          },
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "B",
+          "expr": "nimbora_pbx_last_check_age_seconds",
+          "legendFormat": "vérifié il y a (s)",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          },
+          "instant": true,
+          "format": "table"
+        },
+        {
+          "refId": "C",
+          "expr": "nimbora_pbx_events_connected",
+          "legendFormat": "événements",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          },
+          "instant": true,
+          "format": "table"
+        }
+      ],
+      "transformations": [
+        {
+          "id": "merge",
+          "options": {}
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "title": "Minutes humaines du mois (top 10)",
+      "type": "bargauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 5,
+        "w": 6,
+        "h": 9
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, nimbora_human_minutes_month)",
+          "legendFormat": "entreprise {{organization_id}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "title": "Minutes IA du mois (top 10)",
+      "type": "bargauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 5,
+        "w": 6,
+        "h": 9
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "m"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "topk(10, nimbora_ai_minutes_month)",
+          "legendFormat": "entreprise {{organization_id}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "title": "Entreprises par offre",
+      "type": "bargauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 14,
+        "w": 8,
+        "h": 8
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (plan) (nimbora_subscriptions)",
+          "legendFormat": "{{plan}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 9,
+      "title": "Abonnements par statut",
+      "type": "bargauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 14,
+        "w": 8,
+        "h": 8
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (status) (nimbora_subscriptions)",
+          "legendFormat": "{{status}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 10,
+      "title": "Alertes de supervision dans le temps",
+      "type": "timeseries",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 14,
+        "w": 8,
+        "h": 8
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "options": {},
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (kind) (nimbora_pbx_alerts_active)",
+          "legendFormat": "{{kind}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 11,
+      "title": "Dernière sauvegarde de la plateforme",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 22,
+        "w": 8,
+        "h": 5
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "time() - max(nimbora_platform_backup_last_success_timestamp_seconds)",
+          "legendFormat": "âge",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 12,
+      "title": "Rattrapage des minutes humaines (le plus ancien)",
+      "type": "stat",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 8,
+        "y": 22,
+        "w": 8,
+        "h": 5
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "s"
+        },
+        "overrides": []
+      },
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "graphMode": "none",
+        "colorMode": "value"
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "max(nimbora_pbx_usage_sync_age_seconds)",
+          "legendFormat": "âge",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    },
+    {
+      "id": 13,
+      "title": "Disque libre (serveurs)",
+      "type": "bargauge",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "nimbora-prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 22,
+        "w": 8,
+        "h": 5
+      },
+      "description": "",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit"
+        },
+        "overrides": []
+      },
+      "options": {
+        "orientation": "horizontal",
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "min by (instance) (node_filesystem_avail_bytes{fstype!~\"tmpfs|overlay\"} / node_filesystem_size_bytes{fstype!~\"tmpfs|overlay\"})",
+          "legendFormat": "{{instance}}",
+          "datasource": {
+            "type": "prometheus",
+            "uid": "nimbora-prometheus"
+          }
+        }
+      ]
+    }
+  ],
+  "templating": {
+    "list": []
+  },
+  "annotations": {
+    "list": []
+  }
+}

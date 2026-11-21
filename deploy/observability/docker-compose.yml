@@ -1,0 +1,41 @@
+# Optional monitoring stack: Prometheus (with the NIMBORA alert rules) and
+# Grafana (dashboards provisioned). See README.md.
+#   echo -n "$NIMBORA_DEVOPS_SECRET" > devops_secret && chmod 600 devops_secret
+#   docker compose up -d     → Grafana on http://localhost:3001 (admin / admin)
+services:
+  prometheus:
+    image: prom/prometheus:v3.5.0
+    restart: unless-stopped
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=30d
+    volumes:
+      - ./prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./prometheus/alerts.yml:/etc/prometheus/alerts.yml:ro
+      - ./prometheus/targets.json:/etc/prometheus/targets.json:ro
+      - ./prometheus/business-targets.json:/etc/prometheus/business-targets.json:ro
+      - ./prometheus/node-targets.json:/etc/prometheus/node-targets.json:ro
+      - prometheus-data:/prometheus
+    secrets:
+      - nimbora_devops_secret
+    extra_hosts:
+      - host.docker.internal:host-gateway
+    ports:
+      - 127.0.0.1:9090:9090
+  grafana:
+    image: grafana/grafana:12.1.0
+    restart: unless-stopped
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: "${GRAFANA_ADMIN_PASSWORD:-admin}"
+    volumes:
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    ports:
+      - 127.0.0.1:3001:3000
+secrets:
+  nimbora_devops_secret:
+    file: ./devops_secret
+volumes:
+  prometheus-data:
+  grafana-data:

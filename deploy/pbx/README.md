@@ -64,6 +64,8 @@ sudo ./install.sh \
 | `--rtp-range` | Plage RTP ouverte (défaut `10000-20000`, celle du moteur) |
 | `--trusted-proxy` | CIDR d'un reverse proxy placé devant le PBX (ex. Traefik) : nginx et wazo-auth journalisent alors l'adresse réelle du client (`X-Forwarded-For`) |
 | `--operator` | **PBX partagé de l'opérateur** : crée aussi le compte d'approvisionnement `nimbora-provisioning` (tenant principal), avec lequel la plateforme ouvre un tenant par entreprise ; affiche les variables `PBX_PROVISIONING_*` à copier dans le `.env` de la plateforme |
+| `--metrics-from` | Adresse(s) de votre Prometheus : installe le node exporter (métriques du serveur et fraîcheur des sauvegardes) et ouvre le port 9100 à ces seules adresses (défaut `none`) |
+| `--backup-dir`, `--no-backup` | Dossier de la sauvegarde de chaque nuit (défaut `/var/backups/nimbora-pbx`), ou pas de sauvegarde |
 | `--firewall-only` | Réapplique seulement le pare-feu et fail2ban (après avoir changé les options ci-dessus) |
 
 Le script :
@@ -161,3 +163,28 @@ sudo ./install.sh --nimbora-url https://app.votre-marque.com --nimbora-ip 203.0.
 
 Le pare-feu de l'hébergeur reste la première ligne : n'y ouvrez que 22, 443, 5060/5061 et
 la plage RTP.
+
+### Sauvegarde et restauration
+
+Chaque nuit à 02:40, `scripts/backup.sh` sauvegarde **toutes les bases du moteur**
+(`pg_dumpall`), sa configuration (`/etc/wazo-*`, Asterisk, fail2ban, pare-feu, certificats),
+l'état du kit (`/etc/nimbora-pbx`, secrets compris), les **messageries vocales**, les **sons**
+et les **enregistrements d'appels**, avec un `SHA256SUMS` et un `manifest.json` (version du
+moteur). Réglages dans `/etc/nimbora-pbx/backup.env` :
+
+| Réglage | Rôle |
+|---|---|
+| `KEEP_DAYS` | Jours de sauvegardes gardées sur le serveur (14) |
+| `BACKUP_PASSPHRASE_FILE` | **Chiffre** les archives (AES-256). Gardez une copie de ce fichier hors du serveur : sans lui, rien ne se restaure |
+| `BACKUP_RSYNC_TARGET` | Copie chaque sauvegarde sur un autre serveur (`backup@203.0.113.20:/srv/nimbora-pbx`) |
+
+```bash
+sudo ./scripts/backup.sh                              # sauvegarde immédiate
+sudo ./scripts/restore.sh /var/backups/nimbora-pbx/20261121-024000 --check   # vérifier sans rien changer
+sudo ./scripts/restore.sh /var/backups/nimbora-pbx/20261121-024000           # restaurer (demande RESTAURER)
+```
+
+La restauration vérifie l'intégrité, arrête le moteur, recharge les bases et les fichiers,
+puis redémarre. Sur un **nouveau serveur** : installez d'abord la même version du moteur
+avec `install.sh` (voir `manifest.json`), puis restaurez. Faites un essai de restauration
+chaque trimestre, sur un serveur de test.
