@@ -1,4 +1,13 @@
-import type { BusinessProfile, Closure, FaqEntry, Offer, Policy, Skills, TimeRange } from "@/client/types.gen";
+import type {
+    BusinessProfile,
+    Closure,
+    EmergencyContact,
+    FaqEntry,
+    Offer,
+    Policy,
+    Skills,
+    TimeRange,
+} from "@/client/types.gen";
 
 export const DAYS = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"] as const;
 export type Day = (typeof DAYS)[number];
@@ -48,8 +57,12 @@ export const TIMEZONES = [
 ];
 
 export type Profile = Required<
-    Omit<BusinessProfile, "opening_hours" | "closures" | "offers" | "faq" | "policies" | "skills" | "languages">
+    Omit<
+        BusinessProfile,
+        "opening_hours" | "closures" | "offers" | "faq" | "policies" | "skills" | "languages" | "emergency_contacts"
+    >
 > & {
+    emergency_contacts: EmergencyContact[];
     opening_hours: Record<string, TimeRange[]>;
     closures: Closure[];
     languages: string[];
@@ -96,6 +109,7 @@ export function normalizeProfile(p: BusinessProfile | undefined | null): Profile
         country: p?.country ?? "",
         directions: p?.directions ?? "",
         maps_url: p?.maps_url ?? "",
+        emergency_contacts: [...(p?.emergency_contacts ?? [])],
         // A card never saved yet starts in the browser's time zone.
         timezone: p?.timezone && (p.timezone !== "UTC" || p.name) ? p.timezone : browserTimezone(),
         opening_hours: { ...(p?.opening_hours ?? {}) },
@@ -120,6 +134,7 @@ export function cleanProfile(p: Profile): Profile {
         ...p,
         opening_hours: hours,
         closures: p.closures.filter((c) => c.date),
+        emergency_contacts: p.emergency_contacts.filter((c) => c.label.trim() && c.number.trim()),
         offers: p.offers.filter((o) => o.name.trim()),
         faq: p.faq.filter((f) => f.question.trim() && f.answer.trim()),
         policies: p.policies.filter((x) => x.title.trim() && x.content.trim()),

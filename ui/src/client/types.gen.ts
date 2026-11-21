@@ -923,7 +923,7 @@ export type BusinessProfile = {
     /**
      * Industry
      */
-    industry?: 'general' | 'commerce' | 'real_estate' | 'hospitality' | 'insurance' | 'clinic' | 'education';
+    industry?: 'general' | 'commerce' | 'real_estate' | 'hospitality' | 'education' | 'bank' | 'microfinance' | 'insurance' | 'investment' | 'clinic' | 'hospital' | 'pharmacy' | 'telecom' | 'it_support' | 'energy' | 'water' | 'public_service' | 'transport' | 'logistics' | 'mining' | 'industry' | 'construction' | 'agriculture' | 'security' | 'cybersecurity';
     /**
      * Name
      */
@@ -984,6 +984,12 @@ export type BusinessProfile = {
      * Maps Url
      */
     maps_url?: string;
+    /**
+     * Emergency Contacts
+     *
+     * Numbers the agent gives first in an emergency.
+     */
+    emergency_contacts?: Array<EmergencyContact>;
     /**
      * Timezone
      */
@@ -3239,6 +3245,20 @@ export type EmbedTokenResponse = {
      * Embed Script
      */
     embed_script: string;
+};
+
+/**
+ * EmergencyContact
+ */
+export type EmergencyContact = {
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Number
+     */
+    number: string;
 };
 
 /**
@@ -7847,6 +7867,14 @@ export type TemplateSummary = {
      */
     id: string;
     /**
+     * Sector
+     */
+    sector: string;
+    /**
+     * Sector Label
+     */
+    sector_label: string;
+    /**
      * Label
      */
     label: string;
@@ -7866,6 +7894,18 @@ export type TemplateSummary = {
      * Method
      */
     method: Array<string>;
+    /**
+     * Rules
+     *
+     * Non-negotiable rules given to the agent.
+     */
+    rules: Array<string>;
+    /**
+     * Recommendations
+     *
+     * Set-up advice for the company.
+     */
+    recommendations: Array<string>;
     /**
      * Collects
      */

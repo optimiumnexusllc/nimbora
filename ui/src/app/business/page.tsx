@@ -15,7 +15,7 @@ import {
     updateProfileApiV1BusinessProfilePut,
 } from "@/client/sdk.gen";
 import type { ProfilePreview, Skills, TemplateSummary } from "@/client/types.gen";
-import { FaqEditor, OffersEditor, PoliciesEditor } from "@/components/business/ContentEditors";
+import { EmergencyEditor, FaqEditor, OffersEditor, PoliciesEditor } from "@/components/business/ContentEditors";
 import { ClosuresEditor, HoursEditor } from "@/components/business/HoursEditor";
 import {
     cleanProfile,
@@ -66,6 +66,7 @@ export default function BusinessPage() {
     const [templates, setTemplates] = useState<TemplateSummary[]>([]);
     const [skillLabels, setSkillLabels] = useState<Record<string, string>>({});
     const [openTemplate, setOpenTemplate] = useState<TemplateSummary | null>(null);
+    const [showAllTrades, setShowAllTrades] = useState<boolean | null>(null);
     const [tab, setTab] = useState("identity");
     const [preview, setPreview] = useState<ProfilePreview | null>(null);
     const [saving, setSaving] = useState(false);
@@ -214,9 +215,26 @@ export default function BusinessPage() {
                         <Store className="size-5" /> Votre métier
                     </span>
                 }
-                description="Chaque métier apporte une méthode, les données à recueillir, les compétences utiles et un agent prêt à l'emploi."
+                description="25 métiers dans 8 secteurs. Chacun apporte ses règles impératives (sécurité, conformité), sa méthode, les données à recueillir, les compétences utiles et un agent prêt à l'emploi."
             >
-                <TemplateGallery templates={templates} selected={profile.industry} onOpen={setOpenTemplate} />
+                {(() => {
+                    // Once a trade is chosen, show it alone; the catalogue opens on demand.
+                    const expanded = showAllTrades ?? profile.industry === "general";
+                    const current = templates.filter((t) => t.id === profile.industry);
+                    return (
+                        <div className="space-y-3">
+                            <TemplateGallery
+                                templates={expanded ? templates : current}
+                                selected={profile.industry}
+                                onOpen={setOpenTemplate}
+                                searchable={expanded}
+                            />
+                            <Button variant="outline" size="sm" onClick={() => setShowAllTrades(!expanded)}>
+                                {expanded ? "Masquer les autres métiers" : `Voir les ${templates.length} métiers`}
+                            </Button>
+                        </div>
+                    );
+                })()}
             </PageSection>
 
             <Tabs value={tab} onValueChange={setTab} className="space-y-4">
@@ -264,6 +282,18 @@ export default function BusinessPage() {
                     <Field id="b-website" label="Site web">
                         <Input {...text("website")} />
                     </Field>
+                    <div className="space-y-2 md:col-span-2">
+                        <Label>Numéros d&apos;urgence</Label>
+                        <p className="text-xs text-muted-foreground">
+                            Donnés en priorité par l&apos;agent en cas de danger ou d&apos;urgence (dépannage, SAMU,
+                            opposition carte, sécurité du site…). Vérifiez-les : un numéro erroné peut avoir des
+                            conséquences graves.
+                        </p>
+                        <EmergencyEditor
+                            contacts={profile.emergency_contacts}
+                            onChange={(v) => set("emergency_contacts", v)}
+                        />
+                    </div>
                     <div className="md:col-span-2">
                         <Field id="b-languages" label="Langues parlées" hint="Séparées par des virgules.">
                             <Input

@@ -27,8 +27,9 @@ vi.mock("@/client/sdk.gen", () => ({
     createAgentApiV1BusinessTemplatesTemplateIdAgentPost: mocks.agent,
 }));
 
-const template = (id: string, label: string) => ({
+const template = (id: string, label: string, sector = "services", sector_label = "Commerce et services", rules: string[] = []) => ({
     id, label, description: `${label} : description`, icon: "home", activity: "agence immobilière",
+    sector, sector_label, rules, recommendations: rules.length ? ["Activez le mode PCI"] : [],
     method: ["Cerner le projet."], collects: ["Budget"], dispositions: ["visite_planifiee"],
     skills: ["book_appointment"], tools: ["book_appointment", "send_message"],
     example_offers: [{ name: "3 pièces" }], example_faq: [], example_policies: [],
@@ -46,7 +47,14 @@ beforeEach(() => {
     mocks.update.mockImplementation(async ({ body }) => ({ data: body }));
     mocks.preview.mockResolvedValue({ data: { prompt: "## Votre entreprise : Ivoire Immo", opening_status: "Ouvert en ce moment, jusqu'à 18:00.", characters: 33 } });
     mocks.skills.mockResolvedValue({ data: [{ id: "answer_questions", label: "Répondre aux questions (FAQ)" }, { id: "book_appointment", label: "Prendre rendez-vous" }] });
-    mocks.templates.mockResolvedValue({ data: [template("general", "Accueil général"), template("real_estate", "Immobilier")] });
+    mocks.templates.mockResolvedValue({
+        data: [
+            template("general", "Accueil général"),
+            template("real_estate", "Immobilier"),
+            template("bank", "Banque", "finance", "Banque, finance et assurance", ["Ne demandez jamais un code PIN."]),
+            template("energy", "Énergie : électricité, gaz, solaire", "utilities", "Énergie, eau et service public", ["Danger immédiat d'abord.", "Pas d'intervention."]),
+        ],
+    });
     mocks.apply.mockResolvedValue({ data: { ...stored, industry: "real_estate", offers: [{ name: "3 pièces" }] } });
     mocks.agent.mockResolvedValue({ data: { workflow_id: 42, name: "Immobilier — Ivoire Immo", missing_tools: ["book_appointment"] } });
 });
@@ -110,14 +118,19 @@ describe("business page", () => {
         });
         expect(mocks.apply).toHaveBeenCalledWith({ path: { template_id: "real_estate" }, body: { with_examples: true } });
         await waitFor(() => expect(screen.getByTestId("template-real_estate").textContent).toContain("Votre métier"));
+        // Once chosen, the trade is shown alone; the full catalogue opens on demand.
+        expect(screen.queryByTestId("template-general")).toBeNull();
+        fireEvent.click(screen.getByRole("button", { name: "Voir les 4 métiers" }));
         expect(screen.getByTestId("template-general").textContent).not.toContain("Votre métier");
+        fireEvent.click(screen.getByRole("button", { name: "Masquer les autres métiers" }));
+        expect(screen.queryByLabelText("Rechercher un métier")).toBeNull();
 
         fireEvent.click(screen.getByTestId("template-real_estate"));
         await act(async () => {
             fireEvent.click(await screen.findByRole("button", { name: /Créer l'agent immobilier/ }));
         });
         expect(mocks.agent).toHaveBeenCalledWith({ path: { template_id: "real_estate" }, body: {} });
-        const [, options] = mocks.toast.success.mock.calls.at(-1);
+        const [, options] = mocks.toast.success.mock.calls.at(-1)!;
         expect(options.description).toContain("Prise de rendez-vous");
         options.action.onClick();
         expect(mocks.push).toHaveBeenCalledWith("/workflow/42");
@@ -142,5 +155,39 @@ describe("business page", () => {
             fireEvent.click(screen.getByRole("button", { name: /Enregistrer/ }));
         });
         expect(mocks.toast.error.mock.calls[0][0]).toContain("L'heure de fermeture doit suivre l'ouverture");
+    });
+
+    it("groups trades by sector, searches them and shows their mandatory rules", async () => {
+        render(<BusinessPage />);
+        await screen.findByLabelText("Nom de l'entreprise");
+        expect(screen.getAllByTestId("sector-group").map((g) => g.querySelector("h3")?.textContent)).toEqual([
+            "Commerce et services",
+            "Banque, finance et assurance",
+            "Énergie, eau et service public",
+        ]);
+        expect(screen.getByTestId("template-energy").textContent).toContain("2 règles impératives");
+        fireEvent.change(screen.getByLabelText("Rechercher un métier"), { target: { value: "energie" } });
+        expect(screen.queryByTestId("template-bank")).toBeNull();
+        expect(screen.getByTestId("template-energy")).toBeTruthy();
+        fireEvent.change(screen.getByLabelText("Rechercher un métier"), { target: { value: "finance" } });
+        fireEvent.click(screen.getByTestId("template-bank"));
+        expect(await screen.findByText("Ne demandez jamais un code PIN.")).toBeTruthy();
+        expect(screen.getByText("Activez le mode PCI")).toBeTruthy();
+        fireEvent.change(screen.getByLabelText("Rechercher un métier"), { target: { value: "zzz" } });
+    });
+
+    it("saves emergency numbers and drops incomplete ones", async () => {
+        render(<BusinessPage />);
+        await screen.findByLabelText("Nom de l'entreprise");
+        fireEvent.click(screen.getByRole("button", { name: /Ajouter un numéro d'urgence/ }));
+        fireEvent.click(screen.getByRole("button", { name: /Ajouter un numéro d'urgence/ }));
+        fireEvent.change(screen.getAllByLabelText("Libellé du numéro d'urgence")[0], { target: { value: "Dépannage 24 h/24" } });
+        fireEvent.change(screen.getAllByLabelText("Numéro d'urgence")[0], { target: { value: "+225 27 21 00 00 00" } });
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: /Enregistrer/ }));
+        });
+        expect(mocks.update.mock.calls[0][0].body.emergency_contacts).toEqual([
+            { label: "Dépannage 24 h/24", number: "+225 27 21 00 00 00" },
+        ]);
     });
 });

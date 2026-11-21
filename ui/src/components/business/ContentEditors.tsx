@@ -1,8 +1,8 @@
 "use client";
 
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Siren, Trash2 } from "lucide-react";
 
-import type { FaqEntry, Offer, Policy } from "@/client/types.gen";
+import type { EmergencyContact, FaqEntry, Offer, Policy } from "@/client/types.gen";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -143,6 +143,50 @@ export function PoliciesEditor({
                 onClick={() => onChange([...policies, { title: "", content: "" }])}
             >
                 <Plus /> Ajouter une condition
+            </Button>
+        </div>
+    );
+}
+
+export function EmergencyEditor({
+    contacts,
+    onChange,
+}: {
+    contacts: EmergencyContact[];
+    onChange: (contacts: EmergencyContact[]) => void;
+}) {
+    const set = (index: number, patch: Partial<EmergencyContact>) =>
+        onChange(contacts.map((c, i) => (i === index ? { ...c, ...patch } : c)));
+    return (
+        <div className="space-y-2">
+            {contacts.map((contact, index) => (
+                <div key={index} className="flex gap-2">
+                    <Input
+                        aria-label="Libellé du numéro d'urgence"
+                        placeholder="Ex. Dépannage 24 h/24, SAMU, opposition carte"
+                        value={contact.label}
+                        onChange={(e) => set(index, { label: e.target.value })}
+                    />
+                    <Input
+                        aria-label="Numéro d'urgence"
+                        placeholder="Numéro"
+                        className="max-w-48"
+                        value={contact.number}
+                        onChange={(e) => set(index, { number: e.target.value })}
+                    />
+                    <RemoveButton
+                        label="Retirer le numéro d'urgence"
+                        onClick={() => onChange(contacts.filter((_, i) => i !== index))}
+                    />
+                </div>
+            ))}
+            <Button
+                variant="outline"
+                size="sm"
+                disabled={contacts.length >= 10}
+                onClick={() => onChange([...contacts, { label: "", number: "" }])}
+            >
+                <Siren /> Ajouter un numéro d&apos;urgence
             </Button>
         </div>
     );

@@ -46,15 +46,35 @@ MONTHS = (
     "décembre",
 )
 
-Industry = Literal[
+# Every industry template id (kept in sync by a test).
+INDUSTRY_IDS = (
     "general",
     "commerce",
     "real_estate",
     "hospitality",
-    "insurance",
-    "clinic",
     "education",
-]
+    "bank",
+    "microfinance",
+    "insurance",
+    "investment",
+    "clinic",
+    "hospital",
+    "pharmacy",
+    "telecom",
+    "it_support",
+    "energy",
+    "water",
+    "public_service",
+    "transport",
+    "logistics",
+    "mining",
+    "industry",
+    "construction",
+    "agriculture",
+    "security",
+    "cybersecurity",
+)
+Industry = Literal[INDUSTRY_IDS]
 
 # Rendered limits: the profile is for the essentials; large catalogues belong
 # to the catalogue search tool.
@@ -115,6 +135,12 @@ class Policy(BaseModel):
     content: str = Field(min_length=1, max_length=1200)
 
 
+class EmergencyContact(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+    label: str = Field(min_length=1, max_length=120)
+    number: str = Field(min_length=2, max_length=60)
+
+
 class Skills(BaseModel):
     """Common skills: behaviours every agent of the company applies."""
 
@@ -154,6 +180,11 @@ class BusinessProfile(BaseModel):
         default="", max_length=600, description="Landmarks, parking, access."
     )
     maps_url: str = Field(default="", max_length=500)
+    emergency_contacts: list[EmergencyContact] = Field(
+        default_factory=list,
+        max_length=10,
+        description="Numbers the agent gives first in an emergency.",
+    )
     timezone: str = Field(default="UTC", max_length=64)
     opening_hours: dict[str, list[TimeRange]] = Field(default_factory=dict)
     closures: list[Closure] = Field(default_factory=list, max_length=60)
@@ -336,6 +367,13 @@ def render_business_prompt(
     ]
     if contact:
         lines.append("Contact : " + ", ".join(contact) + ".")
+    if profile.emergency_contacts:
+        lines.append(
+            "Numéros d'urgence (à donner en priorité en cas de danger ou "
+            "d'urgence) : "
+            + " ; ".join(f"{c.label} : {c.number}" for c in profile.emergency_contacts)
+            + "."
+        )
     place = ", ".join(
         v.strip() for v in (profile.address, profile.city, profile.country) if v.strip()
     )

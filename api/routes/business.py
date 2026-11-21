@@ -43,11 +43,15 @@ class ProfilePreview(BaseModel):
 
 class TemplateSummary(BaseModel):
     id: str
+    sector: str
+    sector_label: str
     label: str
     description: str
     icon: str
     activity: str
     method: list[str]
+    rules: list[str] = Field(description="Non-negotiable rules given to the agent.")
+    recommendations: list[str] = Field(description="Set-up advice for the company.")
     collects: list[str]
     dispositions: list[str]
     skills: list[str]

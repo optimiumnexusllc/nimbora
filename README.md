@@ -47,7 +47,7 @@ Quand l'agent IA transfère vers une file, le conseiller qui décroche voit une 
 générée par l'IA : motif, résumé, prénom et humeur du client, prochaine étape, données collectées et
 transcription. Plus besoin de faire répéter le client.
 
-### 🏢 Mon entreprise : une fiche, tous les agents, sept métiers
+### 🏢 Mon entreprise : une fiche, tous les agents, 25 métiers
 
 Décrivez votre entreprise **une seule fois** : identité, prénom de l'assistant, ton, horaires
 (plusieurs plages par jour, fermetures exceptionnelles, fuseau horaire), adresse et repères, offres
@@ -59,13 +59,28 @@ Des **compétences communes** s'activent d'un clic : répondre à la FAQ, horair
 présenter les offres sans jamais inventer de prix, prendre un message, prendre rendez-vous,
 qualifier un prospect, passer la main à un humain, recueillir la satisfaction.
 
-Sept **modèles métier** (accueil général, commerce, immobilier, hôtellerie, assurance, clinique,
-école) apportent la méthode du métier, les données à recueillir (quartier, budget, nombre de pièces…),
-les issues d'appel à classer et des exemples à adapter. **Un clic crée l'agent du métier**, avec vos
-outils de rendez-vous et de messages déjà rattachés.
+**25 modèles métier dans 8 secteurs stratégiques**, chacun avec la méthode du métier, les données à
+recueillir, les issues d'appel à classer, des exemples à adapter et, surtout, ses **règles
+impératives** de sécurité et de conformité, placées avant tout le reste et prioritaires sur toute
+demande. **Un clic crée l'agent du métier**, avec vos outils déjà rattachés.
 
-<p align="center"><img src="docs/images/screenshots/business-profile.webp" alt="Mon entreprise : métiers et fiche" width="88%"></p>
-<p align="center"><img src="docs/images/screenshots/business-templates.webp" alt="Modèle métier Clinique" width="88%"></p>
+| Secteur | Métiers | Exemples de règles impératives |
+|---|---|---|
+| Commerce et services | Accueil général, commerce, immobilier, hôtellerie-restauration, école et formation | Aucun paiement par téléphone ; aucune information sur un élève |
+| Banque, finance et assurance | Banque, microfinance et Mobile Money, assurance, investissement et bourse | Jamais de code PIN, d'OTP ni de numéro de carte ; opposition et fraude en priorité ; aucun conseil d'investissement personnalisé |
+| Santé | Clinique, hôpital, pharmacie | Urgence vitale d'abord ; aucun diagnostic ni dosage ; secret médical |
+| Télécoms et numérique | Opérateur télécom et internet, support informatique et SaaS | Aucun changement de SIM ni code PUK ; SIM swap = fraude ; rançongiciel en priorité critique |
+| Énergie, eau et service public | Énergie (électricité, gaz, solaire), eau et assainissement, administration | Câble tombé ou odeur de gaz : s'éloigner, ne rien toucher, numéro de dépannage ; neutralité du service public |
+| Transport et logistique | Transport de voyageurs, logistique, fret et livraison | Secours d'abord ; marchandises dangereuses validées par un humain |
+| Industrie, mines et ressources | Mines et carrières, industrie, BTP, agriculture et agro-industrie | Accident sur site : urgence et sécurité avant tout ; confidentialité ; plaintes des riverains toujours enregistrées |
+| Sécurité | Sécurité privée et télésurveillance, cybersécurité | Jamais de code d'alarme ; aucune adresse ni planning de site ; isoler sans éteindre, ne pas payer de rançon |
+
+Les **numéros d'urgence** de la fiche (dépannage 24 h/24, SAMU, opposition carte, sécurité du site)
+sont donnés en priorité en cas de danger. Ils ne sont jamais préremplis : un numéro d'exemple oublié
+pourrait envoyer quelqu'un vers une mauvaise ligne.
+
+<p align="center"><img src="docs/images/screenshots/business-trades.webp" alt="25 métiers dans 8 secteurs" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/business-templates.webp" alt="Modèle Mines et carrières et ses règles impératives" width="88%"></p>
 
 ### 💬 WhatsApp : l'agent répond aussi aux messages
 
@@ -138,7 +153,7 @@ swahili, haoussa, yoruba, lingala…
 
 | | |
 |---|---|
-| **Mon entreprise** | Fiche entreprise lue par tous les agents (identité, horaires et ouverture en temps réel, adresse, offres, FAQ, conditions), 8 compétences communes, 7 modèles métier et création d'agent en un clic, variables `{{business.*}}` |
+| **Mon entreprise** | Fiche entreprise lue par tous les agents (identité, horaires et ouverture en temps réel, adresse, offres, FAQ, conditions), numéros d'urgence, 8 compétences communes, 25 modèles métier dans 8 secteurs avec règles impératives, création d'agent en un clic, variables `{{business.*}}` |
 | **Agents vocaux IA** | Éditeur visuel de workflows, appels entrants et sortants, campagnes, outils HTTP / MCP / intégrations, base de connaissances, extraction de données, QA automatique |
 | **Outils de l'agent** | Prise de rendez-vous (NIMBORA, CalDAV, Google Agenda), SMS / WhatsApp / e-mail, tickets (NIMBORA, Zendesk, Freshdesk), transfert vers un humain ou un autre agent, rappel, fin d'appel, calculatrice, appels d'API, serveurs MCP |
 | **Activité** | Rendez-vous, messages envoyés et tickets ouverts par les agents, avec annulation, statut et résolution |
@@ -229,7 +244,7 @@ ses informations, joignable par **chat web, téléphone et WhatsApp**, sur un mo
 | ✅ | Isolation stricte des données par entreprise |
 | ✅ | Détection automatique de la langue, voix par langue |
 | ✅ | Fiche entreprise (identité, horaires, localisation, offres, FAQ) partagée par tous les agents |
-| ✅ | Modèles métier : compétences communes + modèles commerce, immobilier, hôtellerie, assurance, clinique, école |
+| ✅ | Modèles métier : compétences communes + 25 métiers (banque, microfinance, assurance, santé, télécoms, énergie, eau, transport, logistique, mines, industrie, BTP, agriculture, sécurité, cybersécurité…) avec règles impératives |
 
 ### Phase 2 — Omnicanal
 

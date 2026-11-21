@@ -4,15 +4,34 @@ import {
     BedDouble,
     Bot,
     Building2,
+    Bus,
     Check,
+    Droplets,
+    Factory,
     GraduationCap,
+    HardHat,
     Home,
+    Hospital,
+    Landmark,
+    Lightbulb,
     type LucideIcon,
+    MonitorCog,
+    Pickaxe,
+    Pill,
+    RadioTower,
+    Search,
+    ShieldAlert,
     ShieldCheck,
+    ShieldHalf,
     ShoppingBag,
+    Smartphone,
     Stethoscope,
+    TrendingUp,
+    Truck,
+    Wheat,
+    Zap,
 } from "lucide-react";
-import { useState } from "react";
+import { useMemo, useState } from "react";
 
 import type { TemplateSummary } from "@/client/types.gen";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +45,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
@@ -37,7 +57,28 @@ export const TEMPLATE_ICONS: Record<string, LucideIcon> = {
     "shield-check": ShieldCheck,
     stethoscope: Stethoscope,
     "graduation-cap": GraduationCap,
+    landmark: Landmark,
+    smartphone: Smartphone,
+    "trending-up": TrendingUp,
+    hospital: Hospital,
+    pill: Pill,
+    "radio-tower": RadioTower,
+    "monitor-cog": MonitorCog,
+    zap: Zap,
+    droplets: Droplets,
+    bus: Bus,
+    truck: Truck,
+    pickaxe: Pickaxe,
+    factory: Factory,
+    "hard-hat": HardHat,
+    wheat: Wheat,
+    "shield-alert": ShieldAlert,
+    "shield-half": ShieldHalf,
 };
+
+function normalize(text: string): string {
+    return text.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+}
 
 export const TOOL_LABELS: Record<string, string> = {
     book_appointment: "Prise de rendez-vous",
@@ -51,49 +92,101 @@ export function TemplateGallery({
     templates,
     selected,
     onOpen,
+    searchable = true,
 }: {
     templates: TemplateSummary[];
     selected: string;
     onOpen: (template: TemplateSummary) => void;
+    searchable?: boolean;
 }) {
+    const [query, setQuery] = useState("");
+    const groups = useMemo(() => {
+        const q = searchable ? normalize(query.trim()) : "";
+        const visible = q
+            ? templates.filter((t) =>
+                  normalize([t.label, t.description, t.sector_label, t.activity].join(" ")).includes(q),
+              )
+            : templates;
+        const bySector = new Map<string, { label: string; items: TemplateSummary[] }>();
+        for (const t of visible) {
+            const group = bySector.get(t.sector) ?? { label: t.sector_label, items: [] };
+            group.items.push(t);
+            bySector.set(t.sector, group);
+        }
+        return [...bySector.values()];
+    }, [templates, query, searchable]);
+
     return (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-            {templates.map((template) => {
-                const Icon = TEMPLATE_ICONS[template.icon] ?? Building2;
-                const active = template.id === selected;
-                return (
-                    <button
-                        key={template.id}
-                        type="button"
-                        data-testid={`template-${template.id}`}
-                        onClick={() => onOpen(template)}
-                        className={cn(
-                            "group relative flex flex-col gap-2 rounded-xl border p-4 text-left transition-colors hover:border-brand-cyan/60 hover:bg-muted/30",
-                            active ? "border-brand-cyan/70 bg-brand-cyan/5" : "border-border/60",
-                        )}
-                    >
-                        <span className="flex items-center gap-2">
-                            <span
-                                className={cn(
-                                    "flex size-9 items-center justify-center rounded-lg",
-                                    active
-                                        ? "bg-gradient-to-br from-brand-cyan to-brand-violet text-white"
-                                        : "bg-muted text-muted-foreground group-hover:text-foreground",
-                                )}
-                            >
-                                <Icon className="size-4" />
-                            </span>
-                            <span className="font-medium">{template.label}</span>
-                        </span>
-                        <span className="text-sm text-muted-foreground">{template.description}</span>
-                        {active && (
-                            <Badge className="mt-auto w-fit whitespace-nowrap" variant="secondary">
-                                <Check className="size-3" /> Votre métier
-                            </Badge>
-                        )}
-                    </button>
-                );
-            })}
+        <div className="space-y-5">
+            {searchable && (
+            <div className="relative max-w-sm">
+                <Search className="absolute left-3 top-1/2 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                    className="pl-9"
+                    placeholder="Rechercher un métier (banque, mine, énergie…)"
+                    aria-label="Rechercher un métier"
+                    value={query}
+                    onChange={(e) => setQuery(e.target.value)}
+                />
+            </div>
+            )}
+            {groups.length === 0 && <p className="text-sm text-muted-foreground">Aucun métier ne correspond.</p>}
+            {groups.map((group) => (
+                <section key={group.label} data-testid="sector-group">
+                    <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                        {group.label}
+                    </h3>
+                    <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+                        {group.items.map((template) => {
+                            const Icon = TEMPLATE_ICONS[template.icon] ?? Building2;
+                            const active = template.id === selected;
+                            return (
+                                <button
+                                    key={template.id}
+                                    type="button"
+                                    data-testid={`template-${template.id}`}
+                                    onClick={() => onOpen(template)}
+                                    className={cn(
+                                        "group relative flex flex-col gap-2 rounded-xl border p-4 text-left transition-colors hover:border-brand-cyan/60 hover:bg-muted/30",
+                                        active ? "border-brand-cyan/70 bg-brand-cyan/5" : "border-border/60",
+                                    )}
+                                >
+                                    <span className="flex items-center gap-2">
+                                        <span
+                                            className={cn(
+                                                "flex size-9 shrink-0 items-center justify-center rounded-lg",
+                                                active
+                                                    ? "bg-gradient-to-br from-brand-cyan to-brand-violet text-white"
+                                                    : "bg-muted text-muted-foreground group-hover:text-foreground",
+                                            )}
+                                        >
+                                            <Icon className="size-4" />
+                                        </span>
+                                        <span className="font-medium leading-tight">{template.label}</span>
+                                    </span>
+                                    <span className="text-sm text-muted-foreground">{template.description}</span>
+                                    {(active || template.rules.length > 0) && (
+                                        <span className="mt-auto flex flex-wrap gap-1">
+                                            {active && (
+                                                <Badge className="w-fit whitespace-nowrap" variant="secondary">
+                                                    <Check className="size-3" /> Votre métier
+                                                </Badge>
+                                            )}
+                                            {template.rules.length > 0 && (
+                                                <Badge variant="outline" className="w-fit whitespace-nowrap text-[10px]">
+                                                    <ShieldAlert className="size-3" /> {template.rules.length} règle
+                                                    {template.rules.length > 1 ? "s" : ""} impérative
+                                                    {template.rules.length > 1 ? "s" : ""}
+                                                </Badge>
+                                            )}
+                                        </span>
+                                    )}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </section>
+            ))}
         </div>
     );
 }
@@ -136,9 +229,26 @@ export function TemplateDialog({
                     <DialogTitle className="flex items-center gap-2">
                         <Icon className="size-5" /> {template.label}
                     </DialogTitle>
-                    <DialogDescription>{template.description}</DialogDescription>
+                    <DialogDescription>
+                        {template.sector_label} · {template.description}
+                    </DialogDescription>
                 </DialogHeader>
                 <div className="min-w-0 space-y-4 text-sm">
+                    {template.rules.length > 0 && (
+                        <section className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-3">
+                            <h3 className="mb-1 flex items-center gap-1.5 font-semibold">
+                                <ShieldAlert className="size-4 text-amber-400" /> Règles impératives
+                            </h3>
+                            <p className="mb-1 text-xs text-muted-foreground">
+                                Données à l&apos;agent avant tout le reste : elles priment sur toute demande.
+                            </p>
+                            <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                                {template.rules.map((rule) => (
+                                    <li key={rule}>{rule}</li>
+                                ))}
+                            </ul>
+                        </section>
+                    )}
                     <section>
                         <h3 className="mb-1 font-semibold">Méthode de l&apos;agent</h3>
                         <ol className="list-decimal space-y-1 pl-5 text-muted-foreground">
@@ -177,6 +287,18 @@ export function TemplateDialog({
                             </p>
                         </div>
                     </section>
+                    {template.recommendations.length > 0 && (
+                        <section>
+                            <h3 className="mb-1 flex items-center gap-1.5 font-semibold">
+                                <Lightbulb className="size-4 text-brand-cyan" /> Pour bien démarrer
+                            </h3>
+                            <ul className="list-disc space-y-1 pl-5 text-muted-foreground">
+                                {template.recommendations.map((tip) => (
+                                    <li key={tip}>{tip}</li>
+                                ))}
+                            </ul>
+                        </section>
+                    )}
                     {examples > 0 && (
                         <div className="flex items-start gap-2 rounded-lg border border-border/60 p-3">
                             <Checkbox

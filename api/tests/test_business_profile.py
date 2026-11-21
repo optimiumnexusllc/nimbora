@@ -457,3 +457,108 @@ async def test_agent_still_runs_when_the_card_fails(monkeypatch, three_node_work
     )
     assert llm.get_current_step() == 3
     assert "Votre entreprise" not in llm.get_system_prompt_at_step(0)
+
+
+# ------------------------------------------------- strategic industries
+
+
+def test_catalogue_is_consistent():
+    from typing import get_args
+
+    from api.services.business.industries.model import SECTORS
+    from api.services.business.profile import INDUSTRY_IDS, Industry
+
+    assert set(TEMPLATES) == set(INDUSTRY_IDS) == set(get_args(Industry))
+    assert len(TEMPLATES) >= 25
+    for template in TEMPLATES.values():
+        assert template.sector in SECTORS, template.id
+        # Every sector is represented.
+    assert {t.sector for t in TEMPLATES.values()} == set(SECTORS)
+
+
+@pytest.mark.parametrize(
+    ("template_id", "must_contain"),
+    [
+        ("bank", ["code PIN", "OTP", "perte, un vol"]),
+        ("microfinance", ["code secret Mobile Money", "changement de carte SIM"]),
+        (
+            "investment",
+            ["conseil d'investissement personnalisé", "performances passées"],
+        ),
+        ("insurance", ["prise en charge"]),
+        ("telecom", ["changement de carte SIM", "PUK"]),
+        ("it_support", ["mot de passe", "rançongiciel"]),
+        ("energy", ["odeur de gaz", "câble électrique tombé", "technicien agréé"]),
+        ("water", ["voie publique"]),
+        ("clinic", ["urgence vitale", "diagnostic", "Secret médical"]),
+        ("hospital", ["urgence vitale", "numéro de chambre"]),
+        ("pharmacy", ["posologie", "centre antipoison"]),
+        ("mining", ["Accident, blessé", "plainte de riverain", "confidentielle"]),
+        ("industry", ["machine en fonctionnement"]),
+        ("construction", ["prix ferme"]),
+        ("security", ["code d'alarme", "planning des agents"]),
+        ("cybersecurity", ["sans les éteindre", "ne pas payer de rançon"]),
+        ("public_service", ["neutre"]),
+        ("transport", ["secours"]),
+        ("logistics", ["marchandises interdites"]),
+    ],
+)
+def test_trade_rules_reach_the_agent_before_the_method(template_id, must_contain):
+    definition, _ = build_agent_definition(TEMPLATES[template_id], immo())
+    global_prompt = next(n for n in definition["nodes"] if n["type"] == "globalNode")[
+        "data"
+    ]["prompt"]
+    assert global_prompt.index("Règles impératives") < global_prompt.index("Méthode :")
+    for text in must_contain:
+        assert text in global_prompt, (template_id, text)
+
+
+def test_examples_never_carry_phone_numbers():
+    """An example number left in place could send someone to a wrong emergency line."""
+    import re
+
+    phone = re.compile(r"(\+\d{2,3}[\s\d]{6,}|\b\d{2}[ .]\d{2}[ .]\d{2}[ .]\d{2}\b)")
+    for template in TEMPLATES.values():
+        for item in [
+            *template.example_offers,
+            *template.example_faq,
+            *template.example_policies,
+        ]:
+            for value in item.values():
+                assert not phone.search(value), (template.id, value)
+
+
+def test_emergency_contacts_in_card():
+    profile = immo(
+        emergency_contacts=[
+            {"label": "Dépannage 24 h/24", "number": "+225 27 21 00 00 00"}
+        ]
+    )
+    prompt = render_business_prompt(profile, at(2026, 11, 20, 10))
+    assert "Numéros d'urgence (à donner en priorité" in prompt
+    assert "Dépannage 24 h/24 : +225 27 21 00 00 00" in prompt
+    with pytest.raises(ValidationError):
+        immo(emergency_contacts=[{"label": "", "number": "1"}])
+
+
+async def test_strategic_template_summaries_in_api(db_session, test_client_factory):
+    user, _ = await _new_org(db_session)
+    async with test_client_factory(user) as client:
+        templates = {
+            t["id"]: t for t in (await client.get("/api/v1/business/templates")).json()
+        }
+        bank = templates["bank"]
+        assert (
+            bank["sector"] == "finance"
+            and bank["sector_label"] == "Banque, finance et assurance"
+        )
+        assert any("PCI" in r for r in bank["recommendations"])
+        assert any("code PIN" in r for r in bank["rules"])
+        applied = (
+            await client.post("/api/v1/business/templates/energy/apply", json={})
+        ).json()
+        assert applied["industry"] == "energy"
+        created = (
+            await client.post("/api/v1/business/templates/mining/agent", json={})
+        ).json()
+        assert created["name"] == "Mines et carrières"

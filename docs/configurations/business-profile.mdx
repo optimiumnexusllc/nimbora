@@ -1,6 +1,6 @@
 ---
 title: "Business Profile and Industry Templates"
-description: "Describe your company once (identity, hours, offers, FAQ, skills) and every agent uses it on every channel. Start from a template for your industry."
+description: "Describe your company once (identity, hours, offers, FAQ, emergency numbers, skills) and every agent uses it on every channel. Start from one of 25 industry templates with built-in safety and compliance rules."
 ---
 
 ## Overview
@@ -11,7 +11,7 @@ The card contains:
 
 | Section | What the agents get |
 |---|---|
-| **Identity** | Company name, activity, assistant's first name, tone, presentation, phone, WhatsApp, e-mail, website, spoken languages |
+| **Identity** | Company name, activity, assistant's first name, tone, presentation, phone, WhatsApp, e-mail, website, spoken languages, **emergency numbers** |
 | **Hours and location** | Weekly opening hours with several ranges per day, exceptional closures, time zone, address, landmarks and map link |
 | **Offers and FAQ** | Up to 40 offers with price and category, 40 questions and answers, and your conditions (payment, delivery, cancellation…) |
 | **Skills** | Common behaviours applied by every agent (see below) and your own rules ("never promise a discount") |
@@ -19,6 +19,8 @@ The card contains:
 Agents also know whether you are **open right now**. This is computed in your time zone, with exceptional closures taken into account:
 
 > Maintenant : Fermé en ce moment (Noël). Réouverture demain à 09:00.
+
+**Emergency numbers** (24/7 repair line, ambulance service, card blocking, site security…) are given first whenever someone describes a danger or an emergency. Enter them yourself and check them carefully: templates never pre-fill a number, because a wrong number left in place could send someone to the wrong line.
 
 The **Ce que lisent les agents** tab shows the exact text added to the agents' prompts, including changes you have not saved yet.
 
@@ -45,30 +47,57 @@ The **Ce que lisent les agents** tab shows the exact text added to the agents' p
 
 ## Industry templates
 
-Pick your industry at the top of the page. Each template brings:
+Pick your industry at the top of the page: 25 templates in 8 sectors, with a search box. Once you have chosen one, the page shows only your trade; **Voir les 25 métiers** opens the full list again. Each template brings:
 
+<Frame caption="Industry templates — 25 trades in 8 sectors">
+  <img src="/images/screenshots/business-trades.webp" alt="Gallery of industry templates grouped by sector, with their number of mandatory rules" />
+</Frame>
+
+- **mandatory rules** for the trade: security, safety and compliance. They are placed before everything else in the agent's prompt and override any request from the person (see below);
 - **a method**: what a good agent in this trade does, step by step;
 - **the data to collect**: for real estate, these are project, property type, area, number of rooms, budget and move-in date;
-- **the outcomes to classify**: for example `visite_planifiee`, `prospect_qualifie` or `mandat_proprietaire`, shown in call history and reports;
-- **the skills** to switch on and the **tools** worth attaching;
+- **the outcomes to classify**: for example `visite_planifiee`, `opposition_fraude` or `danger_signale`, shown in call history and reports;
+- **the skills** to switch on, the **tools** worth attaching, and **set-up advice** (for a bank: turn on PCI mode, create a transfer to the fraud team);
 - **example** offers, FAQ and conditions to adapt.
 
-| Template | For |
+| Sector | Templates |
 |---|---|
-| Accueil général | Any company: information, messages, routing |
-| Commerce et boutique | Products, prices, orders, delivery, returns, complaints |
-| Immobilier | Rentals and sales: project qualification, matching properties, viewings, owner mandates |
-| Hôtellerie et restauration | Availability, bookings, guest requests |
-| Assurance | Quotes, claims, file follow-up, certificates |
-| Clinique et cabinet médical | Appointments, practical information, emergency routing, no medical advice |
-| École et formation | Enrolment, programmes, fees, messages for staff |
+| Commerce et services | Accueil général, Commerce et boutique, Immobilier, Hôtellerie et restauration, École et formation |
+| Banque, finance et assurance | Banque, Microfinance et Mobile Money, Assurance, Investissement et bourse |
+| Santé | Clinique et cabinet médical, Hôpital, Pharmacie |
+| Télécoms et numérique | Opérateur télécom et internet, Support informatique et SaaS |
+| Énergie, eau et service public | Énergie (électricité, gaz, solaire), Eau et assainissement, Administration et service public |
+| Transport et logistique | Transport de voyageurs, Logistique, fret et livraison |
+| Industrie, mines et ressources | Mines et carrières, Industrie et manufacture, BTP et construction, Agriculture et agro-industrie |
+| Sécurité | Sécurité privée et télésurveillance, Cybersécurité |
+
+### Mandatory rules
+
+Mandatory rules are what agents in the trade must never get wrong. Some examples:
+
+| Template | Examples of mandatory rules |
+|---|---|
+| Banque, Microfinance, Télécom | Never ask for, write down or repeat a PIN, password, SMS code (OTP), Mobile Money secret code or full card number. Never give account information without verification by a company tool. A lost card or an unrecognised transaction comes first. An unrequested SIM swap is treated as fraud. |
+| Investissement | No personalised investment advice, no price or return forecasts, no orders taken. |
+| Clinique, Hôpital, Pharmacie | Life-threatening emergencies are sent to emergency services first. No diagnosis, dosage or interpretation of results. Medical confidentiality: never confirm a patient's presence to a third party. |
+| Énergie, Eau | A fallen cable, sparks or a gas smell come first: the person is told to move away, touch nothing and not use any switch, then given the emergency repair number. Never guide work on an installation. |
+| Mines, Industrie, BTP | An accident or danger on site comes first: emergency number, injured people, transfer to security. Production, reserves, contracts and staff details are confidential. Community complaints are always recorded respectfully. |
+| Sécurité, Cybersécurité | Never ask for or check an alarm code, and never cancel an alarm. Never disclose a client site's address or guard schedules. During a cyber incident: isolate the device without switching it off, don't pay a ransom, then escalate to the on-call analyst. |
+
+Rules that apply in many trades are written once and shared, for example "never promise a refund, a deadline or a compensation". This keeps them consistent.
+
+### Choosing a template or creating its agent
 
 In the template window:
 
 - **Choisir ce métier** sets your industry and its skills. It can also pre-fill offers, FAQ and conditions that are still empty with examples to adapt. Content you have already entered is never replaced.
-- **Créer l'agent** creates a ready agent for the trade. It comes with the role and method, a greeting with your company and assistant name, the data to collect and the outcomes to classify. Your existing tools of the right kind (appointments, messages, tickets…) are attached to it. The confirmation lists the suggested tools you haven't set up yet.
+- **Créer l'agent** creates a ready agent for the trade. It comes with the mandatory rules, the role and method, a greeting with your company and assistant name, the data to collect and the outcomes to classify. Your existing tools of the right kind (appointments, messages, tickets, transfers…) are attached to it. The confirmation lists the suggested tools you haven't set up yet.
 
 Every agent created this way reads the card at run time. One template therefore serves every company in the trade, and the agent stays up to date when the card changes.
+
+<Warning>
+  Templates give a solid starting point, not regulatory approval. In regulated sectors (banking, insurance, investment, health), have the agent's prompt and your card reviewed by your compliance or medical lead before going live.
+</Warning>
 
 ## Per agent
 
