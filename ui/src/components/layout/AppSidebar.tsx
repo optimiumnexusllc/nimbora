@@ -4,6 +4,7 @@ import {
   AlertTriangle,
   ArrowUpCircle,
   AudioLines,
+  Ban,
   Brain,
   Building,
   ChevronLeft,
@@ -181,6 +182,11 @@ const NAV_SECTIONS: SidebarNavSection[] = [
         title: "Confidentialité",
         url: "/privacy",
         icon: LockKeyhole,
+      },
+      {
+        title: "Numéros bloqués",
+        url: "/blocked-numbers",
+        icon: Ban,
       },
       {
         title: "Téléphonie d'entreprise",

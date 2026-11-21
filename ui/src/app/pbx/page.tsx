@@ -47,12 +47,14 @@ import type {
     WorkflowSummaryResponse,
 } from "@/client/types.gen";
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
+import { AiOutboundCard } from "@/components/pbx/AiOutboundCard";
 import { ConnectionDialog, type ConnectionForm } from "@/components/pbx/ConnectionDialog";
 import type { Destination, DestinationSources, PbxVoicemail } from "@/components/pbx/DestinationPicker";
 import { ExtensionsTab } from "@/components/pbx/ExtensionsTab";
 import { MenusTab } from "@/components/pbx/MenusTab";
 import { NumberDialog, type NumberEdit } from "@/components/pbx/NumberDialog";
 import { QueuesTab } from "@/components/pbx/QueuesTab";
+import { RestrictionsSection } from "@/components/pbx/RestrictionsSection";
 import { ScheduleDialog } from "@/components/pbx/ScheduleDialog";
 import { TrunksTab } from "@/components/pbx/TrunksTab";
 import {
@@ -656,13 +658,19 @@ export default function PbxPage() {
                         {lines === null ? (
                             <Skeleton className="h-64 w-full" />
                         ) : (
-                            <TrunksTab
-                                trunks={lines.trunks}
-                                routes={lines.routes}
-                                presets={lines.presets}
-                                error={lines.error}
-                                onChanged={() => void loadLines()}
-                            />
+                            <div className="space-y-4">
+                                <TrunksTab
+                                    trunks={lines.trunks}
+                                    routes={lines.routes}
+                                    presets={lines.presets}
+                                    error={lines.error}
+                                    onChanged={() => void loadLines()}
+                                />
+                                {connection.ari_configuration_id && (
+                                    <AiOutboundCard trunks={lines.trunks} hasRoutes={lines.routes.length > 0} />
+                                )}
+                                <RestrictionsSection users={inventory.users} />
+                            </div>
                         )}
                     </TabsContent>
 

@@ -1,0 +1,62 @@
+---
+title: "Blocked numbers"
+description: "Refuse unwanted callers and never call people who opted out, on every channel and campaign."
+---
+
+**Numéros bloqués** in the sidebar holds one list per organization. It works wherever NIMBORA answers or dials a call:
+
+- the enterprise PBX and Asterisk over ARI;
+- SIP trunks;
+- cloud providers such as Twilio, Vonage or Telnyx;
+- campaigns and callbacks.
+
+<Frame caption="Blocked numbers, with where each entry came from and how many calls it avoided">
+  <img src="/images/screenshots/blocked-numbers.webp" alt="Blocked numbers page with statistics, the add form and the list" />
+</Frame>
+
+## Direction
+
+Each number is blocked in one direction, or both:
+
+| Direction | Effect |
+|---|---|
+| **Appels reçus** | The caller is hung up before any agent answers. No call is recorded and no minute is used. Use it for spam, robocalls and abuse. |
+| **Appels émis** | AI agents never call the number. This is your opt-out list. |
+| **Dans les deux sens** | Both of the above. |
+
+An entry can have an end date. After that date it stops applying, and you can delete it.
+
+## Opt-out requests are added automatically
+
+When a person tells an AI agent they do not want to be called again, the call ends with the `do_not_call` outcome. NIMBORA then adds the number for **Appels émis**, with the reason "A demandé à ne plus être appelé (appel n°…)". These entries show **Demande du client** as their origin.
+
+An entry that only blocked incoming calls is widened to both directions. An entry is never narrowed.
+
+## What is blocked
+
+- **Campaigns**: a blocked contact is skipped. It does not use a call slot, and the queued run is marked failed with the reason `blocked`.
+- **AI callbacks**: the callback fails with "Numéro bloqué" and is not retried.
+- **Human callbacks**: the console refuses to dial the number.
+- **Test calls and the public API** (`/telephony/initiate-call`, public agent triggers): the request is refused with `403`.
+- **Inbound calls**: the platform hangs up as soon as it receives the call, on every provider.
+
+The **Appels évités** column counts how many times each entry stopped a call.
+
+## Matching numbers
+
+Numbers are stored in international format: `+225 07 07-11.22.33` becomes `+2250707112233`, and `0033…` becomes `+33…`. A provider that sends the caller without `+` still matches. Store numbers in international format so they also match national spellings.
+
+## Import
+
+**Importer un CSV** adds many numbers at once, up to 5,000 rows. The format is `numero;motif;sens`, separated by commas or semicolons, and a header row is optional. `sens` is `entrant`, `sortant` or `les deux`; if it is empty, the number is blocked both ways.
+
+Invalid rows are listed with their line number. The other rows are imported. Importing a number that is already listed updates its entry; it never adds a duplicate.
+
+## API
+
+| Method | Path | |
+|---|---|---|
+| `GET` | `/api/v1/blocked-numbers?search=` | List with statistics |
+| `POST` | `/api/v1/blocked-numbers` | `{number, direction, reason, expires_at}` |
+| `DELETE` | `/api/v1/blocked-numbers/{id}` | Unblock |
+| `POST` | `/api/v1/blocked-numbers/import` | `{content}` (CSV text) |

@@ -519,6 +519,34 @@ class PbxClient:
             json=dial_pattern,
         )
 
+    # ------------------------------------------------ call restrictions
+
+    async def call_permissions(self) -> list[dict]:
+        return await self._items("confd", "/callpermissions", limit=500)
+
+    async def call_permission(self, permission_id: int) -> dict:
+        return await self.request("confd", "GET", f"/callpermissions/{permission_id}")
+
+    async def create_call_permission(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/callpermissions", json=body)
+
+    async def delete_call_permission(self, permission_id: int) -> None:
+        await self.request("confd", "DELETE", f"/callpermissions/{permission_id}")
+
+    async def associate_user_call_permission(
+        self, user_id: int, permission_id: int
+    ) -> None:
+        await self.request(
+            "confd", "PUT", f"/users/{user_id}/callpermissions/{permission_id}"
+        )
+
+    async def dissociate_user_call_permission(
+        self, user_id: int, permission_id: int
+    ) -> None:
+        await self.request(
+            "confd", "DELETE", f"/users/{user_id}/callpermissions/{permission_id}"
+        )
+
     async def send_password_reset_email(self, login: str) -> None:
         """Ask the PBX to e-mail a reset link (white-label template)."""
         try:
@@ -653,4 +681,11 @@ REQUIRED_ACL: dict[str, str] = {
     "delete_outcall": "confd.outcalls.{outcall_id}.delete",
     "set_outcall_trunks": "confd.outcalls.{outcall_id}.trunks.update",
     "associate_outcall_extension": "confd.outcalls.{outcall_id}.extensions.{extension_id}.update",
+    # call restrictions
+    "call_permissions": "confd.callpermissions.read",
+    "call_permission": "confd.callpermissions.{callpermission_id}.read",
+    "create_call_permission": "confd.callpermissions.create",
+    "delete_call_permission": "confd.callpermissions.{callpermission_id}.delete",
+    "associate_user_call_permission": "confd.users.{user_id}.callpermissions.{call_permission_id}.update",
+    "dissociate_user_call_permission": "confd.users.{user_id}.callpermissions.{call_permission_id}.delete",
 }

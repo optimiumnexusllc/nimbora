@@ -33,6 +33,7 @@ from api.services.contact_center.handoff import (
 from api.services.telephony.providers.ari.dial_string import (
     DEFAULT_DIAL_STRING_TEMPLATE,
     build_dial_string,
+    format_dialled_number,
 )
 from api.services.telephony.providers.ari.external_pbx import create_adapter
 
@@ -77,6 +78,9 @@ class ARIProvider(TelephonyProvider):
         self.dial_string_template = (
             config.get("dial_string_template") or DEFAULT_DIAL_STRING_TEMPLATE
         )
+        self.dial_number_format = config.get("dial_number_format") or "as_is"
+        self.dial_country_code = config.get("dial_country_code") or ""
+        self.dial_national_prefix = config.get("dial_national_prefix") or ""
         self.from_numbers = config.get("from_numbers", [])
         self.default_from_number = config.get("default_from_number")
         self.external_pbx_adapter = create_adapter(config.get("external_pbx"))
@@ -123,7 +127,15 @@ class ARIProvider(TelephonyProvider):
         # Multi-tenant platforms share one Asterisk: a tenant must not dial
         # raw channels (another tenant's agents, internal Local/ contexts).
         assert_tenant_may_dial(to_number)
-        dial_string = build_dial_string(to_number, self.dial_string_template)
+        dial_string = build_dial_string(
+            format_dialled_number(
+                to_number,
+                self.dial_number_format,
+                self.dial_country_code,
+                self.dial_national_prefix,
+            ),
+            self.dial_string_template,
+        )
 
         # Prepare channel creation data
         channel_id = f"nimbora-call-{uuid.uuid4()}"
@@ -529,7 +541,14 @@ class ARIProvider(TelephonyProvider):
 
         try:
             dial_string = await resolve_transfer_dial_string(
-                destination,
+                destination
+                if str(destination).startswith("queue:")
+                else format_dialled_number(
+                    destination,
+                    self.dial_number_format,
+                    self.dial_country_code,
+                    self.dial_national_prefix,
+                ),
                 organization_id=self.organization_id,
                 dial_string_template=self.dial_string_template,
             )

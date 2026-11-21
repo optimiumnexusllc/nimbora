@@ -60,6 +60,7 @@
               "configurations/tracing",
               "configurations/call-events",
               "configurations/privacy",
+              "configurations/blocked-numbers",
               "configurations/business-profile"
             ]
           },

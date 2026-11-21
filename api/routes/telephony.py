@@ -149,6 +149,13 @@ async def initiate_call(
             detail="Phone number must be provided in request or set in organization preferences",
         )
 
+    from api.services.telephony.blocklist import CallBlocked, assert_may_call
+
+    try:
+        await assert_may_call(user.selected_organization_id, phone_number)
+    except CallBlocked as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
     workflow = await db_client.get_workflow(
         request.workflow_id, organization_id=user.selected_organization_id
     )
@@ -934,6 +941,18 @@ async def handle_inbound_run(request: Request):
                 TelephonyError.SIGNATURE_VALIDATION_FAILED
             )
 
+        # Checked once the webhook is proven genuine.
+        from api.services.telephony.blocklist import find_block
+
+        if await find_block(
+            config.organization_id, normalized_data.from_number, "inbound"
+        ):
+            logger.info(
+                f"/inbound/run: caller blocked by org {config.organization_id}, "
+                "hanging up"
+            )
+            return generic_hangup_response()
+
         try:
             concurrency_slot = await call_concurrency.acquire_org_slot(
                 config.organization_id,
@@ -1107,6 +1126,10 @@ async def handle_inbound_telephony(
 
         user_id = workflow_context["user_id"]
         organization_id = workflow_context["organization_id"]
+        from api.services.telephony.blocklist import find_block
+
+        if await find_block(organization_id, normalized_data.from_number, "inbound"):
+            return generic_hangup_response()
         try:
             concurrency_slot = await call_concurrency.acquire_org_slot(
                 organization_id,

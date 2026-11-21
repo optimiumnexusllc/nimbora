@@ -1,6 +1,6 @@
 {
   "name": "nimbora-integration",
-  "description": "Platform integration: PBX management and administration, voice menus, operator lines, AI routing, events",
+  "description": "Platform integration: PBX management and administration, voice menus, operator lines, call restrictions, AI routing, events",
   "acl": [
     "auth.tenants.*.read",
     "confd.infos.read",
@@ -74,6 +74,12 @@
     "confd.outcalls.create",
     "confd.outcalls.*.delete",
     "confd.outcalls.*.trunks.update",
-    "confd.outcalls.*.extensions.*.update"
+    "confd.outcalls.*.extensions.*.update",
+    "confd.callpermissions.read",
+    "confd.callpermissions.*.read",
+    "confd.callpermissions.create",
+    "confd.callpermissions.*.delete",
+    "confd.users.*.callpermissions.*.update",
+    "confd.users.*.callpermissions.*.delete"
   ]
 }

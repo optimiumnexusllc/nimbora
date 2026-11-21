@@ -74,6 +74,9 @@ def _config_loader(value: Dict[str, Any]) -> Dict[str, Any]:
         # app_name, which is what they told Asterisk to use.
         "stasis_app_name": value.get("stasis_app_name") or value.get("app_name"),
         "dial_string_template": value.get("dial_string_template"),
+        "dial_number_format": value.get("dial_number_format") or "as_is",
+        "dial_country_code": value.get("dial_country_code") or "",
+        "dial_national_prefix": value.get("dial_national_prefix") or "",
         "external_pbx": value.get("external_pbx"),
         "from_numbers": value.get("from_numbers", []),
     }
@@ -131,6 +134,44 @@ _UI_METADATA = ProviderUIMetadata(
                 "extensions you dial."
             ),
             placeholder="PJSIP/{number}",
+        ),
+        ProviderUIField(
+            name="dial_number_format",
+            label="Dialled Number Format",
+            type="select",
+            required=False,
+            description=(
+                "How a number in international format (+33…) is written before "
+                "the template: unchanged, with 00 instead of +, or in national "
+                "form for the country below."
+            ),
+            options=[
+                ProviderUIOption(value="as_is", label="Unchanged (+33…)"),
+                ProviderUIOption(value="international_00", label="00 prefix (0033…)"),
+                ProviderUIOption(value="national", label="National form (06…)"),
+            ],
+        ),
+        ProviderUIField(
+            name="dial_country_code",
+            label="Country Calling Code",
+            type="text",
+            required=False,
+            description="For the national form: the country's calling code, e.g. 33 or 225.",
+            placeholder="225",
+            visible_when=ProviderUICondition(
+                field="dial_number_format", equals="national"
+            ),
+        ),
+        ProviderUIField(
+            name="dial_national_prefix",
+            label="National Prefix",
+            type="text",
+            required=False,
+            description="Added in front of national numbers: 0 in France, empty in Côte d'Ivoire.",
+            placeholder="0",
+            visible_when=ProviderUICondition(
+                field="dial_number_format", equals="national"
+            ),
         ),
         ProviderUIField(
             name="from_numbers",

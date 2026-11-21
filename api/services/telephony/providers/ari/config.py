@@ -94,6 +94,20 @@ class ARIConfigurationRequest(BaseModel):
             "(``PJSIP/...``, ``Local/...``) is dialled as written."
         ),
     )
+    dial_number_format: Literal["as_is", "international_00", "national"] = Field(
+        default="as_is",
+        description="How a +E.164 number is written before the dial string template.",
+    )
+    dial_country_code: str = Field(
+        default="",
+        pattern=r"^[0-9]{0,4}$",
+        description="Country calling code for the national form (e.g. 33, 225).",
+    )
+    dial_national_prefix: str = Field(
+        default="",
+        pattern=r"^[0-9]{0,3}$",
+        description="Prefix added to national numbers (0 in France, empty in Côte d'Ivoire).",
+    )
     external_pbx: Optional[VicidialExternalPBXConfiguration] = Field(
         default=None,
         description="Optional external PBX connected through this Asterisk instance",

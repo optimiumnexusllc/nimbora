@@ -39,3 +39,41 @@ def build_dial_string(destination: str, template: str) -> str:
     if has_channel_technology(destination):
         return destination
     return (template or DEFAULT_DIAL_STRING_TEMPLATE).format(number=destination)
+
+
+# How a plain number is written before the template sees it. Operator lines
+# and PBX outbound routes rarely take E.164: most want the national form
+# ("0707112233") or the international prefix ("0033…").
+DIAL_NUMBER_FORMATS = ("as_is", "international_00", "national")
+
+
+def format_dialled_number(
+    number: str,
+    number_format: str | None,
+    country_code: str | None = None,
+    national_prefix: str | None = None,
+) -> str:
+    """Rewrite a plain number for the dialplan.
+
+    * ``as_is`` — unchanged (the default).
+    * ``international_00`` — ``+33612…`` → ``0033612…``.
+    * ``national`` — numbers of ``country_code`` lose it and gain the national
+      prefix (``+33612…`` → ``0612…`` with prefix ``0``; ``+2250707…`` →
+      ``0707…`` with an empty prefix); other countries use ``00``.
+
+    Numbers that name a channel technology, or carry no ``+``, are left alone:
+    they are already written for the dialplan.
+    """
+    number = number.strip()
+    if (
+        not number_format
+        or number_format == "as_is"
+        or has_channel_technology(number)
+        or not number.startswith("+")
+    ):
+        return number
+    digits = re.sub(r"[^0-9]", "", number)
+    country_code = re.sub(r"[^0-9]", "", country_code or "")
+    if number_format == "national" and country_code and digits.startswith(country_code):
+        return f"{national_prefix or ''}{digits[len(country_code) :]}"
+    return f"00{digits}"

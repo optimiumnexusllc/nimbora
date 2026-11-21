@@ -2323,3 +2323,39 @@ class PbxIvrMenuModel(Base):
         default=lambda: datetime.now(UTC),
         onupdate=lambda: datetime.now(UTC),
     )
+
+
+class BlockedNumberModel(Base):
+    """A phone number the organization refuses calls from, or never calls.
+
+    Applies to AI agents on every channel the platform answers or dials
+    (PBX, SIP, cloud providers), to campaigns and to callbacks. ``direction``
+    is ``inbound`` (spam, abuse), ``outbound`` (opposition: "ne plus
+    m'appeler") or ``both``.
+    """
+
+    __tablename__ = "blocked_numbers"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "number", name="uq_blocked_numbers_org_number"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer,
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    number = Column(String(32), nullable=False)
+    direction = Column(String(16), nullable=False, default="both")
+    reason = Column(String(255), nullable=True)
+    source = Column(String(32), nullable=False, default="manual")
+    created_by_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    expires_at = Column(DateTime(timezone=True), nullable=True)
+    hits = Column(Integer, nullable=False, default=0)
+    last_hit_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

@@ -989,3 +989,21 @@ async def test_claim_recovery_requires_running_campaign_and_matching_org(
         legacy = await session.get(QueuedRunModel, s.rows[1].id)
     assert expired.state == legacy.state == "processing"
     assert legacy.claimed_at is None
+
+
+@pytest.mark.asyncio
+async def test_blocked_contacts_are_never_dialled(dispatcher, campaign_data, sessions):
+    from api.services.telephony import blocklist
+
+    instance, seen = dispatcher
+    await blocklist.block(
+        campaign_data.org.id,
+        blocklist.BlockRequest("+15550000000", "outbound", "Opposition"),
+    )
+    await instance.process_batch(campaign_data.campaign.id, 10)
+    blocked = campaign_data.rows[0].id
+    assert blocked not in seen and len(seen) == 9
+    async with sessions() as session:
+        row = await session.get(QueuedRunModel, blocked)
+    assert row.state == "failed" and row.retry_reason == "blocked"
+    assert instance.acquire_concurrent_slot.await_count == 9

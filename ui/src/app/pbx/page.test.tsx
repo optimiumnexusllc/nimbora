@@ -16,6 +16,8 @@ const mocks = vi.hoisted(() => ({
     voicemails: vi.fn(),
     trunks: vi.fn(),
     routes: vi.fn(),
+    aiOutbound: vi.fn(),
+    restrictions: vi.fn(),
     unroute: vi.fn(),
     branding: vi.fn(),
     events: vi.fn(),
@@ -39,6 +41,8 @@ vi.mock("@/client/sdk.gen", () => ({
     listVoicemailsApiV1PbxVoicemailsGet: mocks.voicemails,
     listTrunksApiV1PbxTrunksGet: mocks.trunks,
     listOutboundRoutesApiV1PbxOutboundRoutesGet: mocks.routes,
+    readAiOutboundApiV1PbxAiOutboundGet: mocks.aiOutbound,
+    listRestrictionsApiV1PbxRestrictionsGet: mocks.restrictions,
     unrouteNumberApiV1PbxRoutesNumberDelete: mocks.unroute,
     applyBrandingApiV1PbxBrandingApplyPost: mocks.branding,
     connectEventsApiV1PbxEventsConnectPost: mocks.events,
@@ -84,6 +88,12 @@ beforeEach(() => {
                     choices: [{ digit: "1", label: "Les ventes", type: "queue", target_id: 1 }] },
             },
         ],
+    });
+    mocks.aiOutbound.mockResolvedValue({
+        data: { mode: "routes", trunk_id: null, dial_string_template: "Local/{number}@to-extern", number_format: "national", country_code: "225", national_prefix: "", caller_id: "+2252722000000", example: { number: "+2250707112233", dial_string: "Local/0707112233@to-extern" } },
+    });
+    mocks.restrictions.mockResolvedValue({
+        data: { presets: [], restrictions: [{ id: 70, name: "Accueil", mode: "deny", patterns: ["_00."], enabled: true, has_pin: true, users: [{ uuid: "u-1", name: "Koffi Yao" }] }] },
     });
     mocks.voicemails.mockResolvedValue({ data: [{ id: 1, name: "Accueil", number: "1000" }] });
     mocks.trunks.mockResolvedValue({
@@ -196,6 +206,8 @@ describe("pbx page", () => {
         expect(trunk.textContent).toContain("Enregistrée");
         expect(trunk.textContent).toContain("sip.orange.ci");
         expect((await screen.findByTestId("pbx-route")).textContent).toContain("1. Orange");
+        expect((await screen.findByTestId("ai-outbound-preview")).textContent).toContain("compose 0707112233 via les routes sortantes, présenté +2252722000000");
+        expect((await screen.findByTestId("pbx-restriction")).textContent).toContain("Interdit : _00.");
     });
 
     it("applies the brand, subscribes to events and shows partial outages", async () => {

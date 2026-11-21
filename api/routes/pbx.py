@@ -12,7 +12,7 @@ from api.db import db_client
 from api.db.models import UserModel
 from api.services.auth.depends import get_user
 from api.services.branding import brand
-from api.services.pbx import admin, ivr, numbers, trunks
+from api.services.pbx import admin, ivr, numbers, outbound, permissions, trunks
 from api.services.pbx import service as pbx
 from api.services.pbx.client import PbxAuthError, PbxError, PbxUnavailable
 
@@ -698,6 +698,83 @@ async def test_dial(
                 "caller_id": rule.caller_id or None,
             }
     return {"matched": False, "rule_index": None, "sent": None, "caller_id": None}
+
+
+# ------------------------------------------- AI calls through the PBX
+
+
+class AiOutboundRequest(BaseModel):
+    mode: Literal["routes", "trunk"]
+    trunk_id: int | None = None
+    number_format: Literal["as_is", "international_00", "national"] = "as_is"
+    country_code: str = Field(default="", max_length=4)
+    national_prefix: str = Field(default="", max_length=3)
+    caller_id: str | None = Field(default=None, max_length=24)
+
+
+@router.get("/ai-outbound")
+async def read_ai_outbound(user: UserModel = Depends(get_user)) -> dict[str, Any]:
+    """How AI agents' outgoing calls leave the PBX."""
+    return await _call(outbound.read_settings(_org(user)))
+
+
+@router.put("/ai-outbound")
+async def save_ai_outbound(
+    request: AiOutboundRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    return await _call(outbound.configure(_org(user), **request.model_dump()))
+
+
+# ---------------------------------------------------- call restrictions
+
+
+class RestrictionRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    mode: Literal["allow", "deny"] = "deny"
+    patterns: list[str] = Field(min_length=1, max_length=50)
+    user_ids: list[int] = Field(default_factory=list, max_length=500)
+    pin: str = Field(default="", max_length=40)
+    description: str = Field(default="", max_length=255)
+
+
+class RestrictionUsersRequest(BaseModel):
+    user_ids: list[int] = Field(default_factory=list, max_length=500)
+
+
+@router.get("/restrictions")
+async def list_restrictions(user: UserModel = Depends(get_user)) -> dict[str, Any]:
+    return {
+        "restrictions": await _call(permissions.list_restrictions(_org(user))),
+        "presets": permissions.PRESETS,
+    }
+
+
+@router.post("/restrictions", status_code=201)
+async def create_restriction(
+    request: RestrictionRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    return await _call(
+        permissions.create_restriction(
+            _org(user), permissions.NewRestriction(**request.model_dump())
+        )
+    )
+
+
+@router.put("/restrictions/{permission_id}/users")
+async def set_restriction_users(
+    permission_id: int,
+    request: RestrictionUsersRequest,
+    user: UserModel = Depends(get_user),
+) -> dict[str, Any]:
+    return await _call(
+        permissions.set_restriction_users(_org(user), permission_id, request.user_ids)
+    )
+
+
+@router.delete("/restrictions/{permission_id}", status_code=204)
+async def delete_restriction(permission_id: int, user: UserModel = Depends(get_user)):
+    await _call(permissions.delete_restriction(_org(user), permission_id))
+    return Response(status_code=204)
 
 
 class PasswordResetRequest(BaseModel):

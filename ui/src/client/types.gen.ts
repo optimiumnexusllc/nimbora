@@ -103,6 +103,24 @@ export type AriConfigurationRequest = {
      */
     dial_string_template?: string;
     /**
+     * Dial Number Format
+     *
+     * How a +E.164 number is written before the dial string template.
+     */
+    dial_number_format?: 'as_is' | 'international_00' | 'national';
+    /**
+     * Dial Country Code
+     *
+     * Country calling code for the national form (e.g. 33, 225).
+     */
+    dial_country_code?: string;
+    /**
+     * Dial National Prefix
+     *
+     * Prefix added to national numbers (0 in France, empty in Côte d'Ivoire).
+     */
+    dial_national_prefix?: string;
+    /**
      * Optional external PBX connected through this Asterisk instance
      */
     external_pbx?: VicidialExternalPbxConfiguration | null;
@@ -268,6 +286,36 @@ export type AgentUpdateRequest = {
      * Is Supervisor
      */
     is_supervisor?: boolean | null;
+};
+
+/**
+ * AiOutboundRequest
+ */
+export type AiOutboundRequest = {
+    /**
+     * Mode
+     */
+    mode: 'routes' | 'trunk';
+    /**
+     * Trunk Id
+     */
+    trunk_id?: number | null;
+    /**
+     * Number Format
+     */
+    number_format?: 'as_is' | 'international_00' | 'national';
+    /**
+     * Country Code
+     */
+    country_code?: string;
+    /**
+     * National Prefix
+     */
+    national_prefix?: string;
+    /**
+     * Caller Id
+     */
+    caller_id?: string | null;
 };
 
 /**
@@ -544,6 +592,103 @@ export type BillingPaymentsResponse = {
      * Payments
      */
     payments: Array<BillingPaymentResponse>;
+};
+
+/**
+ * BlockedNumberList
+ */
+export type BlockedNumberList = {
+    /**
+     * Items
+     */
+    items: Array<BlockedNumberResponse>;
+    /**
+     * Total
+     */
+    total: number;
+    stats: BlockedNumberStats;
+};
+
+/**
+ * BlockedNumberRequest
+ */
+export type BlockedNumberRequest = {
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Direction
+     */
+    direction?: 'inbound' | 'outbound' | 'both';
+    /**
+     * Reason
+     */
+    reason?: string;
+    /**
+     * Expires At
+     */
+    expires_at?: string | null;
+};
+
+/**
+ * BlockedNumberResponse
+ */
+export type BlockedNumberResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Direction
+     */
+    direction: string;
+    /**
+     * Reason
+     */
+    reason: string | null;
+    /**
+     * Source
+     */
+    source: string;
+    /**
+     * Expires At
+     */
+    expires_at: string | null;
+    /**
+     * Hits
+     */
+    hits: number;
+    /**
+     * Last Hit At
+     */
+    last_hit_at: string | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+};
+
+/**
+ * BlockedNumberStats
+ */
+export type BlockedNumberStats = {
+    /**
+     * Total
+     */
+    total: number;
+    /**
+     * Hits
+     */
+    hits: number;
+    /**
+     * Caller Requests
+     */
+    caller_requests: number;
 };
 
 /**
@@ -4134,36 +4279,6 @@ export type ImpersonateResponse = {
 };
 
 /**
- * ImportRequest
- */
-export type ImportRequest = {
-    /**
-     * Content
-     *
-     * CSV, comma or semicolon
-     */
-    content: string;
-};
-
-/**
- * ImportResult
- */
-export type ImportResult = {
-    /**
-     * Created
-     */
-    created: Array<ExtensionResponse>;
-    /**
-     * Failed
-     */
-    failed: Array<ImportRow>;
-    /**
-     * Credentials Csv
-     */
-    credentials_csv: string;
-};
-
-/**
  * ImportRow
  */
 export type ImportRow = {
@@ -7030,6 +7145,46 @@ export type RedirectResponse = {
      * Url
      */
     url: string;
+};
+
+/**
+ * RestrictionRequest
+ */
+export type RestrictionRequest = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Mode
+     */
+    mode?: 'allow' | 'deny';
+    /**
+     * Patterns
+     */
+    patterns: Array<string>;
+    /**
+     * User Ids
+     */
+    user_ids?: Array<number>;
+    /**
+     * Pin
+     */
+    pin?: string;
+    /**
+     * Description
+     */
+    description?: string;
+};
+
+/**
+ * RestrictionUsersRequest
+ */
+export type RestrictionUsersRequest = {
+    /**
+     * User Ids
+     */
+    user_ids?: Array<number>;
 };
 
 /**
@@ -11184,6 +11339,62 @@ export type WorkflowVersionSummaryResponse = {
      * Published At
      */
     published_at: string | null;
+};
+
+/**
+ * ImportRequest
+ */
+export type ApiRoutesBlockedNumbersImportRequest = {
+    /**
+     * Content
+     */
+    content: string;
+};
+
+/**
+ * ImportResult
+ */
+export type ApiRoutesBlockedNumbersImportResult = {
+    /**
+     * Imported
+     */
+    imported: number;
+    /**
+     * Errors
+     */
+    errors: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+/**
+ * ImportRequest
+ */
+export type ApiRoutesPbxImportRequest = {
+    /**
+     * Content
+     *
+     * CSV, comma or semicolon
+     */
+    content: string;
+};
+
+/**
+ * ImportResult
+ */
+export type ApiRoutesPbxImportResult = {
+    /**
+     * Created
+     */
+    created: Array<ExtensionResponse>;
+    /**
+     * Failed
+     */
+    failed: Array<ImportRow>;
+    /**
+     * Credentials Csv
+     */
+    credentials_csv: string;
 };
 
 /**
@@ -22955,7 +23166,7 @@ export type ExtensionPasswordResetApiV1PbxExtensionsPasswordResetPostResponses =
 export type ExtensionPasswordResetApiV1PbxExtensionsPasswordResetPostResponse = ExtensionPasswordResetApiV1PbxExtensionsPasswordResetPostResponses[keyof ExtensionPasswordResetApiV1PbxExtensionsPasswordResetPostResponses];
 
 export type PreviewImportApiV1PbxExtensionsImportPreviewPostData = {
-    body: ImportRequest;
+    body: ApiRoutesPbxImportRequest;
     headers?: {
         /**
          * Authorization
@@ -22996,7 +23207,7 @@ export type PreviewImportApiV1PbxExtensionsImportPreviewPostResponses = {
 export type PreviewImportApiV1PbxExtensionsImportPreviewPostResponse = PreviewImportApiV1PbxExtensionsImportPreviewPostResponses[keyof PreviewImportApiV1PbxExtensionsImportPreviewPostResponses];
 
 export type RunImportApiV1PbxExtensionsImportPostData = {
-    body: ImportRequest;
+    body: ApiRoutesPbxImportRequest;
     headers?: {
         /**
          * Authorization
@@ -23029,7 +23240,7 @@ export type RunImportApiV1PbxExtensionsImportPostResponses = {
     /**
      * Successful Response
      */
-    200: ImportResult;
+    200: ApiRoutesPbxImportResult;
 };
 
 export type RunImportApiV1PbxExtensionsImportPostResponse = RunImportApiV1PbxExtensionsImportPostResponses[keyof RunImportApiV1PbxExtensionsImportPostResponses];
@@ -24092,6 +24303,270 @@ export type TestDialApiV1PbxOutboundRoutesTestPostResponses = {
 
 export type TestDialApiV1PbxOutboundRoutesTestPostResponse = TestDialApiV1PbxOutboundRoutesTestPostResponses[keyof TestDialApiV1PbxOutboundRoutesTestPostResponses];
 
+export type ReadAiOutboundApiV1PbxAiOutboundGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/ai-outbound';
+};
+
+export type ReadAiOutboundApiV1PbxAiOutboundGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadAiOutboundApiV1PbxAiOutboundGetError = ReadAiOutboundApiV1PbxAiOutboundGetErrors[keyof ReadAiOutboundApiV1PbxAiOutboundGetErrors];
+
+export type ReadAiOutboundApiV1PbxAiOutboundGetResponses = {
+    /**
+     * Response Read Ai Outbound Api V1 Pbx Ai Outbound Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadAiOutboundApiV1PbxAiOutboundGetResponse = ReadAiOutboundApiV1PbxAiOutboundGetResponses[keyof ReadAiOutboundApiV1PbxAiOutboundGetResponses];
+
+export type SaveAiOutboundApiV1PbxAiOutboundPutData = {
+    body: AiOutboundRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/ai-outbound';
+};
+
+export type SaveAiOutboundApiV1PbxAiOutboundPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveAiOutboundApiV1PbxAiOutboundPutError = SaveAiOutboundApiV1PbxAiOutboundPutErrors[keyof SaveAiOutboundApiV1PbxAiOutboundPutErrors];
+
+export type SaveAiOutboundApiV1PbxAiOutboundPutResponses = {
+    /**
+     * Response Save Ai Outbound Api V1 Pbx Ai Outbound Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SaveAiOutboundApiV1PbxAiOutboundPutResponse = SaveAiOutboundApiV1PbxAiOutboundPutResponses[keyof SaveAiOutboundApiV1PbxAiOutboundPutResponses];
+
+export type ListRestrictionsApiV1PbxRestrictionsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/restrictions';
+};
+
+export type ListRestrictionsApiV1PbxRestrictionsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListRestrictionsApiV1PbxRestrictionsGetError = ListRestrictionsApiV1PbxRestrictionsGetErrors[keyof ListRestrictionsApiV1PbxRestrictionsGetErrors];
+
+export type ListRestrictionsApiV1PbxRestrictionsGetResponses = {
+    /**
+     * Response List Restrictions Api V1 Pbx Restrictions Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ListRestrictionsApiV1PbxRestrictionsGetResponse = ListRestrictionsApiV1PbxRestrictionsGetResponses[keyof ListRestrictionsApiV1PbxRestrictionsGetResponses];
+
+export type CreateRestrictionApiV1PbxRestrictionsPostData = {
+    body: RestrictionRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/restrictions';
+};
+
+export type CreateRestrictionApiV1PbxRestrictionsPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateRestrictionApiV1PbxRestrictionsPostError = CreateRestrictionApiV1PbxRestrictionsPostErrors[keyof CreateRestrictionApiV1PbxRestrictionsPostErrors];
+
+export type CreateRestrictionApiV1PbxRestrictionsPostResponses = {
+    /**
+     * Response Create Restriction Api V1 Pbx Restrictions Post
+     *
+     * Successful Response
+     */
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type CreateRestrictionApiV1PbxRestrictionsPostResponse = CreateRestrictionApiV1PbxRestrictionsPostResponses[keyof CreateRestrictionApiV1PbxRestrictionsPostResponses];
+
+export type SetRestrictionUsersApiV1PbxRestrictionsPermissionIdUsersPutData = {
+    body: RestrictionUsersRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Permission Id
+         */
+        permission_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/restrictions/{permission_id}/users';
+};
+
+export type SetRestrictionUsersApiV1PbxRestrictionsPermissionIdUsersPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetRestrictionUsersApiV1PbxRestrictionsPermissionIdUsersPutError = SetRestrictionUsersApiV1PbxRestrictionsPermissionIdUsersPutErrors[keyof SetRestrictionUsersApiV1PbxRestrictionsPermissionIdUsersPutErrors];
+
+export type SetRestrictionUsersApiV1PbxRestrictionsPermissionIdUsersPutResponses = {
+    /**
+     * Response Set Restriction Users Api V1 Pbx Restrictions  Permission Id  Users Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SetRestrictionUsersApiV1PbxRestrictionsPermissionIdUsersPutResponse = SetRestrictionUsersApiV1PbxRestrictionsPermissionIdUsersPutResponses[keyof SetRestrictionUsersApiV1PbxRestrictionsPermissionIdUsersPutResponses];
+
+export type DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Permission Id
+         */
+        permission_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/restrictions/{permission_id}';
+};
+
+export type DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteError = DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteErrors[keyof DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteErrors];
+
+export type DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteResponse = DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteResponses[keyof DeleteRestrictionApiV1PbxRestrictionsPermissionIdDeleteResponses];
+
 export type ResetPasswordApiV1PbxPasswordResetPostData = {
     body: PasswordResetRequest;
     path?: never;
@@ -24120,6 +24595,172 @@ export type ResetPasswordApiV1PbxPasswordResetPostResponses = {
 };
 
 export type ResetPasswordApiV1PbxPasswordResetPostResponse = ResetPasswordApiV1PbxPasswordResetPostResponses[keyof ResetPasswordApiV1PbxPasswordResetPostResponses];
+
+export type ListBlockedNumbersApiV1BlockedNumbersGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Search
+         */
+        search?: string | null;
+    };
+    url: '/api/v1/blocked-numbers';
+};
+
+export type ListBlockedNumbersApiV1BlockedNumbersGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListBlockedNumbersApiV1BlockedNumbersGetError = ListBlockedNumbersApiV1BlockedNumbersGetErrors[keyof ListBlockedNumbersApiV1BlockedNumbersGetErrors];
+
+export type ListBlockedNumbersApiV1BlockedNumbersGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: BlockedNumberList;
+};
+
+export type ListBlockedNumbersApiV1BlockedNumbersGetResponse = ListBlockedNumbersApiV1BlockedNumbersGetResponses[keyof ListBlockedNumbersApiV1BlockedNumbersGetResponses];
+
+export type AddBlockedNumberApiV1BlockedNumbersPostData = {
+    body: BlockedNumberRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/blocked-numbers';
+};
+
+export type AddBlockedNumberApiV1BlockedNumbersPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AddBlockedNumberApiV1BlockedNumbersPostError = AddBlockedNumberApiV1BlockedNumbersPostErrors[keyof AddBlockedNumberApiV1BlockedNumbersPostErrors];
+
+export type AddBlockedNumberApiV1BlockedNumbersPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: BlockedNumberResponse;
+};
+
+export type AddBlockedNumberApiV1BlockedNumbersPostResponse = AddBlockedNumberApiV1BlockedNumbersPostResponses[keyof AddBlockedNumberApiV1BlockedNumbersPostResponses];
+
+export type RemoveBlockedNumberApiV1BlockedNumbersEntryIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Entry Id
+         */
+        entry_id: number;
+    };
+    query?: never;
+    url: '/api/v1/blocked-numbers/{entry_id}';
+};
+
+export type RemoveBlockedNumberApiV1BlockedNumbersEntryIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RemoveBlockedNumberApiV1BlockedNumbersEntryIdDeleteError = RemoveBlockedNumberApiV1BlockedNumbersEntryIdDeleteErrors[keyof RemoveBlockedNumberApiV1BlockedNumbersEntryIdDeleteErrors];
+
+export type RemoveBlockedNumberApiV1BlockedNumbersEntryIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type RemoveBlockedNumberApiV1BlockedNumbersEntryIdDeleteResponse = RemoveBlockedNumberApiV1BlockedNumbersEntryIdDeleteResponses[keyof RemoveBlockedNumberApiV1BlockedNumbersEntryIdDeleteResponses];
+
+export type ImportBlockedNumbersApiV1BlockedNumbersImportPostData = {
+    body: ApiRoutesBlockedNumbersImportRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/blocked-numbers/import';
+};
+
+export type ImportBlockedNumbersApiV1BlockedNumbersImportPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ImportBlockedNumbersApiV1BlockedNumbersImportPostError = ImportBlockedNumbersApiV1BlockedNumbersImportPostErrors[keyof ImportBlockedNumbersApiV1BlockedNumbersImportPostErrors];
+
+export type ImportBlockedNumbersApiV1BlockedNumbersImportPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ApiRoutesBlockedNumbersImportResult;
+};
+
+export type ImportBlockedNumbersApiV1BlockedNumbersImportPostResponse = ImportBlockedNumbersApiV1BlockedNumbersImportPostResponses[keyof ImportBlockedNumbersApiV1BlockedNumbersImportPostResponses];
 
 export type ListQueuesApiV1ContactCenterQueuesGetData = {
     body?: never;

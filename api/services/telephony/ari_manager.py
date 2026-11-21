@@ -945,6 +945,16 @@ class ARIConnection:
                 await self._delete_channel(channel_id)
                 return
 
+            from api.services.telephony.blocklist import find_block
+
+            if await find_block(self.organization_id, caller_number, "inbound"):
+                logger.info(
+                    f"[ARI org={self.organization_id}] Inbound call on channel "
+                    f"{channel_id} from a blocked number — hanging up"
+                )
+                await self._delete_channel(channel_id)
+                return
+
             inbound_workflow_id = phone_row.inbound_workflow_id
             if not inbound_workflow_id:
                 logger.warning(

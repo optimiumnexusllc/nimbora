@@ -158,6 +158,7 @@ class FakePbx:
         self.trunk_status: dict[int, dict] = {}
         self.outcalls: list[dict] = []
         self.fail_trunk_association = False
+        self.call_permissions: list[dict] = []
         self._next = 100
 
     # ------------------------------------------------------------------
@@ -392,6 +393,7 @@ class FakePbx:
                 self.voicemails.append({"id": self._id(), **body["voicemail"]})
             self.users.append(
                 {
+                    "id": user["id"],
                     "uuid": user["uuid"],
                     "firstname": body["firstname"],
                     "lastname": body.get("lastname"),
@@ -783,6 +785,63 @@ class FakePbx:
                 )
             outcall["extensions"].append({**body, **extension})
             return httpx.Response(204)
+        # ----- call restrictions
+        if path == f"{prefix}/callpermissions" and method == "GET":
+            return httpx.Response(
+                200,
+                json={
+                    "items": self.call_permissions,
+                    "total": len(self.call_permissions),
+                },
+            )
+        if path == f"{prefix}/callpermissions" and method == "POST":
+            if not body.get("name") or body.get("mode") not in ("allow", "deny"):
+                return httpx.Response(400, json=["Input Error - field 'name'"])
+            if any(
+                not re.fullmatch(r"(?:_?\+?[0-9NXZ*#\-\[\]]+[.!]?){1,40}", e)
+                for e in body.get("extensions") or []
+            ):
+                return httpx.Response(400, json=["Input Error - field 'extensions'"])
+            permission = {
+                "id": self._id(),
+                "users": [],
+                "outcalls": [],
+                "groups": [],
+                **body,
+            }
+            self.call_permissions.append(permission)
+            return httpx.Response(201, json=permission)
+        m = re.fullmatch(rf"{prefix}/callpermissions/(\d+)", path)
+        if m:
+            permission = next(
+                (p for p in self.call_permissions if p["id"] == int(m.group(1))), None
+            )
+            if permission is None:
+                return httpx.Response(404, json=["Resource Not Found - CallPermission"])
+            if method == "GET":
+                return httpx.Response(200, json=permission)
+            self.call_permissions.remove(permission)
+            return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/users/(\d+)/callpermissions/(\d+)", path)
+        if m:
+            user = next((u for u in self.users if u.get("id") == int(m.group(1))), None)
+            permission = next(
+                (p for p in self.call_permissions if p["id"] == int(m.group(2))), None
+            )
+            if user is None or permission is None:
+                return httpx.Response(404, json=["Resource Not Found"])
+            members = permission["users"]
+            members[:] = [x for x in members if x["uuid"] != user["uuid"]]
+            if method == "PUT":
+                members.append(
+                    {
+                        "uuid": user["uuid"],
+                        "firstname": user.get("firstname"),
+                        "lastname": user.get("lastname"),
+                    }
+                )
+            return httpx.Response(204)
+
         if path == "/api/calld/1.0/trunks":
             items = [
                 {

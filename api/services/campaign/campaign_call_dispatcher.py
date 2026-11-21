@@ -99,6 +99,11 @@ class CampaignCallDispatcher:
         async def process_one(queued_run):
             async with semaphore:
                 try:
+                    # A blocked number ("ne plus m'appeler") is never dialled
+                    # and never takes a call slot.
+                    if await self._is_blocked(campaign, queued_run):
+                        processed_run_ids.add(queued_run.id)
+                        return
                     slot = await self.acquire_concurrent_slot(
                         campaign.organization_id,
                         campaign,
@@ -155,6 +160,25 @@ class CampaignCallDispatcher:
                 reason="batch_finished",
             )
         return len(processed_run_ids)
+
+    async def _is_blocked(self, campaign, queued_run) -> bool:
+        from api.services.telephony.blocklist import find_block
+
+        variables = getattr(queued_run, "context_variables", None) or {}
+        phone_number = variables.get("phone_number")
+        if not phone_number or not await find_block(
+            campaign.organization_id, phone_number, "outbound"
+        ):
+            return False
+        await self._await_cleanup(
+            db_client.update_queued_run(
+                queued_run_id=queued_run.id,
+                state="failed",
+                retry_reason="blocked",
+                processed_at=datetime.now(UTC),
+            )
+        )
+        return True
 
     @staticmethod
     async def _await_cleanup(operation):

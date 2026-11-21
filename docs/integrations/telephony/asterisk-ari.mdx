@@ -205,6 +205,20 @@ Routing through a `Local` channel is usually the right choice on FreePBX: the ca
 A destination that already names a channel technology — `PJSIP/1001@my-trunk`, `Local/1001@from-internal`, `SIP/1001` — is dialed exactly as written, whatever the template says. That is what lets one campaign row or one test call address a specific trunk without changing the configuration.
 </Note>
 
+### Number format
+
+Many trunks and dialplans do not accept international `+` numbers. **Dialled Number Format** rewrites numbers that start with `+` before the template is applied:
+
+| Format | `+33612345678` dials | `+2250707112233` dials |
+|---|---|---|
+| Unchanged (default) | `+33612345678` | `+2250707112233` |
+| 00 prefix | `0033612345678` | `002250707112233` |
+| National form, country code `33`, prefix `0` | `0612345678` | `002250707112233` |
+
+In national form, numbers from the country set in **Country Calling Code** lose that code and get the **National Prefix**: `0` in France, nothing in Côte d'Ivoire. Numbers from other countries are dialled with `00`. Extensions, SIP URIs and dial strings are never rewritten.
+
+Transfers to outside numbers are rewritten the same way. With the [enterprise PBX](/integrations/telephony/enterprise-pbx), these settings are set for you from **Lignes opérateurs → Appels sortants des agents IA**.
+
 ### Campaign contacts
 
 A campaign's `phone_number` column is a destination for this Asterisk, not necessarily a phone number. Extensions (`1001`), SIP URIs (`sip:1001@pbx.local`) and dial strings (`PJSIP/1001@my-trunk`) are all accepted alongside E.164 numbers, and each row goes through the same template above.

@@ -275,6 +275,13 @@ async def _execute_resolved_target(
     if from_number is not None:
         initial_context["caller_number"] = from_number
 
+    from api.services.telephony.blocklist import CallBlocked, assert_may_call
+
+    try:
+        await assert_may_call(target.organization_id, request.phone_number)
+    except CallBlocked as error:
+        raise HTTPException(status_code=403, detail=str(error)) from error
+
     try:
         concurrency_slot = await call_concurrency.acquire_org_slot(
             target.organization_id,

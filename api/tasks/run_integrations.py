@@ -182,6 +182,10 @@ async def _remember_customer(workflow_run, organization_id: int) -> None:
     await record_call_in_memory(workflow_run, organization_id)
     await complete_ai_callback_from_run(workflow_run, organization_id)
 
+    from api.services.telephony.blocklist import block_on_opt_out
+
+    await block_on_opt_out(workflow_run, organization_id)
+
 
 async def run_integrations_post_workflow_run(_ctx, workflow_run_id: int):
     """

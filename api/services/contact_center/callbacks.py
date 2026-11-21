@@ -304,6 +304,19 @@ async def dispatch_due_ai_callbacks(now: datetime | None = None) -> int:
         )
         if claimed is None:
             continue
+        from api.services.telephony.blocklist import find_block
+
+        if await find_block(claimed.organization_id, claimed.phone, "outbound"):
+            await db_client.update_callback_request(
+                claimed.organization_id,
+                claimed.id,
+                {
+                    "status": "failed",
+                    "outcome": "Numéro bloqué : le client ne souhaite plus être appelé",
+                    "completed_at": now,
+                },
+            )
+            continue
         try:
             run_id = await _place_ai_callback(claimed)
             await db_client.update_callback_request(
@@ -402,6 +415,12 @@ async def dial_callback_for_agent(callback, agent) -> str:
 
     if not ASTERISK_ARI_PASSWORD:
         raise CallbackError("The platform telephony (Asterisk) is not configured")
+    from api.services.telephony.blocklist import find_block
+
+    if await find_block(callback.organization_id, callback.phone, "outbound"):
+        raise CallbackError(
+            "Ce numéro est bloqué : le client ne souhaite plus être appelé"
+        )
     label = (callback.customer_name or "Rappel").replace('"', "")[:40]
     params = {
         "endpoint": f"PJSIP/{agent.sip_username}",

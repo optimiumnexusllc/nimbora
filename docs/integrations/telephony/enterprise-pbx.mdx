@@ -40,7 +40,7 @@ The install script:
 - generates every secret, so the installer's public default passwords are never used;
 - leaves out the engine's own web UI;
 - firewalls ARI (port 5039) to NIMBORA only and AMI (port 5038) to the server itself, over IPv4 and IPv6;
-- creates the service account. Its policy grants only the 73 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
+- creates the service account. Its policy grants only the 79 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
 
 See `deploy/pbx/README.md` for every option and what the white label changes.
 
@@ -189,6 +189,45 @@ Calls from the operator arrive in the PBX's incoming-call context, so the number
 
 <Frame caption="Operator lines with their registration state, and outbound routes with failover">
   <img src="/images/screenshots/pbx-lines.webp" alt="Operator lines table and outbound routes with their patterns and presented numbers" />
+</Frame>
+
+### AI agents calling out through the PBX
+
+**Lignes opérateurs → Appels sortants des agents IA** sends AI calls through your PBX's lines and under your number. That covers campaigns, AI callbacks and test calls. Choose how the calls leave:
+
+- **Par les routes sortantes**: calls go through your outbound routes, exactly like a call dialled from an extension. The routes' patterns, presented numbers and failover between lines all apply. The ARI dial string becomes `Local/{number}@<outcall context>`.
+- **Par une ligne précise**: calls go straight to one operator line, bypassing the routes. The dial string becomes `PJSIP/{number}@<line endpoint>`.
+
+AI calls use international numbers (`+2250707112233`). **Format du numéro composé** rewrites them for your operator:
+
+| Format | `+2250707112233` becomes | `+33612345678` becomes |
+|---|---|---|
+| Unchanged | `+2250707112233` | `+33612345678` |
+| `00` prefix | `002250707112233` | `0033612345678` |
+| National (country code 225, empty prefix) | `0707112233` | `0033612345678` |
+
+In national format, numbers from the country you set lose their country code and get the national prefix: empty for Côte d'Ivoire, `0` for France. Numbers from other countries are dialled with `00`. Transfers to outside numbers are rewritten the same way.
+
+**Numéro présenté** becomes the ARI configuration's default caller ID. The card shows, before you save, exactly what an AI call will dial.
+
+The same settings appear on the ARI configuration under **Téléphonie**, so editing it there keeps them.
+
+### Call restrictions
+
+**Lignes opérateurs → Restrictions d'appel** controls what each extension may dial. Common restrictions are one click away:
+
+- no international calls (`_00.`, `_+X.`);
+- no premium-rate numbers (`_08.`);
+- internal calls only.
+
+A restriction either **forbids** its patterns, or **allows only** them. An optional override PIN lets an extension make a forbidden call by typing the code. **Postes** changes which extensions the restriction applies to. The PIN is never sent back by the API.
+
+### Blocked numbers
+
+The organization's [blocked numbers](/configurations/blocked-numbers) apply to every call AI agents answer or place through the PBX: blocked callers are hung up before the agent answers, and opted-out people are never dialled.
+
+<Frame caption="AI outbound calls through the PBX, and call restrictions per extension">
+  <img src="/images/screenshots/pbx-ai-outbound.webp" alt="Settings for AI outbound calls with the dialled number preview, and the list of call restrictions" />
 </Frame>
 
 ### How AI calls flow
