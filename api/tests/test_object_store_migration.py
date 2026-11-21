@@ -138,7 +138,11 @@ async def test_s3_links_use_the_public_address_and_work(stores, s3_server):
     assert urlparse(upload).netloc == s3_server
 
 
-async def test_without_public_address_links_keep_the_endpoint():
+async def test_without_public_address_links_keep_the_endpoint(monkeypatch):
+    # Signing needs credentials; without AWS_* in the environment (CI, a
+    # developer's shell) boto raises NoCredentialsError before building the URL.
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "test")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "test")
     fs = S3FileSystem(
         bucket_name="b",
         endpoint_url="https://s3.fr-par.scw.cloud",

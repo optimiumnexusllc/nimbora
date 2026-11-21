@@ -197,6 +197,7 @@ if [[ "$FIREWALL_ONLY" == 1 ]]; then
   command -v nft >/dev/null || { apt-get update -q; DEBIAN_FRONTEND=noninteractive apt-get install -yq nftables; }
   apply_firewall
   apply_fail2ban
+  apply_monitoring   # --metrics-from given later: the node exporter too
   nft list table inet nimbora_pbx
   fail2ban-client status nimbora-pbx-auth
   exit 0

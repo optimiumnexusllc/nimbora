@@ -256,6 +256,14 @@ services:
       BRAND_DOMAIN: "${BRAND_DOMAIN:-}"
       BRAND_SIP_USER_AGENT: "${BRAND_SIP_USER_AGENT:-}"
 
+      # Multi-tenant SaaS operator mode (api/constants.py): plans, trials, the
+      # operator console and usage reports. Off = single-operator OSS install.
+      SAAS_MODE: "${SAAS_MODE:-false}"
+      SAAS_DEFAULT_PLAN: "${SAAS_DEFAULT_PLAN:-starter}"
+      SAAS_TRIAL_DAYS: "${SAAS_TRIAL_DAYS:-14}"
+      SAAS_GRACE_DAYS: "${SAAS_GRACE_DAYS:-3}"
+      SAAS_PLATFORM_NAME: "${SAAS_PLATFORM_NAME:-NIMBORA}"
+
       # Shared PBX of the operator (api/services/pbx/provisioning.py): one tenant
       # per company, created with the provisioning account of deploy/pbx --operator.
       PBX_PROVISIONING_URL: "${PBX_PROVISIONING_URL:-}"

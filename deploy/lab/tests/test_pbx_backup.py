@@ -200,3 +200,15 @@ def test_failed_backup_records_its_failure(pbx):
     metric = (pbx.textfile / "nimbora_pbx_backup.prom").read_text()
     assert "nimbora_pbx_backup_last_failure_timestamp_seconds" in metric
     assert "last_success" not in metric
+
+
+def test_backup_covers_the_engine_state_seen_on_a_real_26_11():
+    """Validated on the lab engine: service keys, DTLS keys, astdb and recordings
+    directories exist and are needed to restore on a new server."""
+    script = (KIT / "scripts/backup.sh").read_text() if "KIT" in globals() else (Path(__file__).resolve().parents[2] / "pbx/scripts/backup.sh").read_text()
+    for path in (
+        "var/lib/wazo-auth-keys", "var/lib/asterisk/keys", "var/lib/asterisk/astdb.sqlite3",
+        "var/lib/asterisk/sounds", "var/spool/asterisk/recording", "var/lib/wazo-call-logd",
+        "var/lib/wazo-agentd", "var/lib/wazo-chatd",
+    ):
+        assert path in script, path

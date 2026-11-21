@@ -69,3 +69,11 @@ def test_compose_passes_every_shared_pbx_variable_to_the_api(compose: Path):
     env = api_environment(compose)
     missing = sorted(n for n in names if n not in env)
     assert not missing, missing
+
+
+def test_root_compose_passes_the_saas_mode_switches_to_the_api():
+    """SAAS_MODE in .env reached nobody: the operator usage report answered 404 on the lab."""
+    env = api_environment(REPO / "docker-compose.yaml")
+    for name in ("SAAS_MODE", "SAAS_DEFAULT_PLAN", "SAAS_TRIAL_DAYS", "SAAS_GRACE_DAYS", "SAAS_PLATFORM_NAME"):
+        assert name in env, name
+    assert env["SAAS_MODE"] == "${SAAS_MODE:-false}"

@@ -40,7 +40,16 @@ PATHS=(
   var/lib/wazo-provd
   var/spool/asterisk/voicemail
   var/spool/asterisk/monitor  # call recordings
+  var/spool/asterisk/recording  # call recordings (26.x layout)
   var/lib/asterisk/moh
+  # Seen on a real 26.11 engine: without these a restore on a new server
+  # starts an engine whose services cannot log in or whose phones lose DTLS.
+  var/lib/wazo-auth-keys     # internal service credentials (match the database)
+  var/lib/asterisk/keys      # DTLS certificate of WebRTC lines
+  var/lib/asterisk/astdb.sqlite3  # Asterisk DB: DND, forwards, device state
+  var/lib/asterisk/sounds    # custom sounds
+  var/lib/wazo-call-logd var/lib/wazo-webhookd var/lib/wazo-plugind
+  var/lib/wazo-agentd var/lib/wazo-chatd var/lib/wazo-dird
 )
 
 log() { printf '[%s] %s\n' "$(date -u +%FT%TZ)" "$*"; }

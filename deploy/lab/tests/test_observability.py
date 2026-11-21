@@ -61,3 +61,11 @@ def test_prometheus_scrapes_business_metrics_once_and_loads_rules():
     mounted = " ".join(compose["services"]["prometheus"]["volumes"])
     for name in ("alerts.yml", "business-targets.json", "node-targets.json", "targets.json"):
         assert name in mounted
+
+
+def test_devops_secret_instructions_are_readable_by_prometheus():
+    """Seen on the lab: a 600 root-owned secret file is unreadable by Prometheus (nobody)."""
+    readme = (OBS / "README.md").read_text() if "OBS" in globals() else (Path(__file__).resolve().parents[2] / "observability" / "README.md").read_text()
+    compose = (Path(__file__).resolve().parents[2] / "observability" / "docker-compose.yml").read_text()
+    assert "chmod 644 devops_secret" in readme and "chmod 600 devops_secret" not in readme
+    assert "chmod 644 devops_secret" in compose

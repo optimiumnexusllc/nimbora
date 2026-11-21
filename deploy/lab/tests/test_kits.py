@@ -285,3 +285,11 @@ def test_pbx_install_schedules_the_nightly_backup():
     # The settings file is written once, never overwritten (it may hold a key path).
     assert 'if [[ ! -f "$STATE_DIR/backup.env" ]]; then' in script
     assert "apply_backup\n" in script and "apply_monitoring\n" in script
+
+
+def test_pbx_firewall_only_also_installs_the_node_exporter():
+    """--metrics-from added after the install must install the exporter, not only open 9100."""
+    script = (DEPLOY / "pbx" / "install.sh").read_text()
+    block = script[script.index('if [[ "$FIREWALL_ONLY" == 1 ]]; then'):]
+    block = block[: block.index("exit 0")]
+    assert "apply_monitoring" in block
