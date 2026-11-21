@@ -289,6 +289,23 @@ README du kit, page PBX de la console), images API et UI construites depuis la b
 | Isolation côté moteur : jeton du compte de service d'« Entreprise test » sur le tenant `org2` → **401**, sur son propre tenant → 200 (ses 2 postes seulement) ; le compte d'approvisionnement voit les 4 tenants | ✅ |
 | Création du poste 1001 dans A puis dans B | ❌ 502 « 409 Conflict … /auth/0.1/users » → 🐛 n° 9 |
 | Création d'un numéro public `+2250700000002` dans A | ❌ 502 « exten: String does not match expected pattern » → 🐛 n° 10 (bogue de `main`, pas de la PR) ; sans `+` : ✅ |
+| Après correctifs (image API reconstruite depuis la branche fusionnée) : poste 1001 dans A **et** dans B, identifiants `org2-poste1001` / `org3-poste1001` ; « Entreprise test » garde `poste1001` et `poste1002` ; chaque tenant ne contient que ses postes (`confd/users` par tenant) | ✅ |
+| Inventaire de A : son seul poste 1001 et son numéro ; inventaire de B : idem ; aucun ne voit l'autre | ✅ |
+| Numéro public `+2250700000003` dans B après le correctif n° 10 : créé (`2250700000003` sur le moteur), visible seulement dans B | ✅ |
+| Kit lab : `--shared-pbx` (moteur `--operator`, compte d'approvisionnement, `PBX_PROVISIONING_*` dans le `.env`) rejoué sur le laboratoire avec `--only nimbora` | ✅ |
+| Tests : branche 91 tests PBX/provisioning/SaaS, `main` 89 + kits 22 et 24 ; `test_stream_pushes_changes_on_pbx_events` échoue dans la suite complète et passe seul (connu, antérieur à la PR) | ✅ |
+
+### Reste à valider pour la PR (🧪)
+
+- ACL exactes du compte d'approvisionnement : vérifiées par l'usage réel (tenants, contextes,
+  politiques, comptes, inclusion de contextes) ; `auth.users.*.policies.*.create` a fonctionné.
+- Agents IA de deux entreprises sur le même Asterisk (deux applications Stasis) : non
+  vérifiable sans clé de fournisseur IA.
+- Appel humain réel entre deux postes de tenants différents (doit échouer) : à faire lors du
+  test humain.
+- Les contextes entrants créés par le moteur pour `org2`/`org3` n'ont **aucune plage**
+  (`incall_ranges: []`) : la création de numéros fonctionne quand même sur 26.11, à surveiller.
+
 
 ### 🐛 n° 8 — `PBX_PROVISIONING_*` (et `BRAND_*`) n'atteignaient pas le conteneur API
 
