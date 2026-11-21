@@ -69,7 +69,7 @@ Le paquet `.deb` (≈ 2 Mo, dépend de `libwebkit2gtk-4.1-0` et `libgtk-3-0`) a 
 lancé sur Ubuntu. Son raccourci (`nimbora-softphone.desktop`) déclare le schéma
 `nimbora-softphone://` avec `Exec=… %u`, pour qu'un lien d'activation ouvre l'application.
 
-Une version publiée se fait en poussant un tag `softphone-vX.Y.Z` : la CI crée un brouillon de
+Une version publiée se fait en poussant un tag `softphone-vX.Y.Z` (ou en créant la release `softphone-vX.Y.Z` sur GitHub) : la CI crée un brouillon de
 release avec les paquets de bureau, l'APK Android et la version iOS de test.
 
 ## Limites actuelles
@@ -79,3 +79,8 @@ release avec les paquets de bureau, l'APK Android et la version iOS de test.
   l'application est ouverte ; sur ordinateur, elle peut rester réduite.
 - Une seule communication à la fois (le second appelant entend « occupé ») ; le transfert est un
   transfert direct (sans consultation).
+
+## Versions
+
+Les nouveautés de chaque version sont dans [`CHANGELOG.md`](CHANGELOG.md). Version actuelle : **1.1.0**
+(fiche de passation de l'agent IA à la sonnerie).

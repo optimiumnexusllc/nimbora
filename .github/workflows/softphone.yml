@@ -107,7 +107,7 @@ jobs:
           args: ${{ matrix.args }}
           tagName: ${{ startsWith(github.ref, 'refs/tags/softphone-v') && github.ref_name || '' }}
           releaseName: "NIMBORA Softphone __VERSION__"
-          releaseBody: "Windows (.msi, .exe), macOS (.dmg), Linux (.deb, .rpm, .AppImage)."
+          releaseBody: "Installeurs Windows (.msi, .exe), macOS (.dmg) et Linux (.deb, .rpm, .AppImage). Android (.apk) et iOS : artefacts du workflow. Nouveautés : softphone/CHANGELOG.md."
           releaseDraft: true
       - uses: actions/upload-artifact@v4
         with:
