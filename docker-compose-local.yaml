@@ -42,7 +42,7 @@ services:
     # MinIO community build of the last open-source release (2025-04-22), by
     # Bitnami: MinIO removed its own images from quay.io and Docker Hub. Runs
     # as root to keep the official /data layout; see docker-compose.yaml.
-    image: ${MINIO_IMAGE:-bitnamilegacy/minio:2025.4.22}
+    image: ${MINIO_IMAGE:-bitnamilegacy/minio:2025.4.22@sha256:50cec18ac4184af4671a78aedd5554942c8ae105d51a465fa82037949046da01}
     user: "0"
     command: minio server /data --console-address ":9001"
     environment:

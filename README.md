@@ -489,6 +489,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | 🔜 | PBX partagé de l'opérateur (multi-tenant) ou PBX dédié par client, selon l'offre |
 | 🔜 | Facturation des minutes humaines (journal des appels) avec les minutes IA |
 | 🔜 | Haute disponibilité, sauvegarde et restauration du PBX, métriques Prometheus |
+| 🔜 | **Stockage objet durable** : MinIO a retiré ses images publiques (quay.io et Docker Hub répondent 401 / accès refusé, constaté le 21 novembre 2026) ; la plateforme utilise le build Bitnami de la dernière version libre (`bitnamilegacy/minio:2025.4.22`, dépôt figé, plus mis à jour, épinglé par digest). À remplacer par une image MinIO construite par nos soins depuis les sources (AGPL-3.0) ou par Garage / SeaweedFS |
 
 **5.5 Marque blanche totale du PBX**
 
