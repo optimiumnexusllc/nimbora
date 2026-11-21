@@ -165,7 +165,11 @@ apply_monitoring() {
   echo "==> Métriques Prometheus (node exporter, port 9100)"
   dpkg -s prometheus-node-exporter >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -yq prometheus-node-exporter
   install -d -m 755 /var/lib/prometheus/node-exporter
-  systemctl enable --now prometheus-node-exporter >/dev/null
+  # Debian starts the exporter with ARGS="" : no textfile directory, so the
+  # backup's freshness metric was never exposed (seen on the lab). Set it.
+  printf 'ARGS="--collector.textfile.directory=/var/lib/prometheus/node-exporter"\n' > /etc/default/prometheus-node-exporter
+  systemctl enable prometheus-node-exporter >/dev/null 2>&1
+  systemctl restart prometheus-node-exporter
 }
 
 # Nightly backup of databases, configuration, voicemail and recordings.

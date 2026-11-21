@@ -306,3 +306,11 @@ def test_lab_kit_observability_phase():
     assert 'chmod 644 "$OBS/devops_secret"' in source                  # readable by Prometheus (nobody)
     assert "gw_priority: 1" in source                                  # reach the PBX via the stack bridge
     assert "--web.listen-address=%s:9100" in source                    # host exporter never public
+
+
+def test_pbx_node_exporter_reads_the_backup_textfile_directory():
+    """Debian's exporter starts with ARGS="": without the textfile directory the
+    backup freshness metric never reaches Prometheus (seen on the lab)."""
+    script = (DEPLOY / "pbx" / "install.sh").read_text()
+    assert "--collector.textfile.directory=/var/lib/prometheus/node-exporter" in script
+    assert "/etc/default/prometheus-node-exporter" in script
