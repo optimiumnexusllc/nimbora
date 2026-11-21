@@ -169,6 +169,11 @@ async def test_provisioning_creates_tenant_contexts_and_service_account(
     contexts = [c for c in fake.contexts if c.get("tenant_uuid") == tenant["uuid"]]
     assert sorted(c["type"] for c in contexts) == ["incall", "internal", "outcall"]
     internal = next(c for c in contexts if c["type"] == "internal")
+    assert internal["name"] == f"{slug}-internal"
+    incall_ranges = next(c for c in contexts if c["type"] == "incall")["incall_ranges"]
+    assert all(
+        len(r["start"]) == len(r["end"]) == r["did_length"] for r in incall_ranges
+    )
     outcall = next(c for c in contexts if c["type"] == "outcall")
     assert internal["user_ranges"] == [{"start": "1000", "end": "1999"}]
     assert internal["contexts"] == [{"id": outcall["id"]}]
@@ -455,3 +460,22 @@ async def test_contact_center_agents_count_pbx_extensions(db_session, monkeypatc
     client_module._TOKENS.clear()
     await limits.enforce_human_seat_limit(org.id)
     assert seen["max_human_seats"] == 0
+
+
+def test_platform_and_kit_create_the_same_contexts():
+    """deploy/pbx/scripts/ensure_tenant_contexts.py was validated on a real engine."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location(
+        "ensure_tenant_contexts", KIT / "scripts/ensure_tenant_contexts.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    kit = {c["type"]: c for c in module.desired_contexts("org7")}
+    ours = provisioning.desired_contexts("org7", "Ivoire Immo")
+    assert set(kit) == set(ours)
+    for kind, context in ours.items():
+        assert context["name"] == kit[kind]["name"]
+        assert context.get("incall_ranges") == kit[kind].get("incall_ranges")
+        assert context["enabled"] is True
+    assert ours["internal"]["user_ranges"] == kit["internal"]["user_ranges"]

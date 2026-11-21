@@ -215,15 +215,33 @@ async def _ensure_tenant(client: PbxClient, slug: str, name: str) -> dict:
     return await client.create_tenant(name=f"{name} (#{slug})"[:128], slug=slug)
 
 
-async def _ensure_contexts(client: PbxClient, name: str) -> dict[str, dict]:
-    existing: dict[str, dict] = {}
-    for context in await client.contexts():
-        existing.setdefault(context.get("type"), context)
-    wanted = {
-        "outcall": {"label": f"{name} — sortants", "type": "outcall"},
-        "incall": {"label": f"{name} — entrants", "type": "incall"},
+def desired_contexts(slug: str, name: str) -> dict[str, dict]:
+    """The tenant's three contexts, as validated on a real engine (26.11).
+
+    Same shapes as deploy/pbx/scripts/ensure_tenant_contexts.py: explicit
+    names (unique across tenants), and one inbound range per number length
+    because the engine wants start and end of the same length.
+    """
+    return {
+        "outcall": {
+            "name": f"{slug}-outcall",
+            "label": f"{name} — appels sortants"[:128],
+            "type": "outcall",
+            "enabled": True,
+        },
+        "incall": {
+            "name": f"{slug}-incall",
+            "label": f"{name} — appels entrants"[:128],
+            "type": "incall",
+            "incall_ranges": [
+                {"start": "0" * n, "end": "9" * n, "did_length": n}
+                for n in range(4, 16)
+            ],
+            "enabled": True,
+        },
         "internal": {
-            "label": f"{name} — interne",
+            "name": f"{slug}-internal",
+            "label": f"{name} — postes, files et groupes"[:128],
             "type": "internal",
             "user_ranges": _range(constants.PBX_PROVISIONING_USER_RANGE),
             "group_ranges": _range(constants.PBX_PROVISIONING_GROUP_RANGE),
@@ -231,16 +249,23 @@ async def _ensure_contexts(client: PbxClient, name: str) -> dict[str, dict]:
             "conference_room_ranges": _range(
                 constants.PBX_PROVISIONING_CONFERENCE_RANGE
             ),
+            "enabled": True,
         },
     }
-    for kind, body in wanted.items():
+
+
+async def _ensure_contexts(client: PbxClient, slug: str, name: str) -> dict[str, dict]:
+    existing: dict[str, dict] = {}
+    for context in await client.contexts():
+        existing.setdefault(context.get("type"), context)
+    for kind, body in desired_contexts(slug, name).items():
         if kind not in existing:
-            body["label"] = body["label"][:128]
             existing[kind] = await client.create_context(body)
-    # Extensions of the company may call out: internal includes outcall.
-    await client.set_context_includes(
-        existing["internal"]["id"], [existing["outcall"]["id"]]
-    )
+    # Extensions may dial out: internal includes outcall (keeping other includes).
+    internal, outcall = existing["internal"], existing["outcall"]
+    includes = [c["id"] for c in internal.get("contexts") or []]
+    if outcall["id"] not in includes:
+        await client.set_context_includes(internal["id"], [*includes, outcall["id"]])
     return existing
 
 
@@ -332,7 +357,7 @@ async def provision_organization(
         tenant = await _ensure_tenant(client, slug, name)
     in_tenant = _operator_settings(tenant["uuid"])
     async with PbxClient(in_tenant, **client_kwargs) as client:
-        contexts = await _ensure_contexts(client, name)
+        contexts = await _ensure_contexts(client, slug, name)
         username, password = await _ensure_service_account(
             client, service_username(organization_id)
         )

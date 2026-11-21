@@ -87,7 +87,7 @@ An operator can run **one PBX for all its client companies** instead of one serv
     | `PBX_PROVISIONING_USERNAME` / `PBX_PROVISIONING_PASSWORD` | the provisioning account |
     | `PBX_PROVISIONING_ARI_ENDPOINT`, `_ARI_USER`, `_ARI_PASSWORD`, `_ARI_WS_CLIENT` | the PBX's ARI, for AI agents |
     | `PBX_PROVISIONING_ON_SIGNUP` | `true` to create the tenant as soon as a company signs up |
-    | `PBX_PROVISIONING_USER_RANGE` (and `_GROUP_`, `_QUEUE_`, `_CONFERENCE_RANGE`) | internal numbering of each tenant (default 1000-1999, 2000-2099, 3000-3099, 4000-4099) |
+    | `PBX_PROVISIONING_USER_RANGE` (and `_GROUP_`, `_QUEUE_`, `_CONFERENCE_RANGE`) | internal numbering of each tenant (default 1000-1999, 2000-2999, 3000-3999, 4000-4999, as the install kit) |
   </Step>
   <Step title="The company activates its telephony">
     In **Téléphonie d'entreprise**, **Activer la téléphonie** creates the tenant (`org<id>`), its internal, inbound and outbound contexts (internal calls can dial out), a service account restricted to the tenant with the integration policy, the ARI configuration of its AI agents (its own Stasis application on the shared Asterisk) and the events webhook. The connection is then **managed by the platform**: the company cannot see or change it. The operator can also do it from the super-admin API (`POST /api/v1/saas/admin/tenants/{id}/pbx/provision`) and remove a tenant (`DELETE …/pbx`, irreversible).

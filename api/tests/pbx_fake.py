@@ -424,9 +424,9 @@ class FakePbx:
             )
         if path == f"{prefix}/contexts" and method == "POST":
             context = {
+                "name": f"ctx-{body['type']}-{self._next}",
                 **body,
                 "id": self._id(),
-                "name": f"ctx-{body['type']}-{self._next}",
                 "tenant_uuid": tenant_header,
             }
             self.contexts.append(context)
