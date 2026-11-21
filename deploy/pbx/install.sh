@@ -280,6 +280,10 @@ python3 "$KIT_DIR/scripts/create_service_account.py" --url https://localhost --i
   --root-password "$ROOT_PASSWORD" --tenant-name "$COMPANY" --password "$SERVICE_PASSWORD" \
   | tee "$STATE_DIR/service-account.json"
 
+echo "==> Contextes du tenant (postes, numéros, appels sortants)"
+python3 "$KIT_DIR/scripts/ensure_tenant_contexts.py" --url https://localhost --insecure \
+  --root-password "$ROOT_PASSWORD" --tenant-name "$COMPANY"
+
 PUBLIC_IP="$(hostname -I | awk '{print $1}')"
 cat <<EOF
 

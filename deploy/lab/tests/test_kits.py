@@ -228,3 +228,21 @@ def test_fail2ban_jail_targets_wazo_auth_and_spares_the_platform():
     source = (DEPLOY / "pbx" / "install.sh").read_text()
     assert "__NIMBORA_IPS__#${platform_ips}" in source
     assert 'getent ahostsv4 "$DOMAIN"' in source        # the platform's public address too
+
+
+def test_tenant_contexts_cover_what_the_platform_reads_by_type():
+    """A tenant made with wazo-auth-cli has no context; the platform needs one of each kind."""
+    import importlib.util
+
+    spec = importlib.util.spec_from_file_location("ensure_tenant_contexts", DEPLOY / "pbx" / "scripts" / "ensure_tenant_contexts.py")
+    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    contexts = module.desired_contexts(module.slugify("Entreprise test"))
+    assert [c["type"] for c in contexts] == ["internal", "incall", "outcall"]
+    assert [c["name"] for c in contexts] == ["entreprise-test-internal", "entreprise-test-incall", "entreprise-test-outcall"]
+    internal = contexts[0]
+    assert internal["user_ranges"] == [{"start": "1000", "end": "1999"}]      # extensions 1001, 1002…
+    assert internal["queue_ranges"] == [{"start": "3000", "end": "3999"}]
+    assert all(c["enabled"] for c in contexts)
+    assert module.slugify("  OPTIMIUM NEXUS LLC ") == "optimium-nexus-llc"
+    source = (DEPLOY / "pbx" / "install.sh").read_text()
+    assert "ensure_tenant_contexts.py" in source and source.index("create_service_account.py") < source.index("ensure_tenant_contexts.py")

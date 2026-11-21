@@ -85,7 +85,14 @@ Le script :
    bannissent l'adresse une heure (443, 5060, 5061). Les adresses de NIMBORA (privée et
    publique) ne sont jamais bannies ;
 5. crée le **compte de service** `nimbora-integration` dans le tenant de l'entreprise ;
-6. affiche les valeurs à saisir dans NIMBORA.
+6. donne au tenant ses **contextes** (`scripts/ensure_tenant_contexts.py`) : un tenant créé
+   par l'installateur n'en a aucun, et sans contexte interne, entrant et sortant la
+   plateforme ne peut créer ni poste, ni numéro, ni route sortante ;
+7. affiche les valeurs à saisir dans NIMBORA.
+
+La marque SIP (`User-Agent`, `Server`) est posée par le kit : le compte de service d'une
+entreprise ne peut pas modifier les réglages globaux du moteur (réservés au tenant
+maître), et le bouton « Appliquer la marque » de NIMBORA le signale au lieu d'échouer.
 
 ## 3. Relier à NIMBORA
 
