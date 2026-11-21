@@ -175,6 +175,33 @@ script (`test_pbx_firewall_*`), listes de sources valides et refusées.
 | Depuis l'hôte : 443 ouvert, ARI 5039 → 401 (IP NIMBORA autorisée) | ✅ |
 | Depuis `nimbora_api` : 443 → 200, ARI → 401, 5672 → fermé | ✅ |
 
+## Rapport d'étape 4 — Traefik et certificats (21 novembre 2026)
+
+`install.sh --only traefik` : fichier `nimbora-lab.yaml` déposé dans le dossier dynamique de
+Traefik (les quatre fichiers Coolify sont inchangés), rechargé à chaud, certificats Let's
+Encrypt obtenus en moins d'une minute par le défi HTTP.
+
+| Vérification | Résultat |
+|---|---|
+| `app.optimiumnexus.com` : certificat Let's Encrypt (CN exact, valide 90 jours), HTTP → 301 HTTPS | ✅ |
+| `pbx.optimiumnexus.com` : certificat Let's Encrypt, HTTP → 301 HTTPS | ✅ |
+| `https://app…/api/v1/health` → `{"status":"ok","version":"1.51.0"}` ; `/` → page de connexion de la console | ✅ |
+| `https://pbx…/` → page d'accueil « NIMBORA Voice » du moteur (TLS terminé par Traefik, nginx du moteur en amont avec son certificat auto-signé) | ✅ |
+| `https://pbx…/api/auth/0.1/status` → 200 (API du moteur à travers Traefik) | ✅ |
+| `wss://pbx…/api/asterisk/ws` : `Upgrade: websocket` + `Sec-WebSocket-Protocol: sip` en HTTP/1.1 → `101 Switching Protocols` (en HTTP/2, 426 : les clients SIP WebSocket négocient en HTTP/1.1) | ✅ |
+| Routes existantes `coolify.<domaine>` et `bqeen.<domaine>` toujours servies, aucun message d'erreur Traefik | ✅ |
+| Mémoire disponible après l'étape | 6,9 Go |
+
+Commandes :
+
+```
+openssl s_client -servername pbx.optimiumnexus.com -connect <IP>:443 | openssl x509 -noout -issuer -dates
+curl --http1.1 -i -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSocket-Version: 13" \
+  -H "Sec-WebSocket-Key: dGhlIHNhbXBsZSBub25jZQ==" -H "Sec-WebSocket-Protocol: sip" https://pbx.optimiumnexus.com/api/asterisk/ws
+```
+
+**Arrêt pour rapport** avant la liaison PBX ↔ NIMBORA.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
