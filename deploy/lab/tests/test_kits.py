@@ -246,3 +246,13 @@ def test_tenant_contexts_cover_what_the_platform_reads_by_type():
     assert module.slugify("  OPTIMIUM NEXUS LLC ") == "optimium-nexus-llc"
     source = (DEPLOY / "pbx" / "install.sh").read_text()
     assert "ensure_tenant_contexts.py" in source and source.index("create_service_account.py") < source.index("ensure_tenant_contexts.py")
+
+
+def test_lab_secrets_file_default_survives_a_partial_run():
+    """`--only nimbora` re-reads lab.env, which stores SECRETS_FILE= (empty): the
+    default path must be applied again or the warning names an empty file."""
+    source = (DEPLOY / "lab" / "install.sh").read_text()
+    default_line = '[[ -n "$SECRETS_FILE" ]] || SECRETS_FILE="$DEFAULT_SECRETS_FILE"'
+    assert source.count(default_line) == 2
+    after_reload = source.index("Lancez d'abord la phase preflight")
+    assert source.index(default_line, after_reload) > after_reload
