@@ -75,3 +75,31 @@ def test_lab_firewall_rules_are_tagged_and_flushable():
     assert "flush_tagged nat PREROUTING" in source
     # First run: grep finds nothing and must not abort the script (pipefail).
     assert '|| true; }' in source
+
+
+REPO = DEPLOY.parent
+COMPOSE_FILES = [
+    REPO / "docker-compose.yaml",
+    REPO / "docker-compose-local.yaml",
+    DEPLOY / "enterprise" / "docker-compose.yml",
+]
+
+
+@pytest.mark.parametrize("compose", COMPOSE_FILES, ids=lambda p: str(p.relative_to(REPO)))
+def test_minio_image_is_pullable_and_health_check_has_its_alias(compose: Path):
+    """MinIO removed its images from quay.io and Docker Hub (401 / pull denied).
+
+    The default must be a build that still exists, started with an explicit
+    `minio` binary (Bitnami's entrypoint executes the command as given), and
+    `mc ready local` needs the `local` alias the official image used to define.
+    """
+    yaml = pytest.importorskip("yaml")
+    doc = yaml.safe_load(compose.read_text())
+    minio = doc["services"]["minio"]
+    default_image = minio["image"].split(":-")[-1].rstrip("}")
+    assert not default_image.startswith(("quay.io/minio/", "minio/", "docker.io/minio/")), default_image
+    assert str(minio["command"]).startswith("minio server /data")
+    assert minio["healthcheck"]["test"] == ["CMD", "mc", "ready", "local"]
+    assert "MC_HOST_local" in minio["environment"]
+    assert minio.get("user") == "0"
+

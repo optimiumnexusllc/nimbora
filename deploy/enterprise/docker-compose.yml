@@ -49,13 +49,18 @@ services:
     networks: [internal]
 
   minio:
-    image: ${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z}
+    # Bitnami's build of the last open-source MinIO release: MinIO removed its
+    # own images from quay.io and Docker Hub. Runs as root to keep the /data
+    # layout; see the root docker-compose.yaml.
+    image: ${MINIO_IMAGE:-bitnamilegacy/minio:2025.4.22}
     restart: unless-stopped
-    command: server /data --console-address ":9001"
+    user: "0"
+    command: minio server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: "${MINIO_ROOT_USER:?}"
       MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:?}"
       MINIO_API_CORS_ALLOW_ORIGIN: "${PUBLIC_BASE_URL:?}"
+      MC_HOST_local: "http://${MINIO_ROOT_USER:?}:${MINIO_ROOT_PASSWORD:?}@localhost:9000"
     volumes:
       - minio_data:/data
     healthcheck:

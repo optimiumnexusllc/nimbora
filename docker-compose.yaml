@@ -57,15 +57,22 @@ services:
       - app-network
 
   minio:
-    # Official MinIO community image (last open-source release);
-    # MinIO no longer publishes images.
-    image: ${MINIO_IMAGE:-quay.io/minio/minio:RELEASE.2025-04-22T22-12-26Z}
+    # MinIO community build of the last open-source release (2025-04-22). MinIO
+    # removed its own images from quay.io and Docker Hub, so this is Bitnami's
+    # build of that same release: same `minio` and `mc` binaries. Bitnami lays
+    # it out for uid 1001 under /bitnami; running it as root keeps the official
+    # layout (/data) and existing volumes. Override with MINIO_IMAGE if needed.
+    image: ${MINIO_IMAGE:-bitnamilegacy/minio:2025.4.22}
     container_name: minio
-    command: server /data --console-address ":9001"
+    user: "0"
+    command: minio server /data --console-address ":9001"
     environment:
       MINIO_ROOT_USER: "${MINIO_ROOT_USER:-minioadmin}"
       MINIO_ROOT_PASSWORD: "${MINIO_ROOT_PASSWORD:-minioadmin}"
       MINIO_API_CORS_ALLOW_ORIGIN: "*"
+      # Alias used by the health check (`mc ready local`); the official image
+      # used to define it itself. Credentials must stay URL-safe (hex is).
+      MC_HOST_local: "http://${MINIO_ROOT_USER:-minioadmin}:${MINIO_ROOT_PASSWORD:-minioadmin}@localhost:9000"
     ports:
       - "127.0.0.1:9000:9000" # Bind to localhost explicitly
       - "127.0.0.1:9001:9001"
