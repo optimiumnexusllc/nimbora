@@ -8,6 +8,7 @@ from api.db.callback_client import CallbackClient
 from api.db.privacy_client import PrivacyClient
 from api.db.actions_client import ActionsClient
 from api.db.whatsapp_conversation_client import WhatsAppConversationClient
+from api.db.pbx_client import PbxConnectionClient
 from api.db.embed_token_client import EmbedTokenClient
 from api.db.folder_client import FolderClient
 from api.db.integration_client import IntegrationClient
@@ -69,6 +70,7 @@ class DBClient(
     PrivacyClient,
     ActionsClient,
     WhatsAppConversationClient,
+    PbxConnectionClient,
 ):
     """
     Unified database client that combines all specialized database operations.

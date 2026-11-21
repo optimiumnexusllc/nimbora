@@ -1,0 +1,151 @@
+---
+# White-label overlay for the PBX engine (Wazo Platform, GPL-3.0).
+#
+# Rebrands everything a user, a customer or a phone can see, by configuration
+# only: the engine's code and its license notices stay untouched (GPL-3.0
+# compliance), and "Wazo" trademarks are removed from what end users see.
+#
+# Run after the engine install (install.sh does it):
+#   ansible-playbook -i inventory.ini whitelabel.yml -e @/etc/nimbora-pbx/branding.yml
+#
+# Template variables use [[ ]] / [% %] so the {{ }} / {% %} of the engine's own
+# e-mail templates (rendered by wazo-auth at send time) pass through intact.
+
+- name: White-label the PBX
+  hosts: uc_engine_host
+  become: true
+  vars:
+    brand_name: NIMBORA
+    pbx_name: "{{ brand_name }} Voice"
+    support_email: "support@example.com"
+    noreply_email: "noreply@example.com"
+    nimbora_url: "https://app.example.com"
+    nimbora_ws_url: "wss://app.example.com/api/v1/telephony/ws/ari"
+    sip_user_agent: "{{ pbx_name | regex_replace('[^A-Za-z0-9._-]+', '-') }}"
+    pbx_api_url: "https://localhost"
+    pbx_root_user: root
+    pbx_root_password: ""
+    whitelabel_dir: /etc/nimbora-pbx
+    template_delimiters: &delims
+      variable_start_string: "[["
+      variable_end_string: "]]"
+      block_start_string: "[%"
+      block_end_string: "%]"
+
+  tasks:
+    # ---------------------------------------------------- e-mails (wazo-auth)
+    - name: Branded e-mail templates directory
+      ansible.builtin.file:
+        path: "{{ whitelabel_dir }}/templates"
+        state: directory
+        mode: "0755"
+
+    - name: Branded e-mail templates (password reset, e-mail confirmation)
+      ansible.builtin.template:
+        src: "templates/wazo-auth/{{ item }}"
+        dest: "{{ whitelabel_dir }}/templates/{{ item }}"
+        mode: "0644"
+        <<: *delims
+      loop:
+        - password_reset_email.jinja
+        - password_reset_email_subject.jinja
+        - email_confirmation.jinja
+        - email_confirmation_subject.jinja
+        - email_confirmation_get_body.jinja
+      notify: Restart wazo-auth
+
+    - name: Sender names, addresses and templates of the auth service
+      ansible.builtin.copy:
+        dest: /etc/wazo-auth/conf.d/50-whitelabel.yml
+        mode: "0644"
+        content: |
+          # Managed by the {{ brand_name }} PBX kit (whitelabel.yml).
+          password_reset_from_name: "{{ pbx_name }}"
+          password_reset_from_address: "{{ noreply_email }}"
+          password_reset_email_template: {{ whitelabel_dir }}/templates/password_reset_email.jinja
+          password_reset_email_subject_template: {{ whitelabel_dir }}/templates/password_reset_email_subject.jinja
+          email_confirmation_from_name: "{{ pbx_name }}"
+          email_confirmation_from_address: "{{ noreply_email }}"
+          email_confirmation_template: {{ whitelabel_dir }}/templates/email_confirmation.jinja
+          email_confirmation_subject_template: {{ whitelabel_dir }}/templates/email_confirmation_subject.jinja
+          email_confirmation_get_response_body_template: {{ whitelabel_dir }}/templates/email_confirmation_get_body.jinja
+          email_confirmation_get_mimetype: text/html
+      notify: Restart wazo-auth
+
+    # ------------------------------------------------- what admins/users see
+    - name: Branded landing page on the PBX host
+      ansible.builtin.template:
+        src: templates/index.html
+        dest: /var/www/html/index.html
+        mode: "0644"
+        backup: true
+        <<: *delims
+
+    - name: Branded login banner
+      ansible.builtin.template:
+        src: templates/motd
+        dest: /etc/motd
+        mode: "0644"
+        <<: *delims
+
+    - name: The engine's own web UI is not installed (white label)
+      ansible.builtin.apt:
+        name: wazo-ui
+        state: absent
+        purge: true
+
+    # ------------------------------------------------ AI agents (audio path)
+    - name: External media connection to the AI platform
+      ansible.builtin.template:
+        src: templates/websocket_client.conf
+        dest: /etc/asterisk/websocket_client.conf
+        owner: asterisk
+        group: www-data
+        mode: "0640"
+        <<: *delims
+      notify: Reload websocket client
+
+    # --------------------------------------------- SIP User-Agent / Server
+    - name: Token for the engine API
+      ansible.builtin.uri:
+        url: "{{ pbx_api_url }}/api/auth/0.1/token"
+        method: POST
+        user: "{{ pbx_root_user }}"
+        password: "{{ pbx_root_password }}"
+        force_basic_auth: true
+        body_format: json
+        body: {expiration: 600}
+        validate_certs: false
+      register: pbx_token
+      when: pbx_root_password | length > 0
+      no_log: true
+
+    - name: Current SIP global options
+      ansible.builtin.uri:
+        url: "{{ pbx_api_url }}/api/confd/1.1/asterisk/pjsip/global"
+        headers: {X-Auth-Token: "{{ pbx_token.json.data.token }}"}
+        validate_certs: false
+      register: pjsip_global
+      when: pbx_token is not skipped
+
+    - name: SIP User-Agent and Server headers carry the brand
+      ansible.builtin.uri:
+        url: "{{ pbx_api_url }}/api/confd/1.1/asterisk/pjsip/global"
+        method: PUT
+        headers: {X-Auth-Token: "{{ pbx_token.json.data.token }}"}
+        body_format: json
+        body:
+          options: "{{ pjsip_global.json.options | combine({'user_agent': sip_user_agent}) }}"
+        status_code: 204
+        validate_certs: false
+      when: pbx_token is not skipped
+
+  handlers:
+    - name: Restart wazo-auth
+      ansible.builtin.systemd:
+        name: wazo-auth
+        state: restarted
+
+    - name: Reload websocket client
+      ansible.builtin.command: asterisk -rx "module reload res_websocket_client.so"
+      changed_when: true

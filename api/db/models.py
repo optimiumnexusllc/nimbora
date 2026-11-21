@@ -2246,3 +2246,48 @@ class WhatsAppConversationModel(Base):
         ),
         Index("ix_whatsapp_conversations_org", "organization_id", "last_inbound_at"),
     )
+
+
+class PbxConnectionModel(Base):
+    """The organization's enterprise PBX (Wazo Platform engine, white-labelled).
+
+    One per organization. The REST credentials manage the PBX (tenant, users,
+    queues, agents, numbers, calls, call logs); AI agents take calls through the
+    PBX's Asterisk with the linked ARI telephony configuration. Events reach
+    NIMBORA through a webhook whose secret is ``webhook_token``.
+    """
+
+    __tablename__ = "pbx_connections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer,
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    name = Column(String(128), nullable=False, default="PBX")
+    base_url = Column(String(512), nullable=False)
+    username = Column(String(128), nullable=False)
+    password = Column(String(512), nullable=False)
+    tenant_uuid = Column(String(64), nullable=True)
+    verify_tls = Column(Boolean, nullable=False, default=True)
+    ari_configuration_id = Column(
+        Integer,
+        ForeignKey("telephony_configurations.id", ondelete="SET NULL"),
+        nullable=True,
+    )
+    incall_context = Column(String(128), nullable=True)
+    webhook_token = Column(String(64), nullable=False, unique=True)
+    webhook_subscription_uuid = Column(String(64), nullable=True)
+    engine_version = Column(String(32), nullable=True)
+    status = Column(String(16), nullable=False, default="unknown")  # ok | error
+    last_error = Column(String(512), nullable=True)
+    last_checked_at = Column(DateTime(timezone=True), nullable=True)
+    branding_applied_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )

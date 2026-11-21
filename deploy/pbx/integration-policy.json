@@ -1,0 +1,31 @@
+{
+  "name": "nimbora-integration",
+  "description": "Platform integration: PBX management, AI routing, events",
+  "acl": [
+    "auth.tenants.*.read",
+    "confd.infos.read",
+    "confd.users.read",
+    "confd.queues.read",
+    "confd.agents.read",
+    "confd.contexts.read",
+    "confd.incalls.read",
+    "confd.incalls.create",
+    "confd.incalls.*.delete",
+    "confd.incalls.*.extensions.*.update",
+    "confd.extensions.read",
+    "confd.extensions.create",
+    "confd.extensions.*.delete",
+    "confd.asterisk.pjsip.global.read",
+    "confd.asterisk.pjsip.global.update",
+    "calld.calls.read",
+    "calld.calls.*.delete",
+    "agentd.agents.read",
+    "agentd.agents.by-number.*.login.create",
+    "agentd.agents.by-number.*.logoff.create",
+    "agentd.agents.by-number.*.pause.create",
+    "agentd.agents.by-number.*.unpause.create",
+    "webhookd.subscriptions.create",
+    "webhookd.subscriptions.*.delete",
+    "call-logd.cdr.read"
+  ]
+}

@@ -128,6 +128,7 @@
               "integrations/telephony/vobiz",
               "integrations/telephony/whatsapp",
               "integrations/telephony/whatsapp-messages",
+              "integrations/telephony/enterprise-pbx",
               "integrations/telephony/asterisk-ari",
               "integrations/telephony/vicidial",
               "integrations/telephony/webhooks",

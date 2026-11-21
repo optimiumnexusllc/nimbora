@@ -1,0 +1,89 @@
+---
+title: "Enterprise PBX (white label)"
+description: "Run a full enterprise PBX under your own brand: extensions, queues, agents, IVR and numbers, managed from NIMBORA and open to your AI agents"
+---
+
+## Overview
+
+**Téléphonie d'entreprise** gives each company a complete PBX under your brand: extensions and SIP lines, queues, contact-center agents, IVRs, voicemail, conferences and call logs. You manage it from NIMBORA, and any of its numbers can ring an AI agent.
+
+The PBX engine is [Wazo Platform](https://github.com/wazo-platform) (GPL-3.0), installed on a dedicated server and fully white-labelled. Companies, their staff and their phones only see your brand: the e-mails, the password-reset page, the SIP `User-Agent` and `Server` headers, and the server's landing page.
+
+<Frame caption="NIMBORA Voice — live calls on the company PBX">
+  <img src="/images/screenshots/pbx-calls.webp" alt="Enterprise PBX page with connection status and live calls" />
+</Frame>
+
+| From NIMBORA you can | How it works |
+|---|---|
+| See live calls and hang one up | PBX call-control API, refreshed every 10 seconds |
+| See agents (available, on break, logged out) and pause, resume or log them out | PBX agent API |
+| See queues, extensions and inbound numbers | PBX configuration API |
+| Route a PBX number to an AI agent | NIMBORA creates the inbound number on the PBX and registers it on its side |
+| Keep one customer history | Each human call on the PBX is added to the customer's history, next to AI calls, WhatsApp and web chat |
+| Apply your brand to the PBX | Sets the SIP `User-Agent`/`Server` header to your PBX name |
+
+## Install the PBX
+
+The kit in `deploy/pbx/` installs the latest stable engine on a dedicated Debian 12 server, applies the white label and creates a least-privilege service account for NIMBORA:
+
+```bash
+sudo ./install.sh --brand "NIMBORA" --nimbora-url https://app.example.com \
+  --nimbora-ip 203.0.113.10 --company "Ivoire Immo"
+```
+
+The install script:
+
+- generates every secret, so the installer's public default passwords are never used;
+- leaves out the engine's own web UI;
+- firewalls ARI (port 5039) to NIMBORA only and AMI (port 5038) to the server itself, over IPv4 and IPv6;
+- creates the service account. Its policy grants only the 25 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant.
+
+See `deploy/pbx/README.md` for every option and what the white label changes.
+
+## Connect it
+
+<Steps>
+  <Step title="Give AI agents access">
+    In **Téléphonie → Ajouter → Asterisk ARI**, enter the PBX's ARI endpoint (`http(s)://<pbx>:5039`), ARI user and password, and the WebSocket client name `nimbora`. These values are printed at the end of the install.
+  </Step>
+  <Step title="Connect the PBX">
+    In **Téléphonie d'entreprise → Connexion**, enter the PBX address, the service account (`nimbora-integration`) and its password, the company's tenant, and the ARI configuration from step 1. NIMBORA checks the credentials, the tenant and the engine version right away.
+  </Step>
+  <Step title="Apply your brand and receive events">
+    Click **Appliquer la marque** (SIP headers) and **Recevoir les événements** (the PBX sends the end of each call to NIMBORA through a webhook with a secret URL).
+  </Step>
+  <Step title="Route a number to an AI agent">
+    In **Numéros**, click **Router un numéro vers un agent IA** and pick the agent. Callers to that number now reach the agent. A number that already has a destination on the PBX (extension, queue…) is never overwritten. **Retirer** removes the route from both the PBX and NIMBORA.
+  </Step>
+</Steps>
+
+<Frame caption="Numéros — a PBX number answered by an AI agent">
+  <img src="/images/screenshots/pbx-numbers.webp" alt="Inbound numbers with one routed to an AI agent" />
+</Frame>
+
+### How AI calls flow
+
+The route is a custom destination on the PBX: `Stasis(<app>,inbound,called=<number>)`. NIMBORA receives the call over ARI and treats it as inbound, even if the PBX already answered it. It finds the agent from the number named in the route, because inside the PBX's dialplan the dialed extension is often just `s`. The agent's audio then streams over the WebSocket client configured on the PBX.
+
+### Human calls in the customer history
+
+With events on, every finished call between a customer and your staff is added to the customer's history, for example "Appel entrant avec Koffi Yao (4 min)" or "Appel manqué". Agents read this history on every channel. A few calls are skipped:
+
+- internal calls between extensions;
+- calls to numbers answered by AI agents, which the agent records itself;
+- deliveries the PBX repeats.
+
+## Password resets under your brand
+
+The engine's reset e-mail normally links to its vendor's web app. The kit replaces it with a French e-mail from your sender address, linking to `https://<your NIMBORA>/pbx-password`. That page sets the new password on the PBX. It only forwards to PBXs connected to NIMBORA: the host written in the link is used to pick one of them and is never contacted directly.
+
+## Security
+
+- **SaaS mode**: a PBX address that resolves to a private, loopback or link-local IP is refused, like HTTP tools. For the operator's own PBX on the internal network, add its host name to `PBX_ALLOWED_HOSTS`.
+- The service account password is never sent back by the API (shown masked).
+- Each organization sees and manages only its own PBX connection.
+- Use HTTPS for ARI (`--ari-tls-cert`, `--ari-tls-key`) whenever NIMBORA reaches the PBX over the Internet.
+
+## License
+
+The engine is GPL-3.0 and runs as separate programs on its own server. NIMBORA (BSD-2) talks to it over its APIs. The kit configures the engine and replaces some templates with ours, without changing its source code. Its license files and notices stay installed. See `NOTICE.md`.

@@ -100,6 +100,22 @@ def _log_ari_failure(
     )
 
 
+def inbound_route_args(app_args) -> dict[str, str] | None:
+    """``Stasis(app,inbound,called=<number>)`` → {"called": "<number>"}.
+
+    None when the call was not explicitly routed in as inbound.
+    """
+    if not app_args or str(app_args[0]).strip().lower() != "inbound":
+        return None
+    values: dict[str, str] = {}
+    for arg in app_args[1:]:
+        for pair in str(arg).split(","):
+            if "=" in pair:
+                key, value = pair.split("=", 1)
+                values[key.strip()] = value.strip()
+    return values
+
+
 class ARIConnection:
     """Manages a single ARI WebSocket connection for an organization."""
 
@@ -527,8 +543,10 @@ class ARIConnection:
                 f"args={app_args}"
             )
 
-            if channel_state == "Ring":
-                # Inbound call — arrived from outside, not yet answered
+            if channel_state == "Ring" or inbound_route_args(app_args) is not None:
+                # Inbound call — arrived from outside, not yet answered, or
+                # routed in by a PBX that may already have answered it
+                # (Stasis(app,inbound,called=<number>)).
                 asyncio.create_task(
                     self._handle_inbound_stasis_start(channel_id, channel_state, event)
                 )
@@ -899,6 +917,11 @@ class ARIConnection:
         channel = event.get("channel", {})
         caller_number = channel.get("caller", {}).get("number", "unknown")
         called_number = channel.get("dialplan", {}).get("exten", "unknown")
+        # A PBX route names the dialed number explicitly: inside the PBX's
+        # dialplan subroutines the extension is often just "s".
+        routed = inbound_route_args(event.get("args", []))
+        if routed and routed.get("called"):
+            called_number = routed["called"]
         concurrency_slot = None
         workflow_run = None
 

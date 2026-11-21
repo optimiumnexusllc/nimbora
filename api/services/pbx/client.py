@@ -1,0 +1,376 @@
+"""Client for the enterprise PBX engine (Wazo Platform REST APIs).
+
+The engine is presented to users under the platform brand only; this module is
+the one place that speaks its APIs. Every service is reached through the
+engine's HTTPS gateway (``https://<host>/api/<service>/<version>``) with a
+token from its auth service, scoped to one tenant with the ``Wazo-Tenant``
+header.
+
+Contracts follow the engine's published OpenAPI specifications (auth 0.1,
+confd 1.1, calld/agentd/webhookd/call-logd/chatd 1.0).
+"""
+
+from __future__ import annotations
+
+import asyncio
+import hashlib
+import time
+from dataclasses import dataclass
+from typing import Any
+
+import httpx
+
+SERVICES: dict[str, str] = {
+    "auth": "/api/auth/0.1",
+    "confd": "/api/confd/1.1",
+    "calld": "/api/calld/1.0",
+    "agentd": "/api/agentd/1.0",
+    "webhookd": "/api/webhookd/1.0",
+    "call_logd": "/api/call-logd/1.0",
+    "chatd": "/api/chatd/1.0",
+}
+TENANT_HEADER = "Wazo-Tenant"
+TOKEN_HEADER = "X-Auth-Token"
+TOKEN_LIFETIME = 3600
+TOKEN_MARGIN = 120
+
+
+class PbxError(Exception):
+    """The PBX answered with an error, or could not be reached."""
+
+    def __init__(self, message: str, *, status: int | None = None):
+        super().__init__(message)
+        self.status = status
+
+
+class PbxAuthError(PbxError):
+    """Wrong credentials, or a token the PBX no longer accepts."""
+
+
+class PbxUnavailable(PbxError):
+    """Network error, timeout, TLS failure."""
+
+
+@dataclass(frozen=True)
+class PbxSettings:
+    base_url: str
+    username: str
+    password: str
+    tenant_uuid: str | None = None
+    verify_tls: bool = True
+
+    @property
+    def root(self) -> str:
+        return self.base_url.rstrip("/")
+
+    def cache_key(self) -> str:
+        digest = hashlib.sha256(self.password.encode()).hexdigest()[:16]
+        return f"{self.root}|{self.username}|{digest}"
+
+
+# Tokens are shared by every client of the process for the same account.
+_TOKENS: dict[str, tuple[str, float]] = {}
+_TOKEN_LOCKS: dict[str, asyncio.Lock] = {}
+
+
+def _error_message(response: httpx.Response) -> str:
+    try:
+        body = response.json()
+    except ValueError:
+        return response.text[:200] or f"HTTP {response.status_code}"
+    if isinstance(body, dict):
+        message = body.get("message") or body.get("reason") or body.get("error")
+        if isinstance(message, list):
+            message = "; ".join(str(m) for m in message)
+        details = body.get("details")
+        if message and details:
+            return f"{message} ({details})"[:400]
+        if message:
+            return str(message)[:400]
+    return str(body)[:400]
+
+
+class PbxClient:
+    def __init__(
+        self,
+        settings: PbxSettings,
+        *,
+        transport: httpx.AsyncBaseTransport | None = None,
+        timeout: float = 10.0,
+    ):
+        self.settings = settings
+        self._http = httpx.AsyncClient(
+            base_url=settings.root,
+            verify=settings.verify_tls,
+            timeout=timeout,
+            transport=transport,
+            headers={"Accept": "application/json"},
+        )
+
+    async def __aenter__(self) -> "PbxClient":
+        return self
+
+    async def __aexit__(self, *exc) -> None:
+        await self.close()
+
+    async def close(self) -> None:
+        await self._http.aclose()
+
+    # ------------------------------------------------------------ token
+
+    async def _new_token(self) -> tuple[str, float]:
+        try:
+            response = await self._http.post(
+                f"{SERVICES['auth']}/token",
+                auth=(self.settings.username, self.settings.password),
+                json={"expiration": TOKEN_LIFETIME},
+            )
+        except httpx.HTTPError as error:
+            raise PbxUnavailable(
+                f"PBX injoignable : {error.__class__.__name__}"
+            ) from error
+        if response.status_code in (401, 403):
+            raise PbxAuthError(
+                "Identifiants du PBX refusés", status=response.status_code
+            )
+        if response.status_code >= 400:
+            raise PbxError(_error_message(response), status=response.status_code)
+        data = (response.json() or {}).get("data") or {}
+        token = data.get("token")
+        if not token:
+            raise PbxError("Réponse d'authentification du PBX sans jeton")
+        return token, time.monotonic() + TOKEN_LIFETIME - TOKEN_MARGIN
+
+    async def token(self, *, refresh: bool = False) -> str:
+        key = self.settings.cache_key()
+        lock = _TOKEN_LOCKS.setdefault(key, asyncio.Lock())
+        async with lock:
+            cached = _TOKENS.get(key)
+            if cached and not refresh and cached[1] > time.monotonic():
+                return cached[0]
+            _TOKENS[key] = await self._new_token()
+            return _TOKENS[key][0]
+
+    # ---------------------------------------------------------- request
+
+    async def request(
+        self,
+        service: str,
+        method: str,
+        path: str,
+        *,
+        json: Any = None,
+        params: dict[str, Any] | None = None,
+        tenant: bool = True,
+    ) -> Any:
+        url = f"{SERVICES[service]}{path}"
+        for attempt in (0, 1):
+            headers = {TOKEN_HEADER: await self.token(refresh=attempt == 1)}
+            if tenant and self.settings.tenant_uuid:
+                headers[TENANT_HEADER] = self.settings.tenant_uuid
+            try:
+                response = await self._http.request(
+                    method, url, json=json, params=params, headers=headers
+                )
+            except httpx.HTTPError as error:
+                raise PbxUnavailable(
+                    f"PBX injoignable : {error.__class__.__name__}"
+                ) from error
+            if response.status_code == 401 and attempt == 0:
+                continue  # token expired or revoked: one fresh try
+            if response.status_code in (401, 403):
+                raise PbxAuthError(
+                    _error_message(response), status=response.status_code
+                )
+            if response.status_code >= 400:
+                raise PbxError(_error_message(response), status=response.status_code)
+            if response.status_code == 204 or not response.content:
+                return None
+            return response.json()
+        raise PbxAuthError("Jeton du PBX refusé")  # pragma: no cover
+
+    async def _items(self, service: str, path: str, **params) -> list[dict]:
+        body = await self.request(service, "GET", path, params=params or None)
+        if isinstance(body, dict):
+            return list(body.get("items") or [])
+        return list(body or [])
+
+    # ------------------------------------------------------------- auth
+
+    async def reset_password_with_email_token(
+        self, user_uuid: str, email_token: str, password: str
+    ) -> None:
+        """Set a PBX user's password with the token from the reset e-mail."""
+        try:
+            response = await self._http.post(
+                f"{SERVICES['auth']}/users/password/reset",
+                params={"user_uuid": user_uuid},
+                headers={TOKEN_HEADER: email_token},
+                json={"password": password},
+            )
+        except httpx.HTTPError as error:
+            raise PbxUnavailable(
+                f"PBX injoignable : {error.__class__.__name__}"
+            ) from error
+        if response.status_code in (401, 403, 404):
+            raise PbxAuthError(
+                "Lien expiré ou déjà utilisé", status=response.status_code
+            )
+        if response.status_code >= 400:
+            raise PbxError(_error_message(response), status=response.status_code)
+
+    async def check_tenant(self, tenant_uuid: str) -> dict:
+        return await self.request("auth", "GET", f"/tenants/{tenant_uuid}")
+
+    async def create_tenant(self, name: str, slug: str | None = None) -> dict:
+        body: dict[str, Any] = {"name": name}
+        if slug:
+            body["slug"] = slug
+        return await self.request("auth", "POST", "/tenants", json=body)
+
+    # ------------------------------------------------------------ confd
+
+    async def infos(self) -> dict:
+        return await self.request("confd", "GET", "/infos", tenant=False)
+
+    async def users(self, limit: int = 500) -> list[dict]:
+        return await self._items("confd", "/users", limit=limit, view="summary")
+
+    async def queues(self) -> list[dict]:
+        return await self._items("confd", "/queues", limit=500)
+
+    async def agents(self) -> list[dict]:
+        return await self._items("confd", "/agents", limit=500)
+
+    async def incalls(self) -> list[dict]:
+        return await self._items("confd", "/incalls", limit=500)
+
+    async def contexts(self, context_type: str | None = None) -> list[dict]:
+        # The API has no type filter: filter here.
+        items = await self._items("confd", "/contexts", limit=500)
+        if context_type:
+            items = [c for c in items if c.get("type") == context_type]
+        return items
+
+    async def extensions(
+        self, *, exten: str | None = None, context: str | None = None
+    ) -> list[dict]:
+        params: dict[str, Any] = {"limit": 500}
+        if exten:
+            params["exten"] = exten
+        if context:
+            params["context"] = context
+        return await self._items("confd", "/extensions", **params)
+
+    async def create_extension(self, exten: str, context: str) -> dict:
+        return await self.request(
+            "confd", "POST", "/extensions", json={"exten": exten, "context": context}
+        )
+
+    async def delete_extension(self, extension_id: int) -> None:
+        await self.request("confd", "DELETE", f"/extensions/{extension_id}")
+
+    async def create_incall(self, destination: dict, description: str) -> dict:
+        return await self.request(
+            "confd",
+            "POST",
+            "/incalls",
+            json={"destination": destination, "description": description},
+        )
+
+    async def delete_incall(self, incall_id: int) -> None:
+        await self.request("confd", "DELETE", f"/incalls/{incall_id}")
+
+    async def associate_incall_extension(
+        self, incall_id: int, extension_id: int
+    ) -> None:
+        await self.request(
+            "confd", "PUT", f"/incalls/{incall_id}/extensions/{extension_id}"
+        )
+
+    async def pjsip_global(self) -> dict[str, str]:
+        body = await self.request(
+            "confd", "GET", "/asterisk/pjsip/global", tenant=False
+        )
+        return dict((body or {}).get("options") or {})
+
+    async def set_pjsip_global(self, options: dict[str, str]) -> None:
+        await self.request(
+            "confd",
+            "PUT",
+            "/asterisk/pjsip/global",
+            json={"options": options},
+            tenant=False,
+        )
+
+    # ------------------------------------------------- calls and agents
+
+    async def calls(self) -> list[dict]:
+        return await self._items("calld", "/calls")
+
+    async def hangup(self, call_id: str) -> None:
+        await self.request("calld", "DELETE", f"/calls/{call_id}")
+
+    async def agent_statuses(self) -> list[dict]:
+        body = await self.request("agentd", "GET", "/agents")
+        return list(body or [])
+
+    async def agent_action(
+        self, agent_number: str, action: str, body: dict | None = None
+    ) -> None:
+        if action not in {"login", "logoff", "pause", "unpause"}:
+            raise ValueError(action)
+        await self.request(
+            "agentd",
+            "POST",
+            f"/agents/by-number/{agent_number}/{action}",
+            json=body or {},
+        )
+
+    async def cdr(self, limit: int = 50) -> list[dict]:
+        return await self._items(
+            "call_logd", "/cdr", limit=limit, order="start", direction="desc"
+        )
+
+    # --------------------------------------------------------- webhooks
+
+    async def subscriptions(self) -> list[dict]:
+        return await self._items("webhookd", "/subscriptions")
+
+    async def create_subscription(self, body: dict) -> dict:
+        return await self.request("webhookd", "POST", "/subscriptions", json=body)
+
+    async def delete_subscription(self, uuid: str) -> None:
+        await self.request("webhookd", "DELETE", f"/subscriptions/{uuid}")
+
+
+# Exact ACL each call above needs (from the engine's OpenAPI "Required ACL").
+# deploy/pbx/integration-policy.json grants these to the service account; a
+# test keeps both in sync.
+REQUIRED_ACL: dict[str, str] = {
+    "check_tenant": "auth.tenants.{tenant_uuid}.read",
+    "infos": "confd.infos.read",
+    "users": "confd.users.read",
+    "queues": "confd.queues.read",
+    "agents": "confd.agents.read",
+    "contexts": "confd.contexts.read",
+    "incalls": "confd.incalls.read",
+    "create_incall": "confd.incalls.create",
+    "delete_incall": "confd.incalls.{incall_id}.delete",
+    "associate_incall_extension": "confd.incalls.{incall_id}.extensions.{extension_id}.update",
+    "extensions": "confd.extensions.read",
+    "create_extension": "confd.extensions.create",
+    "delete_extension": "confd.extensions.{extension_id}.delete",
+    "pjsip_global": "confd.asterisk.pjsip.global.read",
+    "set_pjsip_global": "confd.asterisk.pjsip.global.update",
+    "calls": "calld.calls.read",
+    "hangup": "calld.calls.{call_id}.delete",
+    "agent_statuses": "agentd.agents.read",
+    "agent_login": "agentd.agents.by-number.{agent_number}.login.create",
+    "agent_logoff": "agentd.agents.by-number.{agent_number}.logoff.create",
+    "agent_pause": "agentd.agents.by-number.{agent_number}.pause.create",
+    "agent_unpause": "agentd.agents.by-number.{agent_number}.unpause.create",
+    "create_subscription": "webhookd.subscriptions.create",
+    "delete_subscription": "webhookd.subscriptions.{subscription_uuid}.delete",
+    "cdr": "call-logd.cdr.read",
+}

@@ -344,6 +344,10 @@ SERVICE_URL_ALLOWED_HOSTS = _env_csv(
     "SERVICE_URL_ALLOWED_HOSTS", "ollama,speaches,vllm"
 )
 
+# Enterprise PBX hosts tenants may use even though they resolve to private
+# addresses (the operator's own white-label PBX on the internal network).
+PBX_ALLOWED_HOSTS = _env_csv("PBX_ALLOWED_HOSTS", "")
+
 # Human contact center on the platform's Asterisk.
 CONTACT_CENTER_ENABLED = _env_bool("CONTACT_CENTER_ENABLED")
 # Directory shared with the Asterisk container; generated config lands here.

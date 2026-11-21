@@ -82,6 +82,19 @@ pourrait envoyer quelqu'un vers une mauvaise ligne.
 <p align="center"><img src="docs/images/screenshots/business-trades.webp" alt="25 métiers dans 8 secteurs" width="88%"></p>
 <p align="center"><img src="docs/images/screenshots/business-templates.webp" alt="Modèle Mines et carrières et ses règles impératives" width="88%"></p>
 
+### ☎️ Téléphonie d'entreprise en marque blanche
+
+Chaque entreprise dispose d'un **PBX complet à votre marque** : postes et lignes SIP, files
+d'attente, agents, serveurs vocaux, messageries, conférences, journaux d'appels. Le moteur est
+[Wazo Platform](https://github.com/wazo-platform) (GPL-3.0), installé en une commande sur un
+serveur dédié et **rebrandé intégralement** : e-mails, page de réinitialisation du mot de passe,
+en-têtes SIP, page d'accueil. Depuis NIMBORA, vous suivez les appels en cours, les agents et les
+files, vous **routez un numéro du PBX vers un agent IA** en un clic, et chaque appel humain
+rejoint l'historique client, à côté des appels IA, de WhatsApp et du chat web.
+
+<p align="center"><img src="docs/images/screenshots/pbx-calls.webp" alt="Téléphonie d'entreprise : appels en cours" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/pbx-numbers.webp" alt="Un numéro du PBX routé vers un agent IA" width="88%"></p>
+
 ### 💬 WhatsApp : l'agent répond aussi aux messages
 
 Le même agent répond aux **appels et aux messages WhatsApp** de votre numéro Business : textes,
@@ -166,6 +179,8 @@ swahili, haoussa, yoruba, lingala…
 | **Confidentialité** | Masquage des données personnelles, mode PCI, journaux masqués, durées de conservation, export et effacement RGPD |
 | **SaaS multi-entreprises** | Offres et abonnements, essai gratuit, quotas de minutes, limites par client, paiement Stripe optionnel, console opérateur |
 | **Téléphonie** | Asterisk (SIP), Twilio, Vonage, Telnyx, Plivo, WhatsApp… |
+| **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; routage d'un numéro vers un agent IA ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 25 ACL) |
+| **Marque blanche** | Nom de la plateforme et du PBX centralisés (`BRAND_*`), e-mails et page de réinitialisation à la marque, en-têtes SIP |
 | **Sécurité** | Isolation stricte entre entreprises, protection SSRF, secrets générés à l'installation, télémétrie désactivée |
 
 ## Architecture
@@ -183,6 +198,10 @@ flowchart LR
     api --> s3[(MinIO / S3<br/>enregistrements)]
     ui[Interface Next.js<br/>console, softphone] --> api
     agent((Conseiller)) -- WebRTC --> ast
+    caller -- SIP --> pbx[PBX d'entreprise<br/>marque blanche]
+    pbx -- ARI + audio IA --> api
+    api -- API REST --> pbx
+    pbx -- webhooks --> api
 ```
 
 | Dossier | Contenu |
@@ -194,9 +213,13 @@ flowchart LR
 | `api/services/language/` | Détection de langue, voix par langue |
 | `api/services/privacy/` | Masquage, conservation, export et effacement RGPD |
 | `api/services/actions/` | Actions des agents : agenda (créneaux, CalDAV, Google), messages, tickets |
+| `api/services/business/` | Fiche entreprise, compétences communes, 25 modèles métier (un module par secteur) |
+| `api/services/pbx/` | PBX d'entreprise : client des API du moteur, inventaire, routage IA, événements, marque |
+| `api/services/branding.py` | Nom de la plateforme et du PBX (marque blanche) |
 | `ui/` | Interface Next.js 15 / React 19, charte NIMBORA (`ui/scripts/brand/`) |
 | `pipecat/` | Moteur de pipeline vocal (STT → LLM → TTS) |
 | `deploy/enterprise/` | Déploiement Docker Compose : Caddy, Asterisk, coturn, Ollama, Speaches |
+| `deploy/pbx/` | Installation du PBX d'entreprise en marque blanche (Debian 12, Ansible) |
 | `docs/` | Documentation Mintlify |
 | `sdk/` | SDK Python et TypeScript |
 
@@ -211,6 +234,16 @@ sudo ./install.sh --domain callcenter.mondomaine.com --email admin@mondomaine.co
 Guide complet (serveur, GPU, Stripe, trunks SIP, sauvegardes) :
 [`deploy/enterprise/README.md`](deploy/enterprise/README.md).
 
+PBX d'entreprise en marque blanche, sur un **serveur Debian 12 dédié** :
+
+```bash
+cd /opt/nimbora/deploy/pbx
+sudo ./install.sh --brand "NIMBORA" --nimbora-url https://callcenter.mondomaine.com \
+  --nimbora-ip <IP de NIMBORA> --company "Mon entreprise"
+```
+
+Guide : [`deploy/pbx/README.md`](deploy/pbx/README.md).
+
 Principaux réglages de la plateforme :
 
 | Variable | Rôle |
@@ -220,6 +253,8 @@ Principaux réglages de la plateforme :
 | `CONTACT_CENTER_ENABLED` | Centre d'appels humain, supervision des conseillers |
 | `ASTERISK_ARI_URL` / `ASTERISK_ARI_USER` / `ASTERISK_ARI_PASSWORD` | Accès à Asterisk |
 | `PRIVACY_REDACT_LOGS` | Masquage des données personnelles dans les journaux (activé par défaut) |
+| `BRAND_NAME` / `BRAND_PBX_NAME` / `BRAND_DOMAIN` / `BRAND_SIP_USER_AGENT` | Marque blanche : nom de la plateforme, du PBX, domaine des e-mails, en-tête SIP |
+| `PBX_ALLOWED_HOSTS` | PBX de l'opérateur sur réseau privé autorisés en mode SaaS (protection SSRF) |
 
 ## Documentation
 
@@ -228,13 +263,18 @@ Principaux réglages de la plateforme :
 - [Prendre rendez-vous](docs/voice-agent/tools/book-appointment.mdx), [envoyer un message](docs/voice-agent/tools/send-message.mdx), [ouvrir un ticket](docs/voice-agent/tools/create-ticket.mdx)
 - [Détection automatique de la langue](docs/voice-agent/languages.mdx)
 - [Confidentialité, RGPD et PCI](docs/configurations/privacy.mdx)
+- [PBX d'entreprise en marque blanche](docs/integrations/telephony/enterprise-pbx.mdx)
+- [Fiche entreprise et modèles métier](docs/configurations/business-profile.mdx)
+- [Conversations WhatsApp et historique multicanal](docs/integrations/telephony/whatsapp-messages.mdx)
 - [Référence de l'API](docs/api-reference/openapi.json)
 
 ## Feuille de route
 
-NIMBORA vise une **plateforme SaaS d'agents IA universels et omnicanaux** : chaque entreprise
-(commerce, immobilier, hôtellerie, assurance, clinique, école…) dispose de son agent, nourri de
-ses informations, joignable par **chat web, téléphone et WhatsApp**, sur un moteur commun.
+NIMBORA vise une **plateforme SaaS d'agents IA universels et omnicanaux, revendable en marque
+blanche** : chaque entreprise dispose de ses agents IA, nourris de ses informations, joignables par
+**chat web, téléphone et WhatsApp**, et de son **PBX d'entreprise**, sur un moteur commun.
+
+Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle · 🔜 prévu
 
 ### Phase 1 — Moteur universel
 
@@ -277,6 +317,73 @@ ses informations, joignable par **chat web, téléphone et WhatsApp**, sur un mo
 | 🔜 | Tableau de bord « AI Business Hub » : conversations, appels, prospects, rendez-vous, activité par canal |
 | 🔜 | Contrôle qualité des appels humains |
 | 🔜 | Tests des agents avec des clients simulés |
+
+### Phase 5 — PBX d'entreprise en marque blanche (moteur Wazo Platform)
+
+**5.1 Socle — livré**
+
+| Statut | Fonctionnalité |
+|---|---|
+| ✅ | Connecteur des API du moteur (auth, confd, calld, agentd, webhookd, call-logd) : jetons partagés et renouvelés, tenant, erreurs typées, contrats vérifiés sur les OpenAPI officielles |
+| ✅ | Connexion par entreprise : test immédiat (identifiants, tenant, version), secret jamais renvoyé, protection SSRF en SaaS (`PBX_ALLOWED_HOSTS` pour le PBX de l'opérateur) |
+| ✅ | Routage d'un numéro du PBX vers un agent IA (`Stasis(app,inbound,called=…)`), sans jamais écraser une destination existante ; retrait propre des deux côtés |
+| ✅ | Console : appels en cours (raccrocher), agents (pause, reprise, déconnexion), files, postes, numéros, journal des appels ; pannes partielles affichées par section |
+| ✅ | Événements du PBX : chaque appel humain rejoint l'historique client multicanal (appels manqués compris), dédoublonné, sans doublonner les appels IA |
+| ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **25 ACL** (testé contre le code) |
+| ✅ | Marque blanche : e-mails d'authentification en français à votre nom (fini `noreply@wazo.community` et le lien vers `app.wazo.io`), page `/pbx-password` à la marque (sans SSRF), en-têtes SIP `User-Agent`/`Server`, page d'accueil, bannière |
+| ✅ | Conformité : moteur GPL-3.0 non modifié, licences conservées sur le serveur, `NOTICE.md` ; NIMBORA (BSD-2) reste un programme distinct |
+| 🧪 | Validation sur un PBX réel : modules `chan_websocket` / `res_websocket_client` de l'Asterisk du moteur, appel IA de bout en bout, livraison des webhooks |
+
+**5.2 Administration complète du PBX depuis NIMBORA**
+
+| Statut | Fonctionnalité |
+|---|---|
+| 🔜 | Postes en une action : utilisateur + ligne SIP/WebRTC + extension + messagerie ; import CSV ; réinitialisation du mot de passe |
+| 🔜 | Files et agents : création, compétences, stratégies de sonnerie, temps d'attente maximum, **débordement vers un agent IA** |
+| 🔜 | Serveurs vocaux et horaires en éditeur visuel ; horaires et fermetures repris de la fiche entreprise |
+| 🔜 | Trunks SIP opérateurs, routes sortantes, numéros (DID), numéro présenté, listes noires |
+| 🔜 | Groupes d'appel, interception, renvois, ne-pas-déranger, conférences, parcage |
+| 🔜 | Enregistrements des appels humains dans le stockage NIMBORA, avec masquage PCI et durées de conservation |
+
+**5.3 Centre d'appels humain unifié**
+
+| Statut | Fonctionnalité |
+|---|---|
+| 🔜 | Softphone NIMBORA (WebRTC) enregistré sur le PBX ; présence ; annuaire unifié (contacts du PBX + mémoire client) |
+| 🔜 | Supervision unifiée IA + humains : files en temps réel, écoute, chuchotement et intervention via le PBX |
+| 🔜 | Passation IA → file du PBX avec fiche de contexte ; rappel automatique des appels manqués par un agent IA |
+| 🔜 | Événements en temps réel par WebSocket au lieu du rafraîchissement toutes les 10 s |
+| 🔜 | Statistiques de files et de conseillers (taux de décroché, temps d'attente, SLA) dans le tableau de bord |
+
+**5.4 Multi-entreprises et exploitation**
+
+| Statut | Fonctionnalité |
+|---|---|
+| 🔜 | Tenant PBX créé automatiquement à l'inscription d'une entreprise ; postes plafonnés par l'offre |
+| 🔜 | PBX partagé de l'opérateur (multi-tenant) ou PBX dédié par client, selon l'offre |
+| 🔜 | Facturation des minutes humaines (journal des appels) avec les minutes IA |
+| 🔜 | Haute disponibilité, sauvegarde et restauration du PBX, métriques Prometheus |
+
+**5.5 Marque blanche totale du PBX**
+
+| Statut | Fonctionnalité |
+|---|---|
+| 🔜 | Téléphones provisionnés : écrans, logos et annuaires à la marque |
+| 🔜 | Messages vocaux et musique d'attente générés par les voix IA locales, dans la langue de l'entreprise |
+| 🔜 | Applications mobile et de bureau à la marque, notifications sans service tiers |
+| 🔜 | Connexion Google / Microsoft par NIMBORA plutôt que par le service hébergé du fournisseur du moteur |
+| 🔜 | Contrôle automatique de toute mention résiduelle du moteur (e-mails, SIP, pages) après chaque mise à jour |
+| 🔜 | Miroir de paquets et publication des sources de toute modification du moteur (GPL-3.0) |
+
+### Phase 6 — Plateforme revendable en marque blanche
+
+| Statut | Fonctionnalité |
+|---|---|
+| ✅ | Nom de la plateforme, du PBX, domaine des e-mails et en-tête SIP centralisés (`BRAND_*`) |
+| 🔜 | Charte de l'interface configurable : logo, couleurs, favicon, police, nom affiché (aujourd'hui « NIMBORA » figure en dur dans une cinquantaine de fichiers de l'interface) |
+| 🔜 | Domaines personnalisés par revendeur et par entreprise, HTTPS automatique, e-mails transactionnels à leur nom |
+| 🔜 | Revendeurs : console, entreprises clientes, offres et prix propres, commissions, facturation Stripe Connect |
+| 🔜 | Documentation, widget web et pages publiques à la marque du revendeur |
 
 ## Développement
 

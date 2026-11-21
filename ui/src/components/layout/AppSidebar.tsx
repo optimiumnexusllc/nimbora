@@ -5,6 +5,7 @@ import {
   ArrowUpCircle,
   AudioLines,
   Brain,
+  Building,
   ChevronLeft,
   ChevronRight,
   ClipboardList,
@@ -180,6 +181,11 @@ const NAV_SECTIONS: SidebarNavSection[] = [
         title: "Confidentialité",
         url: "/privacy",
         icon: LockKeyhole,
+      },
+      {
+        title: "Téléphonie d'entreprise",
+        url: "/pbx",
+        icon: Building,
       },
       {
         title: "Supervision",

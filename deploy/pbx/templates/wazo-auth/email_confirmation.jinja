@@ -1,0 +1,10 @@
+Bonjour {{ username }},
+
+Un compte [[ pbx_name ]] vient d'être créé avec cette adresse e-mail.
+
+Pour confirmer l'adresse, ouvrez ce lien :
+
+https://{{ hostname }}{% if port %}:{{ port }}{% endif %}{% if prefix %}{{ prefix }}{% endif %}/0.1/emails/{{ email_uuid }}/confirm?token={{ token }}
+
+L'équipe [[ brand_name ]]
+[[ support_email ]]

@@ -145,6 +145,24 @@ export type ActivitySummary = {
 };
 
 /**
+ * AgentActionRequest
+ */
+export type AgentActionRequest = {
+    /**
+     * Extension
+     */
+    extension?: string | null;
+    /**
+     * Context
+     */
+    context?: string | null;
+    /**
+     * Reason
+     */
+    reason?: string | null;
+};
+
+/**
  * AgentCreateRequest
  */
 export type AgentCreateRequest = {
@@ -632,6 +650,24 @@ export type BookAppointmentToolDefinition = {
      */
     type: 'book_appointment';
     config?: BookAppointmentConfig;
+};
+
+/**
+ * BrandInfo
+ */
+export type BrandInfo = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Pbx Name
+     */
+    pbx_name: string;
+    /**
+     * Sip User Agent
+     */
+    sip_user_agent: string;
 };
 
 /**
@@ -1747,6 +1783,113 @@ export type CompleteCallbackRequest = {
      * Retry In Minutes
      */
     retry_in_minutes?: number | null;
+};
+
+/**
+ * ConnectionRequest
+ */
+export type ConnectionRequest = {
+    /**
+     * Name
+     */
+    name?: string;
+    /**
+     * Base Url
+     */
+    base_url: string;
+    /**
+     * Username
+     */
+    username: string;
+    /**
+     * Password
+     *
+     * Leave empty (or masked) to keep.
+     */
+    password?: string;
+    /**
+     * Tenant Uuid
+     */
+    tenant_uuid?: string | null;
+    /**
+     * Verify Tls
+     */
+    verify_tls?: boolean;
+    /**
+     * Ari Configuration Id
+     */
+    ari_configuration_id?: number | null;
+    /**
+     * Incall Context
+     */
+    incall_context?: string | null;
+};
+
+/**
+ * ConnectionResponse
+ */
+export type ConnectionResponse = {
+    /**
+     * Configured
+     */
+    configured: boolean;
+    brand: BrandInfo;
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Base Url
+     */
+    base_url?: string | null;
+    /**
+     * Username
+     */
+    username?: string | null;
+    /**
+     * Password
+     */
+    password?: string | null;
+    /**
+     * Tenant Uuid
+     */
+    tenant_uuid?: string | null;
+    /**
+     * Verify Tls
+     */
+    verify_tls?: boolean;
+    /**
+     * Ari Configuration Id
+     */
+    ari_configuration_id?: number | null;
+    /**
+     * Incall Context
+     */
+    incall_context?: string | null;
+    /**
+     * Status
+     */
+    status?: string | null;
+    /**
+     * Last Error
+     */
+    last_error?: string | null;
+    /**
+     * Engine Version
+     */
+    engine_version?: string | null;
+    /**
+     * Last Checked At
+     */
+    last_checked_at?: string | null;
+    /**
+     * Branding Applied At
+     */
+    branding_applied_at?: string | null;
+    /**
+     * Events Connected
+     */
+    events_connected?: boolean;
 };
 
 /**
@@ -4925,6 +5068,28 @@ export type OrganizationPreferencesResponse = {
 };
 
 /**
+ * PasswordResetRequest
+ */
+export type PasswordResetRequest = {
+    /**
+     * Host
+     */
+    host: string;
+    /**
+     * User Uuid
+     */
+    user_uuid: string;
+    /**
+     * Token
+     */
+    token: string;
+    /**
+     * Password
+     */
+    password: string;
+};
+
+/**
  * PhoneNumberCreateRequest
  *
  * Create a new phone number under a telephony configuration.
@@ -6599,6 +6764,46 @@ export type RewindTextChatSessionRequest = {
      * Expected Revision
      */
     expected_revision?: number | null;
+};
+
+/**
+ * RouteRequest
+ */
+export type RouteRequest = {
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Workflow Id
+     */
+    workflow_id: number;
+};
+
+/**
+ * RouteResponse
+ */
+export type RouteResponse = {
+    /**
+     * Number
+     */
+    number: string;
+    /**
+     * Incall Id
+     */
+    incall_id: number;
+    /**
+     * Workflow Id
+     */
+    workflow_id: number;
+    /**
+     * Workflow Name
+     */
+    workflow_name: string;
+    /**
+     * Phone Number Id
+     */
+    phone_number_id: number;
 };
 
 /**
@@ -21652,6 +21857,546 @@ export type CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostResponses = {
 };
 
 export type CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostResponse = CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostResponses[keyof CreateAgentApiV1BusinessTemplatesTemplateIdAgentPostResponses];
+
+export type DeleteConnectionApiV1PbxConnectionDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/connection';
+};
+
+export type DeleteConnectionApiV1PbxConnectionDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteConnectionApiV1PbxConnectionDeleteError = DeleteConnectionApiV1PbxConnectionDeleteErrors[keyof DeleteConnectionApiV1PbxConnectionDeleteErrors];
+
+export type DeleteConnectionApiV1PbxConnectionDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteConnectionApiV1PbxConnectionDeleteResponse = DeleteConnectionApiV1PbxConnectionDeleteResponses[keyof DeleteConnectionApiV1PbxConnectionDeleteResponses];
+
+export type ReadConnectionApiV1PbxConnectionGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/connection';
+};
+
+export type ReadConnectionApiV1PbxConnectionGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadConnectionApiV1PbxConnectionGetError = ReadConnectionApiV1PbxConnectionGetErrors[keyof ReadConnectionApiV1PbxConnectionGetErrors];
+
+export type ReadConnectionApiV1PbxConnectionGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionResponse;
+};
+
+export type ReadConnectionApiV1PbxConnectionGetResponse = ReadConnectionApiV1PbxConnectionGetResponses[keyof ReadConnectionApiV1PbxConnectionGetResponses];
+
+export type SaveConnectionApiV1PbxConnectionPutData = {
+    body: ConnectionRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/connection';
+};
+
+export type SaveConnectionApiV1PbxConnectionPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveConnectionApiV1PbxConnectionPutError = SaveConnectionApiV1PbxConnectionPutErrors[keyof SaveConnectionApiV1PbxConnectionPutErrors];
+
+export type SaveConnectionApiV1PbxConnectionPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionResponse;
+};
+
+export type SaveConnectionApiV1PbxConnectionPutResponse = SaveConnectionApiV1PbxConnectionPutResponses[keyof SaveConnectionApiV1PbxConnectionPutResponses];
+
+export type TestConnectionApiV1PbxConnectionTestPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/connection/test';
+};
+
+export type TestConnectionApiV1PbxConnectionTestPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TestConnectionApiV1PbxConnectionTestPostError = TestConnectionApiV1PbxConnectionTestPostErrors[keyof TestConnectionApiV1PbxConnectionTestPostErrors];
+
+export type TestConnectionApiV1PbxConnectionTestPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionResponse;
+};
+
+export type TestConnectionApiV1PbxConnectionTestPostResponse = TestConnectionApiV1PbxConnectionTestPostResponses[keyof TestConnectionApiV1PbxConnectionTestPostResponses];
+
+export type ReadInventoryApiV1PbxInventoryGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/inventory';
+};
+
+export type ReadInventoryApiV1PbxInventoryGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadInventoryApiV1PbxInventoryGetError = ReadInventoryApiV1PbxInventoryGetErrors[keyof ReadInventoryApiV1PbxInventoryGetErrors];
+
+export type ReadInventoryApiV1PbxInventoryGetResponses = {
+    /**
+     * Response Read Inventory Api V1 Pbx Inventory Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadInventoryApiV1PbxInventoryGetResponse = ReadInventoryApiV1PbxInventoryGetResponses[keyof ReadInventoryApiV1PbxInventoryGetResponses];
+
+export type RouteNumberApiV1PbxRoutesPostData = {
+    body: RouteRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/routes';
+};
+
+export type RouteNumberApiV1PbxRoutesPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RouteNumberApiV1PbxRoutesPostError = RouteNumberApiV1PbxRoutesPostErrors[keyof RouteNumberApiV1PbxRoutesPostErrors];
+
+export type RouteNumberApiV1PbxRoutesPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: RouteResponse;
+};
+
+export type RouteNumberApiV1PbxRoutesPostResponse = RouteNumberApiV1PbxRoutesPostResponses[keyof RouteNumberApiV1PbxRoutesPostResponses];
+
+export type UnrouteNumberApiV1PbxRoutesNumberDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Number
+         */
+        number: string;
+    };
+    query?: never;
+    url: '/api/v1/pbx/routes/{number}';
+};
+
+export type UnrouteNumberApiV1PbxRoutesNumberDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UnrouteNumberApiV1PbxRoutesNumberDeleteError = UnrouteNumberApiV1PbxRoutesNumberDeleteErrors[keyof UnrouteNumberApiV1PbxRoutesNumberDeleteErrors];
+
+export type UnrouteNumberApiV1PbxRoutesNumberDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type UnrouteNumberApiV1PbxRoutesNumberDeleteResponse = UnrouteNumberApiV1PbxRoutesNumberDeleteResponses[keyof UnrouteNumberApiV1PbxRoutesNumberDeleteResponses];
+
+export type ApplyBrandingApiV1PbxBrandingApplyPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/branding/apply';
+};
+
+export type ApplyBrandingApiV1PbxBrandingApplyPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ApplyBrandingApiV1PbxBrandingApplyPostError = ApplyBrandingApiV1PbxBrandingApplyPostErrors[keyof ApplyBrandingApiV1PbxBrandingApplyPostErrors];
+
+export type ApplyBrandingApiV1PbxBrandingApplyPostResponses = {
+    /**
+     * Response Apply Branding Api V1 Pbx Branding Apply Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type ApplyBrandingApiV1PbxBrandingApplyPostResponse = ApplyBrandingApiV1PbxBrandingApplyPostResponses[keyof ApplyBrandingApiV1PbxBrandingApplyPostResponses];
+
+export type ConnectEventsApiV1PbxEventsConnectPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/events/connect';
+};
+
+export type ConnectEventsApiV1PbxEventsConnectPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConnectEventsApiV1PbxEventsConnectPostError = ConnectEventsApiV1PbxEventsConnectPostErrors[keyof ConnectEventsApiV1PbxEventsConnectPostErrors];
+
+export type ConnectEventsApiV1PbxEventsConnectPostResponses = {
+    /**
+     * Response Connect Events Api V1 Pbx Events Connect Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: string | null;
+    };
+};
+
+export type ConnectEventsApiV1PbxEventsConnectPostResponse = ConnectEventsApiV1PbxEventsConnectPostResponses[keyof ConnectEventsApiV1PbxEventsConnectPostResponses];
+
+export type HangupCallApiV1PbxCallsCallIdHangupPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Call Id
+         */
+        call_id: string;
+    };
+    query?: never;
+    url: '/api/v1/pbx/calls/{call_id}/hangup';
+};
+
+export type HangupCallApiV1PbxCallsCallIdHangupPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type HangupCallApiV1PbxCallsCallIdHangupPostError = HangupCallApiV1PbxCallsCallIdHangupPostErrors[keyof HangupCallApiV1PbxCallsCallIdHangupPostErrors];
+
+export type HangupCallApiV1PbxCallsCallIdHangupPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type HangupCallApiV1PbxCallsCallIdHangupPostResponse = HangupCallApiV1PbxCallsCallIdHangupPostResponses[keyof HangupCallApiV1PbxCallsCallIdHangupPostResponses];
+
+export type AgentActionApiV1PbxAgentsAgentNumberActionPostData = {
+    /**
+     * Request
+     */
+    body?: AgentActionRequest | null;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Agent Number
+         */
+        agent_number: string;
+        /**
+         * Action
+         */
+        action: 'login' | 'logoff' | 'pause' | 'unpause';
+    };
+    query?: never;
+    url: '/api/v1/pbx/agents/{agent_number}/{action}';
+};
+
+export type AgentActionApiV1PbxAgentsAgentNumberActionPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AgentActionApiV1PbxAgentsAgentNumberActionPostError = AgentActionApiV1PbxAgentsAgentNumberActionPostErrors[keyof AgentActionApiV1PbxAgentsAgentNumberActionPostErrors];
+
+export type AgentActionApiV1PbxAgentsAgentNumberActionPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type AgentActionApiV1PbxAgentsAgentNumberActionPostResponse = AgentActionApiV1PbxAgentsAgentNumberActionPostResponses[keyof AgentActionApiV1PbxAgentsAgentNumberActionPostResponses];
+
+export type CallLogsApiV1PbxCallLogsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/pbx/call-logs';
+};
+
+export type CallLogsApiV1PbxCallLogsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CallLogsApiV1PbxCallLogsGetError = CallLogsApiV1PbxCallLogsGetErrors[keyof CallLogsApiV1PbxCallLogsGetErrors];
+
+export type CallLogsApiV1PbxCallLogsGetResponses = {
+    /**
+     * Response Call Logs Api V1 Pbx Call Logs Get
+     *
+     * Successful Response
+     */
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type CallLogsApiV1PbxCallLogsGetResponse = CallLogsApiV1PbxCallLogsGetResponses[keyof CallLogsApiV1PbxCallLogsGetResponses];
+
+export type ResetPasswordApiV1PbxPasswordResetPostData = {
+    body: PasswordResetRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/password-reset';
+};
+
+export type ResetPasswordApiV1PbxPasswordResetPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ResetPasswordApiV1PbxPasswordResetPostError = ResetPasswordApiV1PbxPasswordResetPostErrors[keyof ResetPasswordApiV1PbxPasswordResetPostErrors];
+
+export type ResetPasswordApiV1PbxPasswordResetPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type ResetPasswordApiV1PbxPasswordResetPostResponse = ResetPasswordApiV1PbxPasswordResetPostResponses[keyof ResetPasswordApiV1PbxPasswordResetPostResponses];
 
 export type ListQueuesApiV1ContactCenterQueuesGetData = {
     body?: never;
