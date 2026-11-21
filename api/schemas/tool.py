@@ -391,11 +391,13 @@ class TransferCallConfig(BaseModel):
         max_length=2000,
         description="Instructions for the transfer introduction, including language.",
     )
-    destination_source: Literal["static", "dynamic", "context_mapping"] = Field(
+    destination_source: Literal["static", "dynamic", "context_mapping", "smart"] = Field(
         default="static",
         description=(
-            "Whether the destination is static/template, resolved by HTTP, or "
-            "selected by ordered gathered/initial-context mapping rules."
+            "Whether the destination is static/template, resolved by HTTP, "
+            "selected by ordered gathered/initial-context mapping rules, or "
+            "chosen by the company's intelligent routing policy (smart: VIP, "
+            "usual advisor, skill, language, availability)."
         ),
     )
     destination: str = Field(

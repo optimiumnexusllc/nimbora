@@ -752,6 +752,23 @@ async def handle_event(connection, event_name: str | None, payload: Any) -> str:
     await db_client.record_customer_interaction(
         connection.organization_id, profile.id, workflow_run_id=None, fields=fields
     )
+    if fields["outcome"] == "answered":
+        # The employee who served this customer becomes their usual advisor
+        # (intelligent routing sends the next hand-off to them when free).
+        from api.services.contact_center.smart_routing import remember_advisor
+
+        staff_extension = (
+            data.get("destination_extension")
+            if fields["direction"] == "inbound"
+            else data.get("source_extension")
+        )
+        await remember_advisor(
+            connection.organization_id,
+            profile.id,
+            extension=staff_extension,
+            name=fields.get("agent_name"),
+            seconds=int(fields.get("duration_seconds") or 0),
+        )
     if not profile.last_summary or fields["outcome"] == "answered":
         await db_client.update_customer_profile(
             connection.organization_id,

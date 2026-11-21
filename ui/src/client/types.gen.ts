@@ -7580,6 +7580,24 @@ export type RouteResponse = {
 };
 
 /**
+ * RoutingSimulation
+ */
+export type RoutingSimulation = {
+    /**
+     * Caller Number
+     */
+    caller_number?: string | null;
+    /**
+     * Language
+     */
+    language?: string | null;
+    /**
+     * Skill
+     */
+    skill?: string | null;
+};
+
+/**
  * S3SignedUrlResponse
  */
 export type S3SignedUrlResponse = {
@@ -9841,9 +9859,9 @@ export type TransferCallConfig = {
     /**
      * Destination Source
      *
-     * Whether the destination is static/template, resolved by HTTP, or selected by ordered gathered/initial-context mapping rules.
+     * Whether the destination is static/template, resolved by HTTP, selected by ordered gathered/initial-context mapping rules, or chosen by the company's intelligent routing policy (smart: VIP, usual advisor, skill, language, availability).
      */
-    destination_source?: 'static' | 'dynamic' | 'context_mapping';
+    destination_source?: 'static' | 'dynamic' | 'context_mapping' | 'smart';
     /**
      * Destination
      *
@@ -23262,6 +23280,140 @@ export type ProvisionApiV1PbxProvisionPostResponses = {
 };
 
 export type ProvisionApiV1PbxProvisionPostResponse = ProvisionApiV1PbxProvisionPostResponses[keyof ProvisionApiV1PbxProvisionPostResponses];
+
+export type ReadRoutingApiV1PbxRoutingGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/routing';
+};
+
+export type ReadRoutingApiV1PbxRoutingGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadRoutingApiV1PbxRoutingGetError = ReadRoutingApiV1PbxRoutingGetErrors[keyof ReadRoutingApiV1PbxRoutingGetErrors];
+
+export type ReadRoutingApiV1PbxRoutingGetResponses = {
+    /**
+     * Response Read Routing Api V1 Pbx Routing Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadRoutingApiV1PbxRoutingGetResponse = ReadRoutingApiV1PbxRoutingGetResponses[keyof ReadRoutingApiV1PbxRoutingGetResponses];
+
+export type SaveRoutingApiV1PbxRoutingPutData = {
+    /**
+     * Request
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/routing';
+};
+
+export type SaveRoutingApiV1PbxRoutingPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveRoutingApiV1PbxRoutingPutError = SaveRoutingApiV1PbxRoutingPutErrors[keyof SaveRoutingApiV1PbxRoutingPutErrors];
+
+export type SaveRoutingApiV1PbxRoutingPutResponses = {
+    /**
+     * Response Save Routing Api V1 Pbx Routing Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SaveRoutingApiV1PbxRoutingPutResponse = SaveRoutingApiV1PbxRoutingPutResponses[keyof SaveRoutingApiV1PbxRoutingPutResponses];
+
+export type SimulateRoutingApiV1PbxRoutingSimulatePostData = {
+    body: RoutingSimulation;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/routing/simulate';
+};
+
+export type SimulateRoutingApiV1PbxRoutingSimulatePostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SimulateRoutingApiV1PbxRoutingSimulatePostError = SimulateRoutingApiV1PbxRoutingSimulatePostErrors[keyof SimulateRoutingApiV1PbxRoutingSimulatePostErrors];
+
+export type SimulateRoutingApiV1PbxRoutingSimulatePostResponses = {
+    /**
+     * Response Simulate Routing Api V1 Pbx Routing Simulate Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SimulateRoutingApiV1PbxRoutingSimulatePostResponse = SimulateRoutingApiV1PbxRoutingSimulatePostResponses[keyof SimulateRoutingApiV1PbxRoutingSimulatePostResponses];
 
 export type TestConnectionApiV1PbxConnectionTestPostData = {
     body?: never;

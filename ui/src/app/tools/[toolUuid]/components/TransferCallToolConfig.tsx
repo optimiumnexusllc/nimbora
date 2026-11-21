@@ -321,11 +321,34 @@ export function TransferCallToolConfig({
                         onValueChange={(v) => onDestinationSourceChange(v as TransferDestinationSource)}
                         className="w-full"
                     >
-                        <TabsList className="grid w-full grid-cols-3">
+                        <TabsList className="grid w-full grid-cols-4">
                             <TabsTrigger value="static">Static / Template</TabsTrigger>
                             <TabsTrigger value="dynamic">Dynamic HTTP Resolver</TabsTrigger>
                             <TabsTrigger value="context_mapping">Context Mapping</TabsTrigger>
+                            <TabsTrigger value="smart">Routage intelligent</TabsTrigger>
                         </TabsList>
+
+                        <TabsContent value="smart" className="space-y-3 mt-4" data-testid="smart-routing-help">
+                            <Label>Routage intelligent</Label>
+                            <p className="text-sm text-muted-foreground">
+                                La destination est choisie au moment du transfert, selon la politique de routage de
+                                l&apos;entreprise et qui est libre à cet instant sur le PBX :
+                            </p>
+                            <ol className="list-decimal space-y-1 pl-5 text-sm text-muted-foreground">
+                                <li>client VIP → destination VIP ;</li>
+                                <li>conseiller habituel du client, s&apos;il est disponible ;</li>
+                                <li>compétence demandée (l&apos;agent IA la précise : ventes, facturation…) ;</li>
+                                <li>langue de l&apos;appel ;</li>
+                                <li>destination par défaut. Si personne n&apos;est libre : attente en file, ou rappel programmé.</li>
+                            </ol>
+                            <p className="text-sm">
+                                Réglez la politique et testez-la dans{" "}
+                                <a href="/pbx?tab=routing" className="text-primary underline-offset-4 hover:underline">
+                                    Téléphonie d&apos;entreprise → Routage
+                                </a>
+                                .
+                            </p>
+                        </TabsContent>
 
                         <TabsContent value="static" className="space-y-4 mt-4">
                             <div className="grid gap-2">

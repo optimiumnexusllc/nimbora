@@ -719,7 +719,7 @@ class CustomToolManager:
                     getattr(workflow_run, "initial_context", None) or {}
                 ).get("upstream_pbx")
                 destination_source = config.get("destination_source", "static")
-                if external_pbx_call or destination_source == "context_mapping":
+                if external_pbx_call or destination_source in {"context_mapping", "smart"}:
                     # Context routing and external-PBX lead-field mappings must
                     # see current conversation-derived values. This flush is
                     # repeatable because a failed transfer resumes the agent.
@@ -748,7 +748,12 @@ class CustomToolManager:
                 except TransferResolutionError as e:
                     validation_error_result = {
                         "status": "failed",
-                        "message": "I'm sorry, but I couldn't find a valid destination for this transfer.",
+                        "message": (
+                            # Intelligent routing: tell the customer what happens.
+                            e.message
+                            if e.reason in {"no_agent_available", "callback_scheduled"}
+                            else "I'm sorry, but I couldn't find a valid destination for this transfer."
+                        ),
                         "action": "transfer_failed",
                         "reason": e.reason,
                     }

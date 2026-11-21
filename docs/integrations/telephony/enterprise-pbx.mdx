@@ -184,6 +184,8 @@ The opposite way works too: an AI agent hands a caller to your people on the PBX
 | `pbx-queue:<id>` | A queue of the PBX, for example `pbx-queue:1` |
 | `pbx-extension:<number>` | One person's extension, for example `pbx-extension:1001` |
 
+To let NIMBORA choose at hand-off time (VIP customer, usual advisor, skill, language, who is free now), use the **Routage intelligent** tab of the tool instead. See [Smart routing](/contact-center/smart-routing).
+
 The call enters the PBX's own dialplan (`Local/<number>@<context>` from the queue or extension, read on the PBX), as if a phone of the company had dialled it. Queue strategy, music on hold, agents, overflow and voicemail all apply. The person who answers sees:
 
 - **on any phone**: the customer's number, with the name `IA · <customer>`;
