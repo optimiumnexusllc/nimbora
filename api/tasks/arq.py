@@ -60,6 +60,7 @@ REDIS_SETTINGS = RedisSettings(
 
 from api.services.contact_center.callbacks import run_callback_scheduler
 from api.services.privacy.service import run_retention_sweep
+from api.services.whatsapp_messaging.service import close_idle_conversations
 from api.tasks.campaign_tasks import (
     process_campaign_batch,
     sync_campaign_source,
@@ -95,6 +96,9 @@ class WorkerSettings:
         # GDPR retention: purge recordings, transcripts and customer memory
         # older than each organization's policy (daily, off-peak).
         cron(run_retention_sweep, hour={3}, minute={17}, second=0),
+        # WhatsApp conversations quiet for 30 min are closed (summary, memory,
+        # QA, webhooks); the next message opens a new run.
+        cron(close_idle_conversations, minute=set(range(0, 60, 5)), second=40),
         # Callbacks: abandoned queue calls become callbacks; due AI callbacks
         # are placed. Claims are atomic, so several workers are safe.
         cron(

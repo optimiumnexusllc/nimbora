@@ -393,6 +393,34 @@ async def _initialize_embed_session(
                 # Embed visitors initiate the voice call into the workflow.
                 "direction": CallType.INBOUND.value,
             }
+        # Web visitors are linked to their customer history only through a
+        # signature made by the business's backend (never a bare phone).
+        # The visitor controls the context: identity fields only ever come
+        # from a verified signature below.
+        for spoofable in ("customer_signature", "customer_verified", "caller_number"):
+            initial_context.pop(spoofable, None)
+        initial_context["channel"] = "web"
+        from api.services.customer_memory.identity import verified_web_identity
+
+        verified_phone = await verified_web_identity(
+            embed_token.organization_id, context_variables
+        )
+        if verified_phone:
+            from api.services.customer_memory.service import load_memory_context
+
+            initial_context["caller_number"] = verified_phone
+            initial_context["customer_verified"] = True
+            try:
+                initial_context.update(
+                    await load_memory_context(
+                        embed_token.organization_id,
+                        {**initial_context, "direction": "inbound"},
+                    )
+                )
+            except Exception as memory_error:
+                logger.warning(
+                    f"Customer memory unavailable for web chat: {memory_error}"
+                )
         workflow_run = await db_client.create_workflow_run(
             name=name,
             workflow_id=embed_token.workflow_id,

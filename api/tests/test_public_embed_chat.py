@@ -1144,3 +1144,66 @@ def test_public_stream_init_rejects_voice_before_creating_run(_patch_db):
     )
     assert response.status_code == 400
     assert not _patch_db.created_runs
+
+
+def test_init_ignores_spoofed_customer_identity(monkeypatch, _patch_db):
+    """A visitor can't claim someone's history by sending identity fields."""
+
+    async def _secret(organization_id, create=False):
+        return "s" * 64
+
+    monkeypatch.setattr(
+        "api.services.customer_memory.identity.get_identity_secret", _secret
+    )
+    resp = client.post(
+        "/api/v1/public/embed/init",
+        headers={"Origin": ORIGIN},
+        json={
+            "token": "chat",
+            "context_variables": {
+                "customer_phone": "+33612345678",
+                "caller_number": "+33612345678",
+                "customer_verified": True,
+                "customer_signature": "00" * 32,
+            },
+        },
+    )
+    assert resp.status_code == 200
+    initial_context = _patch_db.created_runs[0]["initial_context"]
+    assert initial_context["channel"] == "web"
+    assert "customer_verified" not in initial_context
+    assert "caller_number" not in initial_context
+    assert "customer_signature" not in initial_context
+
+
+def test_init_links_signed_customer(monkeypatch, _patch_db):
+    from api.services.customer_memory.identity import sign_phone
+
+    async def _secret(organization_id, create=False):
+        return "s" * 64
+
+    async def _memory(organization_id, context):
+        return {"customer_name": "Awa"}
+
+    monkeypatch.setattr(
+        "api.services.customer_memory.identity.get_identity_secret", _secret
+    )
+    monkeypatch.setattr(
+        "api.services.customer_memory.service.load_memory_context", _memory
+    )
+    resp = client.post(
+        "/api/v1/public/embed/init",
+        headers={"Origin": ORIGIN},
+        json={
+            "token": "chat",
+            "context_variables": {
+                "customer_phone": "+33 6 12 34 56 78",
+                "customer_signature": sign_phone("s" * 64, "+33612345678"),
+            },
+        },
+    )
+    assert resp.status_code == 200
+    initial_context = _patch_db.created_runs[0]["initial_context"]
+    assert initial_context["caller_number"] == "+33612345678"
+    assert initial_context["customer_verified"] is True
+    assert initial_context["customer_name"] == "Awa"

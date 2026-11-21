@@ -1681,6 +1681,128 @@ export type ContextDestinationRule = {
 };
 
 /**
+ * ConversationDetail
+ */
+export type ConversationDetail = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Customer Wa Id
+     */
+    customer_wa_id: string;
+    /**
+     * Customer Name
+     */
+    customer_name: string | null;
+    /**
+     * Business Number
+     */
+    business_number: string | null;
+    /**
+     * Workflow Id
+     */
+    workflow_id: number | null;
+    /**
+     * Workflow Run Id
+     */
+    workflow_run_id: number | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Message Count
+     */
+    message_count: number;
+    /**
+     * Last Inbound At
+     */
+    last_inbound_at: string | null;
+    /**
+     * Last Outbound At
+     */
+    last_outbound_at: string | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+    /**
+     * Messages
+     */
+    messages: Array<ConversationMessage>;
+};
+
+/**
+ * ConversationMessage
+ */
+export type ConversationMessage = {
+    /**
+     * Role
+     */
+    role: 'customer' | 'agent';
+    /**
+     * Text
+     */
+    text: string;
+    /**
+     * At
+     */
+    at?: string | null;
+};
+
+/**
+ * ConversationResponse
+ */
+export type ConversationResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Customer Wa Id
+     */
+    customer_wa_id: string;
+    /**
+     * Customer Name
+     */
+    customer_name: string | null;
+    /**
+     * Business Number
+     */
+    business_number: string | null;
+    /**
+     * Workflow Id
+     */
+    workflow_id: number | null;
+    /**
+     * Workflow Run Id
+     */
+    workflow_run_id: number | null;
+    /**
+     * Status
+     */
+    status: string;
+    /**
+     * Message Count
+     */
+    message_count: number;
+    /**
+     * Last Inbound At
+     */
+    last_inbound_at: string | null;
+    /**
+     * Last Outbound At
+     */
+    last_outbound_at: string | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+};
+
+/**
  * CreateAPIKeyRequest
  */
 export type CreateApiKeyRequest = {
@@ -3478,6 +3600,20 @@ export type HttpTransferResolverConfig = {
 };
 
 /**
+ * IdentitySecretResponse
+ */
+export type IdentitySecretResponse = {
+    /**
+     * Secret
+     */
+    secret: string;
+    /**
+     * Algorithm
+     */
+    algorithm?: string;
+};
+
+/**
  * ImpersonateRequest
  *
  * Request payload for superadmin impersonation.
@@ -3626,6 +3762,10 @@ export type InteractionResponse = {
      * Duration Seconds
      */
     duration_seconds: number | null;
+    /**
+     * Channel
+     */
+    channel?: string | null;
     /**
      * Created At
      */
@@ -19780,6 +19920,84 @@ export type UpdateMemorySettingsApiV1CustomersSettingsPutResponses = {
 
 export type UpdateMemorySettingsApiV1CustomersSettingsPutResponse = UpdateMemorySettingsApiV1CustomersSettingsPutResponses[keyof UpdateMemorySettingsApiV1CustomersSettingsPutResponses];
 
+export type ReadIdentitySecretApiV1CustomersIdentityGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/customers/identity';
+};
+
+export type ReadIdentitySecretApiV1CustomersIdentityGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadIdentitySecretApiV1CustomersIdentityGetError = ReadIdentitySecretApiV1CustomersIdentityGetErrors[keyof ReadIdentitySecretApiV1CustomersIdentityGetErrors];
+
+export type ReadIdentitySecretApiV1CustomersIdentityGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: IdentitySecretResponse;
+};
+
+export type ReadIdentitySecretApiV1CustomersIdentityGetResponse = ReadIdentitySecretApiV1CustomersIdentityGetResponses[keyof ReadIdentitySecretApiV1CustomersIdentityGetResponses];
+
+export type RotateIdentityApiV1CustomersIdentityRotatePostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/customers/identity/rotate';
+};
+
+export type RotateIdentityApiV1CustomersIdentityRotatePostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RotateIdentityApiV1CustomersIdentityRotatePostError = RotateIdentityApiV1CustomersIdentityRotatePostErrors[keyof RotateIdentityApiV1CustomersIdentityRotatePostErrors];
+
+export type RotateIdentityApiV1CustomersIdentityRotatePostResponses = {
+    /**
+     * Successful Response
+     */
+    200: IdentitySecretResponse;
+};
+
+export type RotateIdentityApiV1CustomersIdentityRotatePostResponse = RotateIdentityApiV1CustomersIdentityRotatePostResponses[keyof RotateIdentityApiV1CustomersIdentityRotatePostResponses];
+
 export type ForgetCustomerApiV1CustomersCustomerIdDeleteData = {
     body?: never;
     headers?: {
@@ -20638,6 +20856,96 @@ export type SummaryApiV1ActionsSummaryGetResponses = {
 };
 
 export type SummaryApiV1ActionsSummaryGetResponse = SummaryApiV1ActionsSummaryGetResponses[keyof SummaryApiV1ActionsSummaryGetResponses];
+
+export type ListConversationsApiV1WhatsappConversationsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: 'open' | 'closed' | 'all';
+    };
+    url: '/api/v1/whatsapp/conversations';
+};
+
+export type ListConversationsApiV1WhatsappConversationsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListConversationsApiV1WhatsappConversationsGetError = ListConversationsApiV1WhatsappConversationsGetErrors[keyof ListConversationsApiV1WhatsappConversationsGetErrors];
+
+export type ListConversationsApiV1WhatsappConversationsGetResponses = {
+    /**
+     * Response List Conversations Api V1 Whatsapp Conversations Get
+     *
+     * Successful Response
+     */
+    200: Array<ConversationResponse>;
+};
+
+export type ListConversationsApiV1WhatsappConversationsGetResponse = ListConversationsApiV1WhatsappConversationsGetResponses[keyof ListConversationsApiV1WhatsappConversationsGetResponses];
+
+export type GetConversationApiV1WhatsappConversationsConversationIdGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Conversation Id
+         */
+        conversation_id: number;
+    };
+    query?: never;
+    url: '/api/v1/whatsapp/conversations/{conversation_id}';
+};
+
+export type GetConversationApiV1WhatsappConversationsConversationIdGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetConversationApiV1WhatsappConversationsConversationIdGetError = GetConversationApiV1WhatsappConversationsConversationIdGetErrors[keyof GetConversationApiV1WhatsappConversationsConversationIdGetErrors];
+
+export type GetConversationApiV1WhatsappConversationsConversationIdGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConversationDetail;
+};
+
+export type GetConversationApiV1WhatsappConversationsConversationIdGetResponse = GetConversationApiV1WhatsappConversationsConversationIdGetResponses[keyof GetConversationApiV1WhatsappConversationsConversationIdGetResponses];
 
 export type ListQueuesApiV1ContactCenterQueuesGetData = {
     body?: never;

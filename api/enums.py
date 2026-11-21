@@ -182,6 +182,7 @@ class OrganizationConfigurationKey(Enum):
     )
     MPS_SIGNUP_GRANT = "MPS_SIGNUP_GRANT"  # Team grant / per-actor claim results
     CUSTOMER_MEMORY = "CUSTOMER_MEMORY"  # {"enabled": bool}: remember callers
+    CUSTOMER_IDENTITY_SECRET = "CUSTOMER_IDENTITY_SECRET"  # signs web-chat identities
     PRIVACY = "PRIVACY"  # PII redaction, retention and recording policy
 
 

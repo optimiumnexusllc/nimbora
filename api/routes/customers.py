@@ -44,6 +44,7 @@ class InteractionResponse(BaseModel):
     outcome: Optional[str]
     transferred_to_queue: Optional[str]
     duration_seconds: Optional[int]
+    channel: Optional[str] = None
     created_at: Optional[datetime]
 
 
@@ -145,6 +146,31 @@ async def create_customer(
     return CustomerResponse(**profile_to_dict(profile))
 
 
+class IdentitySecretResponse(BaseModel):
+    secret: str
+    algorithm: str = "HMAC-SHA256(secret, customer_phone in E.164)"
+
+
+@router.get("/identity", response_model=IdentitySecretResponse)
+async def read_identity_secret(user: UserModel = Depends(get_user)):
+    """Secret your backend uses to sign the logged-in customer's phone for the
+    web chat widget (cross-channel history without spoofing)."""
+    from api.services.customer_memory.identity import get_identity_secret
+
+    organization_id = _org(user)
+    return IdentitySecretResponse(
+        secret=await get_identity_secret(organization_id, create=True)
+    )
+
+
+@router.post("/identity/rotate", response_model=IdentitySecretResponse)
+async def rotate_identity(user: UserModel = Depends(get_user)):
+    from api.services.customer_memory.identity import rotate_identity_secret
+
+    organization_id = _org(user)
+    return IdentitySecretResponse(secret=await rotate_identity_secret(organization_id))
+
+
 @router.get("/{customer_id}", response_model=CustomerDetailResponse)
 async def get_customer(customer_id: int, user: UserModel = Depends(get_user)):
     organization_id = _org(user)
@@ -167,6 +193,7 @@ async def get_customer(customer_id: int, user: UserModel = Depends(get_user)):
                 outcome=i.outcome,
                 transferred_to_queue=i.transferred_to_queue,
                 duration_seconds=i.duration_seconds,
+                channel=i.channel,
                 created_at=i.created_at,
             )
             for i in interactions

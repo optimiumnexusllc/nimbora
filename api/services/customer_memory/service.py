@@ -22,9 +22,8 @@ import re
 from datetime import datetime
 from typing import Any
 
-from loguru import logger
-
 from api.enums import OrganizationConfigurationKey
+from loguru import logger
 
 SETTING_KEY = OrganizationConfigurationKey.CUSTOMER_MEMORY.value
 MEMORY_PROMPT_KEY = "customer_memory"
@@ -67,7 +66,13 @@ def phone_suffix(phone: str) -> str:
 
 
 def customer_phone_from_context(context: dict[str, Any]) -> str | None:
-    """The *customer's* number: the callee when we dial out, else the caller."""
+    """The *customer's* number: the callee when we dial out, else the caller.
+
+    A web visitor's number counts only when the business's backend signed it
+    (``customer_verified``): page context is under the visitor's control.
+    """
+    if context.get("channel") == "web" and not context.get("customer_verified"):
+        return None
     direction = str(context.get("direction") or "").lower()
     if direction == "outbound":
         candidates = ("phone_number", "called_number", "to_number")
@@ -99,6 +104,28 @@ def _format_date(moment: datetime | None) -> str:
     return moment.strftime("%d/%m/%Y") if moment else "date inconnue"
 
 
+CHANNEL_LABELS = {
+    "phone": "par téléphone",
+    "whatsapp": "sur WhatsApp",
+    "web": "sur le site web",
+}
+
+
+def interaction_channel(workflow_run) -> str:
+    """phone | whatsapp | web — where this exchange took place."""
+    context = getattr(workflow_run, "initial_context", None) or {}
+    if context.get("channel") in CHANNEL_LABELS:
+        return context["channel"]
+    if (
+        context.get("provider") == "whatsapp"
+        or getattr(workflow_run, "mode", None) == "whatsapp"
+    ):
+        return "whatsapp"
+    if getattr(workflow_run, "mode", None) in {"textchat", "smallwebrtc", "webrtc"}:
+        return "web"
+    return "phone"
+
+
 def render_memory_prompt(profile, interactions) -> str:
     """The section the agent reads. Facts only, newest call first."""
     lines = [
@@ -111,7 +138,7 @@ def render_memory_prompt(profile, interactions) -> str:
     if profile.name:
         lines.append(f"- Nom : {profile.name}")
     lines.append(
-        f"- Appels précédents : {profile.total_calls}"
+        f"- Échanges précédents (téléphone, WhatsApp, web) : {profile.total_calls}"
         f" (dernier le {_format_date(profile.last_seen_at)})"
     )
     if profile.tags:
@@ -132,8 +159,10 @@ def render_memory_prompt(profile, interactions) -> str:
             if interaction.transferred_to_queue:
                 extra.append(f"transféré à l'équipe {interaction.transferred_to_queue}")
             suffix = f" ({'; '.join(extra)})" if extra else ""
+            where = CHANNEL_LABELS.get(getattr(interaction, "channel", None) or "", "")
             lines.append(
-                f"  - {_format_date(interaction.created_at)} : {detail}{suffix}"
+                f"  - {_format_date(interaction.created_at)}"
+                f"{' ' + where if where else ''} : {detail}{suffix}"
             )
     return "\n".join(lines)
 
@@ -206,14 +235,13 @@ def _name_from_context(gathered: dict[str, Any]) -> str | None:
 
 
 async def _summarize_call(workflow_run, transcript: str) -> dict[str, Any] | None:
-    from pipecat.processors.aggregators.llm_context import LLMContext
-
     from api.services.configuration.run_model_configuration import (
         get_effective_ai_model_configuration_for_run,
     )
     from api.services.contact_center.handoff import parse_summary
     from api.services.managed_model_services import get_mps_correlation_id
     from api.services.pipecat.service_factory import create_llm_service
+    from pipecat.processors.aggregators.llm_context import LLMContext
 
     workflow = workflow_run.workflow
     configurations = (
@@ -327,6 +355,7 @@ async def record_call_in_memory(workflow_run, organization_id: int) -> bool:
                 or gathered.get("call_disposition"),
                 "transferred_to_queue": handoff.queue_slug if handoff else None,
                 "duration_seconds": int(duration) if duration else None,
+                "channel": interaction_channel(workflow_run),
             },
         )
         if not recorded:

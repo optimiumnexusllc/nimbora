@@ -201,8 +201,10 @@ export type CustomerInteraction = {
     outcome: string | null;
     transferred_to_queue: string | null;
     duration_seconds: number | null;
+    channel: "phone" | "whatsapp" | "web" | string | null;
     created_at: string | null;
 };
+
 
 export type CustomerDetail = Customer & { interactions: CustomerInteraction[] };
 

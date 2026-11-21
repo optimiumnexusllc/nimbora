@@ -17,6 +17,7 @@ import {
   LogOut,
   type LucideIcon,
   Megaphone,
+  MessagesSquare,
   Phone,
   Plug,
   Radio,
@@ -158,6 +159,11 @@ const NAV_SECTIONS: SidebarNavSection[] = [
         title: "Clients",
         url: "/customers",
         icon: Users,
+      },
+      {
+        title: "Conversations",
+        url: "/conversations",
+        icon: MessagesSquare,
       },
       {
         title: "Activité",

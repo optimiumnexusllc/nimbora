@@ -424,7 +424,7 @@ def _payload_for_call(
 
 @router.post("/webhook")
 async def handle_whatsapp_webhook(request: Request):
-    """Handle incoming WhatsApp Cloud API webhooks (including calling events)."""
+    """Handle incoming WhatsApp Cloud API webhooks: calls and messages."""
     try:
         raw_body = await request.body()
         signature_header = request.headers.get("x-hub-signature-256")
@@ -446,17 +446,19 @@ async def handle_whatsapp_webhook(request: Request):
             changes = entry.get("changes") or []
             for change in changes:
                 field = change.get("field")
-                if field != "calls":
-                    logger.debug(
-                        f"[WhatsApp] Skipping non-calling webhook field: {field}"
-                    )
+                if field not in {"calls", "messages"}:
+                    logger.debug(f"[WhatsApp] Skipping webhook field: {field}")
                     continue
 
                 value = change.get("value") or {}
                 metadata = value.get("metadata") or {}
                 phone_number_id = str(metadata.get("phone_number_id") or "")
                 calls = value.get("calls") or []
-                if not calls:
+                if field == "calls" and not calls:
+                    continue
+                if field == "messages" and not (
+                    value.get("messages") or value.get("statuses")
+                ):
                     continue
 
                 if not phone_number_id:
@@ -500,6 +502,16 @@ async def handle_whatsapp_webhook(request: Request):
                     signature_header=signature_header,
                     phone_number_id=phone_number_id,
                 )
+
+                if field == "messages":
+                    # Conversations: the number's agent answers in the
+                    # background (the webhook must return quickly).
+                    from api.services.whatsapp_messaging.service import (
+                        handle_messages_change,
+                    )
+
+                    await handle_messages_change(config, value)
+                    continue
 
                 for call_data in calls:
                     event = call_data.get("event")

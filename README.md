@@ -47,11 +47,25 @@ Quand l'agent IA transfère vers une file, le conseiller qui décroche voit une 
 générée par l'IA : motif, résumé, prénom et humeur du client, prochaine étape, données collectées et
 transcription. Plus besoin de faire répéter le client.
 
-### 🧠 Mémoire client
+### 💬 WhatsApp : l'agent répond aussi aux messages
 
-Chaque appelant est reconnu à son numéro. L'agent reprend la conversation là où elle s'était
-arrêtée (« Bonjour Awa, votre colis est-il bien arrivé ? »). Fiches clients, historique des
-échanges, notes et étiquettes, effacement à la demande.
+Le même agent répond aux **appels et aux messages WhatsApp** de votre numéro Business : textes,
+**messages vocaux** (transcrits puis traités), boutons et localisations. Le client voit ses
+messages lus et l'indicateur « en train d'écrire ». Chaque échange est suivi en direct dans
+**Conversations**, puis résumé et enregistré dans l'historique du client.
+
+<p align="center"><img src="docs/images/screenshots/conversations.webp" alt="Conversations WhatsApp" width="88%"></p>
+
+### 🧠 Mémoire client, sur tous les canaux
+
+Chaque client est reconnu à son numéro, **au téléphone, sur WhatsApp et sur le chat web**.
+L'agent reprend là où l'échange s'était arrêté, quel que soit le canal : le client qui a écrit le
+matin sur WhatsApp (« un 3 pièces à Cocody, 250 000 FCFA ») est accueilli par son nom quand il
+appelle l'après-midi. Fiches clients, historique par canal, notes et étiquettes, effacement à la
+demande. Sur le chat web, seuls les clients **identifiés par votre site** (signature HMAC) sont
+reliés à leur historique : un visiteur ne peut pas usurper le numéro d'un autre.
+
+<p align="center"><img src="docs/images/screenshots/customer-channels.webp" alt="Historique client multicanal" width="88%"></p>
 
 ### ⚡ Des agents qui agissent : rendez-vous, messages, tickets
 
@@ -109,7 +123,8 @@ swahili, haoussa, yoruba, lingala…
 | **Activité** | Rendez-vous, messages envoyés et tickets ouverts par les agents, avec annulation, statut et résolution |
 | **Centre d'appels humain** | Files d'attente Asterisk, postes avec softphone WebRTC dans le navigateur, pauses avec motif, fiches de passation, rappels en un clic |
 | **Supervision** | Indicateurs en direct, suivi mot à mot des appels IA, consignes soufflées à l'IA, reprise en main, écoute / chuchotement / intervention |
-| **Mémoire et clients** | Reconnaissance des appelants, historique, résumé et humeur de chaque appel, langue préférée |
+| **WhatsApp** | Appels entrants, conversations texte et messages vocaux avec l'agent IA, suivi en direct, clôture automatique après 30 min d'inactivité |
+| **Mémoire et clients** | Reconnaissance des clients sur téléphone, WhatsApp et chat web (identité signée), historique par canal, résumé et humeur de chaque échange, langue préférée |
 | **Langues** | Détection automatique, voix par langue, packs de langues locaux |
 | **IA souveraine** | LLM (Ollama, vLLM), Whisper (~100 langues), voix Kokoro / Piper, sans clé d'API ni donnée envoyée à l'extérieur. Fournisseurs cloud (OpenAI, Anthropic, Deepgram, ElevenLabs…) en option |
 | **Confidentialité** | Masquage des données personnelles, mode PCI, journaux masqués, durées de conservation, export et effacement RGPD |
@@ -202,8 +217,8 @@ ses informations, joignable par **chat web, téléphone et WhatsApp**, sur un mo
 | ✅ | Téléphone (Asterisk, Twilio, Vonage, Telnyx…), entrant et sortant |
 | ✅ | Widget web : voix et chat |
 | ✅ | Appels WhatsApp entrants |
-| 🚧 | Conversations WhatsApp : texte et messages vocaux |
-| 🚧 | Historique client partagé entre les trois canaux |
+| ✅ | Conversations WhatsApp : texte et messages vocaux |
+| ✅ | Historique client partagé entre les trois canaux (identité web signée) |
 
 ### Phase 3 — Intelligence métier
 

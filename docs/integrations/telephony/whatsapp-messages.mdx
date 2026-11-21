@@ -1,0 +1,108 @@
+---
+title: "WhatsApp Messages"
+description: "Let your AI agents answer WhatsApp text and voice messages, with one customer history shared across phone, WhatsApp and web chat"
+---
+
+## Overview
+
+The agent assigned to your WhatsApp Business number answers **messages** as well as calls. The same agent, prompt, tools (appointments, tickets, transfers…) and knowledge base work in both.
+
+- **Text messages** are answered in seconds. Long answers are split to fit WhatsApp's 4,096-character limit.
+- **Voice notes** are transcribed with the agent's speech-to-text model and answered in text.
+- **Buttons, list replies, locations and captions** are passed to the agent as text. Images and documents are mentioned to the agent ("[photo : …]"), which can ask the customer to describe them.
+- The customer sees the message as **read** and a **typing** indicator while the agent works.
+
+Each customer has one **conversation** at a time. All messages in it share one agent run, so the agent keeps the context. After **30 minutes without a message**, the conversation closes: the run is completed (summary, sentiment, QA, webhooks) and recorded in the customer's history. The next message starts a new conversation that remembers the previous ones.
+
+You can follow every conversation live from **Conversations** in the sidebar.
+
+<Frame caption="Conversations — a WhatsApp exchange handled by the agent">
+  <img src="/images/screenshots/conversations.webp" alt="Conversations page with the list of WhatsApp customers and the transcript" />
+</Frame>
+
+## Setup
+
+Messages use the same configuration as [WhatsApp calls](/integrations/telephony/whatsapp). If you have already set it up, only step 2 is new.
+
+<Steps>
+  <Step title="Configure WhatsApp in NIMBORA">
+    Follow steps 1 to 4 of the [WhatsApp setup](/integrations/telephony/whatsapp): create the Meta app, collect the credentials, create the configuration in NIMBORA and set the webhook. Calling (step 5) is optional if you only want messages.
+  </Step>
+  <Step title="Subscribe to the messages webhook field">
+    In the Meta App Dashboard, open **WhatsApp → Configuration → Webhook fields** and turn on **Subscribe** for `messages` (in addition to `calls` if you take calls).
+  </Step>
+  <Step title="Assign the agent">
+    Edit the WhatsApp number in NIMBORA and set its **Inbound workflow** to the agent that should answer. A number without an agent ignores messages. If the configuration has a single active number, that number is used for every message received.
+  </Step>
+  <Step title="Test">
+    Send a message from your phone to the business number. The agent greets you and answers; the conversation appears under **Conversations**.
+  </Step>
+</Steps>
+
+<Note>
+  Every webhook is checked with your app secret (`X-Hub-Signature-256`). Meta may deliver the same message more than once: NIMBORA answers each message once. Messages from the same customer are processed one at a time, in order.
+</Note>
+
+### Usage and quota
+
+A WhatsApp conversation counts as one agent run, like a web chat. If the organization has no quota left, the customer receives a short "assistant unavailable" message instead of an answer.
+
+### Voice notes
+
+Voice notes are transcribed with the speech-to-text provider configured for the agent. Supported: **Speaches** (local), **OpenAI-compatible** endpoints and **Deepgram**. With another provider, the customer is asked to write their message instead.
+
+## One customer history across channels
+
+When customer memory is on (**Clients** page), NIMBORA keeps one profile per customer phone number. Calls and WhatsApp conversations both add to it, and agents read it at the start of each exchange, on any channel:
+
+> Échanges précédents (téléphone, WhatsApp, web) :
+> – 18/11/2026 sur WhatsApp : cherche un 3 pièces à Cocody, budget 250 000 FCFA
+> – 20/11/2026 par téléphone : visite fixée samedi 10 h
+
+So a customer who wrote on WhatsApp in the morning and calls in the afternoon is greeted by name, and the agent continues from where they left off. Each exchange in the customer profile shows its channel.
+
+### Web chat: identified customers only
+
+On your website, the page context is controlled by the visitor: anyone could type someone else's phone number. NIMBORA therefore links a web chat to a customer's history **only if your server signs the phone number** of the logged-in customer.
+
+1. In **Clients → Chat web : clients identifiés**, copy the identity secret. Keep it on your server only.
+
+<Frame caption="Clients — identity secret and integration example">
+  <img src="/images/screenshots/web-identity.webp" alt="Dialog showing the web identity secret and a Node.js signing example" />
+</Frame>
+
+2. For the logged-in customer, compute `HMAC-SHA256(secret, phone)` in hexadecimal, with the phone in international format without spaces (`+2250700112233`).
+3. Pass both values in the widget context:
+
+```js
+// Server side (Node.js)
+const crypto = require("crypto");
+const signature = crypto
+  .createHmac("sha256", process.env.NIMBORA_IDENTITY_SECRET)
+  .update(customer.phone) // "+2250700112233"
+  .digest("hex");
+```
+
+```js
+// In the page
+js.setAttribute("data-nimbora-context", JSON.stringify({
+  customer_phone: "+2250700112233",
+  customer_signature: "<signature computed by your server>"
+}));
+```
+
+With a valid signature, the agent greets the customer by name and the chat is recorded in their history. Without one, or with an invalid one, the chat stays anonymous: the visitor's phone number is not used to look up or update any customer profile. **Renouveler le secret** invalidates all existing signatures.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Messages arrive but the agent does not answer">
+    Check that the `messages` webhook field is subscribed in Meta and that the number has an **Inbound workflow**. The API logs show `[WhatsApp]` lines for each message received.
+  </Accordion>
+  <Accordion title="The agent answers 'assistant unavailable'">
+    The organization's quota is exhausted, or the agent run failed. Check **Usage** and the agent run linked from the conversation.
+  </Accordion>
+  <Accordion title="Messages are not delivered to the customer">
+    WhatsApp only allows free-form replies within 24 hours of the customer's last message. Failed deliveries are reported by Meta and logged by NIMBORA with their error code.
+  </Accordion>
+</AccordionGroup>

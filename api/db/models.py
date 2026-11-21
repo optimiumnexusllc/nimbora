@@ -1995,6 +1995,7 @@ class CustomerInteractionModel(Base):
     outcome = Column(String(64), nullable=True)
     transferred_to_queue = Column(String(48), nullable=True)
     duration_seconds = Column(Integer, nullable=True)
+    channel = Column(String(16), nullable=True)  # phone | whatsapp | web
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     __table_args__ = (
@@ -2195,4 +2196,53 @@ class TicketModel(Base):
     __table_args__ = (
         UniqueConstraint("organization_id", "number", name="uq_tickets_org_number"),
         Index("ix_tickets_org_status", "organization_id", "status"),
+    )
+
+
+class WhatsAppConversationModel(Base):
+    """A WhatsApp chat between a customer and a business number.
+
+    One open conversation per (business number, customer). Each holds the
+    current text-chat run of the number's agent; after a quiet period the run
+    is closed (summary, memory, QA, webhooks) and the next message opens a new
+    one — the customer's history carries over through customer memory.
+    """
+
+    __tablename__ = "whatsapp_conversations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    telephony_configuration_id = Column(
+        Integer,
+        ForeignKey("telephony_configurations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    phone_number_id = Column(String(64), nullable=False)  # Meta's id of our number
+    business_number = Column(String(32), nullable=True)
+    customer_wa_id = Column(String(32), nullable=False)
+    customer_name = Column(String(128), nullable=True)
+    workflow_id = Column(
+        Integer, ForeignKey("workflows.id", ondelete="SET NULL"), nullable=True
+    )
+    workflow_run_id = Column(
+        Integer, ForeignKey("workflow_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    status = Column(String(16), nullable=False, default="open")  # open | closed
+    message_count = Column(Integer, nullable=False, default=0)
+    last_inbound_at = Column(DateTime(timezone=True), nullable=True)
+    last_outbound_at = Column(DateTime(timezone=True), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    closed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index(
+            "uq_whatsapp_conversations_open",
+            "phone_number_id",
+            "customer_wa_id",
+            unique=True,
+            postgresql_where=text("status = 'open'"),
+        ),
+        Index("ix_whatsapp_conversations_org", "organization_id", "last_inbound_at"),
     )

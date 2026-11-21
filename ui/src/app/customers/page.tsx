@@ -1,9 +1,27 @@
 "use client";
 
-import { Brain, Phone, PhoneIncoming, PhoneOutgoing, Plus, Search, Trash2, Users } from "lucide-react";
+import {
+    Brain,
+    Copy,
+    Globe,
+    KeyRound,
+    MessageCircle,
+    Phone,
+    PhoneIncoming,
+    PhoneOutgoing,
+    Plus,
+    RefreshCw,
+    Search,
+    Trash2,
+    Users,
+} from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import {
+    readIdentitySecretApiV1CustomersIdentityGet,
+    rotateIdentityApiV1CustomersIdentityRotatePost,
+} from "@/client/sdk.gen";
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -22,6 +40,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
+import { detailFromError } from "@/lib/apiError";
 import { useAuth } from "@/lib/auth";
 import { type Customer, type CustomerDetail, enterpriseApi } from "@/lib/enterpriseApi";
 import { cn } from "@/lib/utils";
@@ -32,6 +51,18 @@ const SENTIMENT_LABEL: Record<string, { label: string; className: string }> = {
     frustrated: { label: "Agacé", className: "text-amber-400" },
     angry: { label: "En colère", className: "text-red-400" },
 };
+
+const CHANNELS: Record<string, { label: string; className: string }> = {
+    phone: { label: "Téléphone", className: "border-sky-500/40 text-sky-300" },
+    whatsapp: { label: "WhatsApp", className: "border-emerald-500/40 text-emerald-300" },
+    web: { label: "Chat web", className: "border-violet-500/40 text-violet-300" },
+};
+
+function ChannelIcon({ channel, direction }: { channel: string | null; direction: string | null }) {
+    if (channel === "whatsapp") return <MessageCircle className="size-3.5 text-emerald-400" />;
+    if (channel === "web") return <Globe className="size-3.5 text-violet-400" />;
+    return direction === "outbound" ? <PhoneOutgoing className="size-3.5" /> : <PhoneIncoming className="size-3.5" />;
+}
 
 const fmt = (iso: string | null) =>
     iso ? new Date(iso).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" }) : "—";
@@ -107,7 +138,7 @@ function CustomerSheet({
                 <SheetHeader>
                     <SheetTitle className="font-display">{detail?.name || detail?.phone || "Client"}</SheetTitle>
                     <SheetDescription>
-                        {detail ? `${detail.phone} · ${detail.total_calls} appel(s) · client depuis le ${fmt(detail.first_seen_at)}` : ""}
+                        {detail ? `${detail.phone} · ${detail.total_calls} échange(s) · client depuis le ${fmt(detail.first_seen_at)}` : ""}
                     </SheetDescription>
                 </SheetHeader>
                 {!detail ? (
@@ -152,9 +183,9 @@ function CustomerSheet({
                         )}
 
                         <div>
-                            <h3 className="mb-3 text-sm font-semibold">Historique des appels</h3>
+                            <h3 className="mb-3 text-sm font-semibold">Historique des échanges (tous canaux)</h3>
                             {detail.interactions.length === 0 ? (
-                                <p className="text-sm text-muted-foreground">Aucun appel enregistré.</p>
+                                <p className="text-sm text-muted-foreground">Aucun échange enregistré.</p>
                             ) : (
                                 <ol className="relative space-y-4 border-l border-border/60 pl-5">
                                     {detail.interactions.map((i) => {
@@ -163,12 +194,16 @@ function CustomerSheet({
                                             <li key={i.id} className="relative">
                                                 <span className="absolute -left-[27px] top-1 flex size-3.5 items-center justify-center rounded-full bg-gradient-to-br from-brand-cyan to-brand-violet" />
                                                 <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                                                    {i.direction === "outbound" ? (
-                                                        <PhoneOutgoing className="size-3.5" />
-                                                    ) : (
-                                                        <PhoneIncoming className="size-3.5" />
-                                                    )}
+                                                    <ChannelIcon channel={i.channel} direction={i.direction} />
                                                     {fmt(i.created_at)}
+                                                    {CHANNELS[i.channel ?? "phone"] && (
+                                                        <Badge
+                                                            variant="outline"
+                                                            className={cn("px-1.5 py-0 text-[10px]", CHANNELS[i.channel ?? "phone"].className)}
+                                                        >
+                                                            {CHANNELS[i.channel ?? "phone"].label}
+                                                        </Badge>
+                                                    )}
                                                     {i.agent_name && <span>· {i.agent_name}</span>}
                                                     {i.duration_seconds ? (
                                                         <span>· {Math.max(1, Math.round(i.duration_seconds / 60))} min</span>
@@ -195,6 +230,108 @@ function CustomerSheet({
     );
 }
 
+function snippet(secret: string): string {
+    return `// Sur votre serveur (jamais dans le navigateur) — Node.js
+const crypto = require("crypto");
+const NIMBORA_IDENTITY_SECRET = "${secret}";
+
+// Numéro au format international, sans espaces : +2250700112233
+function nimboraSignature(phone) {
+  return crypto.createHmac("sha256", NIMBORA_IDENTITY_SECRET).update(phone).digest("hex");
+}
+
+// Puis dans la page, pour le client connecté :
+js.setAttribute("data-nimbora-context", JSON.stringify({
+  customer_phone: "<%= client.phone %>",
+  customer_signature: "<%= nimboraSignature(client.phone) %>"
+}));`;
+}
+
+function WebIdentityDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+    const [secret, setSecret] = useState<string | null>(null);
+    const [busy, setBusy] = useState(false);
+
+    useEffect(() => {
+        if (!open || secret) return;
+        readIdentitySecretApiV1CustomersIdentityGet().then((response) => {
+            if (response.error) {
+                toast.error(detailFromError(response.error, "Secret indisponible"));
+                return;
+            }
+            setSecret(response.data?.secret ?? null);
+        });
+    }, [open, secret]);
+
+    const rotate = async () => {
+        if (!window.confirm("Générer un nouveau secret ? Les signatures actuelles cesseront d'être reconnues.")) return;
+        setBusy(true);
+        const response = await rotateIdentityApiV1CustomersIdentityRotatePost();
+        setBusy(false);
+        if (response.error) {
+            toast.error(detailFromError(response.error, "Renouvellement impossible"));
+            return;
+        }
+        setSecret(response.data?.secret ?? null);
+        toast.success("Nouveau secret généré");
+    };
+
+    const copy = async (text: string, what: string) => {
+        try {
+            await navigator.clipboard.writeText(text);
+            toast.success(`${what} copié`);
+        } catch {
+            toast.error("Copie impossible");
+        }
+    };
+
+    return (
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent className="sm:max-w-2xl">
+                <DialogHeader className="min-w-0">
+                    <DialogTitle>Chat web : reconnaître vos clients connectés</DialogTitle>
+                    <DialogDescription>
+                        Sur votre site, un visiteur peut écrire n&apos;importe quel numéro. Pour que l&apos;agent reprenne
+                        l&apos;historique d&apos;un client (appels, WhatsApp), votre serveur signe le numéro du client
+                        connecté avec ce secret. Sans signature valide, le chat reste anonyme.
+                    </DialogDescription>
+                </DialogHeader>
+                {!secret ? (
+                    <Skeleton className="h-40" />
+                ) : (
+                    <div className="min-w-0 space-y-4">
+                        <div className="space-y-1">
+                            <Label>Secret d&apos;identité (à garder côté serveur)</Label>
+                            <div className="flex gap-2">
+                                <Input readOnly value={secret} className="min-w-0 font-mono text-xs" data-testid="identity-secret" />
+                                <Button variant="outline" size="icon" aria-label="Copier le secret" onClick={() => copy(secret, "Secret")}>
+                                    <Copy />
+                                </Button>
+                            </div>
+                        </div>
+                        <div className="space-y-1">
+                            <div className="flex items-center justify-between">
+                                <Label>Exemple d&apos;intégration</Label>
+                                <Button variant="ghost" size="sm" onClick={() => copy(snippet(secret), "Exemple")}>
+                                    <Copy /> Copier
+                                </Button>
+                            </div>
+                            <pre className="max-h-64 overflow-auto whitespace-pre-wrap break-all rounded-md border border-border/60 bg-muted/40 p-3 text-xs">
+                                {snippet(secret)}
+                            </pre>
+                        </div>
+                    </div>
+                )}
+                <DialogFooter>
+                    <Button variant="ghost" className="text-destructive" onClick={rotate} disabled={busy || !secret}>
+                        <RefreshCw /> Renouveler le secret
+                    </Button>
+                    <Button onClick={() => onOpenChange(false)}>Fermer</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    );
+}
+
 export default function CustomersPage() {
     const { user, loading } = useAuth();
     const [customers, setCustomers] = useState<Customer[] | null>(null);
@@ -203,6 +340,7 @@ export default function CustomersPage() {
     const [query, setQuery] = useState("");
     const [selected, setSelected] = useState<number | null>(null);
     const [creating, setCreating] = useState(false);
+    const [identityOpen, setIdentityOpen] = useState(false);
     const [newPhone, setNewPhone] = useState("");
     const [newName, setNewName] = useState("");
     const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -265,10 +403,13 @@ export default function CustomersPage() {
                 <div className="min-w-0 flex-1">
                     <p className="font-medium">Mémoire client</p>
                     <p className="text-sm text-muted-foreground">
-                        Les agents IA reconnaissent le numéro, saluent le client par son nom et reprennent son
-                        historique. Les fiches se mettent à jour après chaque appel.
+                        Les agents IA reconnaissent le client au téléphone, sur WhatsApp et sur le chat web,
+                        le saluent par son nom et reprennent l&apos;historique de tous les canaux.
                     </p>
                 </div>
+                <Button variant="outline" size="sm" onClick={() => setIdentityOpen(true)}>
+                    <KeyRound /> Chat web : clients identifiés
+                </Button>
                 <Switch checked={enabled} onCheckedChange={toggleMemory} aria-label="Activer la mémoire client" />
             </div>
 
@@ -306,7 +447,7 @@ export default function CustomersPage() {
                             <TableRow>
                                 <TableHead>Client</TableHead>
                                 <TableHead>Dernier échange</TableHead>
-                                <TableHead className="text-right">Appels</TableHead>
+                                <TableHead className="text-right">Échanges</TableHead>
                                 <TableHead>Vu le</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -345,6 +486,8 @@ export default function CustomersPage() {
                     </Table>
                 )}
             </PageSection>
+
+            <WebIdentityDialog open={identityOpen} onOpenChange={setIdentityOpen} />
 
             <CustomerSheet customerId={selected} onClose={() => setSelected(null)} onChanged={() => void load(query)} />
 
