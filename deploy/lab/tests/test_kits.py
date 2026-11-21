@@ -103,3 +103,17 @@ def test_minio_image_is_pullable_and_health_check_has_its_alias(compose: Path):
     assert "MC_HOST_local" in minio["environment"]
     assert minio.get("user") == "0"
 
+
+def test_pbx_inventory_defines_ari_port_with_its_address():
+    """The engine's b2bua role binds ARI to the address only if the port is also set.
+
+    `b2bua_listen_address = 0.0.0.0` alone leaves Asterisk's HTTP server on
+    127.0.0.1 and the platform cannot reach ARI (seen on the lab PBX).
+    """
+    source = (DEPLOY / "pbx" / "install.sh").read_text()
+    inventory = source[source.index("[uc_engine:vars]"):source.index("EOF", source.index("[uc_engine:vars]"))]
+    assert re.search(r"^b2bua_listen_address = 0\.0\.0\.0$", inventory, re.M)
+    assert re.search(r"^b2bua_port_http = 5039$", inventory, re.M)
+    # sysconfd has no authentication: its port must NOT be set, or the same
+    # address would expose it.
+    assert "b2bua_port_sysconfd" not in inventory

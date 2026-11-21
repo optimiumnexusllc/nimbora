@@ -140,8 +140,12 @@ engine_api_db_auth_password = ${DB_AUTH_PASSWORD}
 engine_api_db_confd_password = ${DB_CONFD_PASSWORD}
 ari_password = ${ARI_PASSWORD}
 ami_password = ${AMI_PASSWORD}
-# ARI must be reachable by the AI platform (firewalled to it below).
+# ARI must be reachable by the AI platform (firewalled to it below). The
+# engine's b2bua role writes http.d/10-engine-api.conf only when BOTH the
+# address and the port are defined; without the port Asterisk stays on
+# 127.0.0.1 and the platform gets "connection refused".
 b2bua_listen_address = 0.0.0.0
+b2bua_port_http = 5039
 ${ARI_TLS_VARS}
 EOF
 
