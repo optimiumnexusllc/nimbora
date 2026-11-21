@@ -43,6 +43,13 @@ done
 [[ $EUID -eq 0 ]] || { echo "À lancer en root (sudo)."; exit 1; }
 [[ -n "$NIMBORA_URL" && -n "$NIMBORA_IP" ]] || { echo "--nimbora-url et --nimbora-ip sont requis."; usage; }
 grep -q 'VERSION_CODENAME=bookworm' /etc/os-release || { echo "Debian 12 (bookworm) requis."; exit 1; }
+[[ "$COMPANY" != *[\"\'\\]* ]] || { echo "--company ne peut contenir ni guillemet ni barre oblique inverse."; exit 1; }
+
+# The engine's installer runs `wazo-auth-cli tenant create {{ tenant_name }}`
+# unquoted: a company name with a space ("Ivoire Immo") would be split into two
+# arguments and the tenant creation fails. Written as a Python literal holding
+# the quotes, the inventory value reaches the command as one argument.
+ansible_quote() { printf "'\"%s\"'" "$1"; }
 [[ "${NIMBORA_URL}" == https://* ]] || echo "⚠ ${NIMBORA_URL} n'est pas en HTTPS : l'audio des agents IA circulera en clair."
 
 DOMAIN="${NIMBORA_URL#https://}"; DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN%%/*}"; DOMAIN="${DOMAIN%%:*}"
@@ -122,7 +129,7 @@ engine_api
 wazo_distribution = pelican-bookworm
 wazo_distribution_upgrade = pelican-bookworm
 engine_language = fr_FR
-tenant_name = ${COMPANY}
+tenant_name = $(ansible_quote "$COMPANY")
 engine_api_configure_wizard = true
 engine_api_root_password = ${ROOT_PASSWORD}
 api_client_name = api-client
