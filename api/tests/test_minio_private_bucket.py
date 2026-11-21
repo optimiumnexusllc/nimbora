@@ -99,3 +99,29 @@ def test_public_endpoint_must_be_a_host(calls):
         _fs(public_endpoint="https://app.example.com/storage")
     with pytest.raises(ValueError, match="scheme"):
         _fs(public_endpoint="app.example.com")
+
+
+def test_inline_links_carry_the_media_type(monkeypatch):
+    """Through Traefik a .wav came back as application/octet-stream: the signed
+    link must ask for the real media type when it is meant to play inline."""
+    from urllib.parse import parse_qs, urlparse
+
+    import asyncio
+
+    from api.services.filesystem.minio import MinioFileSystem
+
+    fs = MinioFileSystem.__new__(MinioFileSystem)
+    captured = {}
+
+    class _Client:
+        def presigned_get_object(self, bucket, key, expires, response_headers=None):
+            captured.update(response_headers or {})
+            return "https://example.com/" + key + "?signed"
+
+    fs.bucket_name = "voice-audio"
+    fs.client = fs.public_client = _Client()
+    asyncio.run(fs.aget_signed_url("recordings/42.wav", force_inline=True))
+    assert captured == {"response-content-disposition": "inline", "response-content-type": "audio/wav"}
+    captured.clear()
+    asyncio.run(fs.aget_signed_url("kb/doc.pdf", force_inline=True))
+    assert captured == {"response-content-disposition": "inline"}

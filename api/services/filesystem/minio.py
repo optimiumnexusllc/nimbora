@@ -1,3 +1,4 @@
+from pathlib import Path
 import asyncio
 import io
 from datetime import timedelta
@@ -145,7 +146,18 @@ class MinioFileSystem(BaseFileSystem):
         """A download link that expires (signed for the host that will use it)."""
         try:
             client = self.client if use_internal_endpoint else self.public_client
-            extra = {"response-content-disposition": "inline"} if force_inline else None
+            extra = None
+            if force_inline:
+                # Inline playback in the console: the browser needs the real
+                # media type, not application/octet-stream (seen through Traefik).
+                content_type = {
+                    ".wav": "audio/wav",
+                    ".mp3": "audio/mpeg",
+                    ".txt": "text/plain",
+                }.get(Path(file_path).suffix.lower())
+                extra = {"response-content-disposition": "inline"}
+                if content_type:
+                    extra["response-content-type"] = content_type
             return client.presigned_get_object(
                 self.bucket_name,
                 file_path,
