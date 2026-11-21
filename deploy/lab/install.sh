@@ -38,7 +38,7 @@ PBX_NAME=nimbora-pbx PBX_MEMORY=4GiB PBX_CPU=2
 TRAEFIK_DYNAMIC_DIR=/data/coolify/proxy/dynamic TRAEFIK_NETWORK=coolify
 DEPLOY_DIR=/opt/nimbora-lab NIMBORA_BRIDGE=br-nimboralab NIMBORA_SUBNET=10.250.1.0/24
 FASTAPI_WORKERS=2 SECRETS_FILE=""
-RTP_RANGE=10000-20000 SIP_PUBLIC=0 UFW=0
+RTP_RANGE=10000-20000 SIP_PUBLIC=0 UFW=0 SHARED_PBX=0
 ONLY="" BUILD=1 FORCE_PBX=0
 
 # shellcheck disable=SC1090
@@ -65,6 +65,7 @@ while [[ $# -gt 0 ]]; do
         --sip-public) SIP_PUBLIC=1; shift ;;
         --no-sip-public) SIP_PUBLIC=0; shift ;;
         --ufw) UFW=1; shift ;;
+        --shared-pbx) SHARED_PBX=1; shift ;;
         --only) ONLY="$2"; shift 2 ;;
         --no-build) BUILD=0; shift ;;
         --force-pbx) FORCE_PBX=1; shift ;;
@@ -133,7 +134,7 @@ if runs preflight; then
     install -d -m 700 "$STATE_DIR"
     for k in APP_DOMAIN PBX_DOMAIN BRAND COMPANY PUBLIC_IF PUBLIC_IP INCUS_BRIDGE BRIDGE_CIDR PBX_IP PBX_NAME \
              PBX_MEMORY PBX_CPU TRAEFIK_DYNAMIC_DIR TRAEFIK_NETWORK TRAEFIK_BRIDGE DEPLOY_DIR NIMBORA_BRIDGE \
-             NIMBORA_SUBNET FASTAPI_WORKERS SECRETS_FILE RTP_RANGE SIP_PUBLIC UFW; do
+             NIMBORA_SUBNET FASTAPI_WORKERS SECRETS_FILE RTP_RANGE SIP_PUBLIC UFW SHARED_PBX; do
         set_kv "$LAB_ENV" "$k" "${!k}"
     done
     chmod 600 "$LAB_ENV"
@@ -219,16 +220,25 @@ if runs pbx; then
     if [[ "$FORCE_PBX" == "1" ]] || ! incus exec "$PBX_NAME" -- test -f /etc/nimbora-pbx/service-account.json; then
         log "Installation du moteur dans le conteneur (20 à 40 minutes)"
         incus exec "$PBX_NAME" --env NIMBORA_URL="https://$APP_DOMAIN" -- bash -c \
-            "cd /opt/nimbora/deploy/pbx && ./install.sh --brand '$BRAND' --nimbora-url https://$APP_DOMAIN --nimbora-ip $(bridge_gateway) --company '$COMPANY'"
+            "cd /opt/nimbora/deploy/pbx && ./install.sh --brand '$BRAND' --nimbora-url https://$APP_DOMAIN --nimbora-ip $(bridge_gateway) --company '$COMPANY' $([[ "$SHARED_PBX" == 1 ]] && echo --operator)"
     else
         ok "Moteur déjà installé (compte de service présent) ; --force-pbx pour relancer l'installateur"
+    fi
+    if [[ "$SHARED_PBX" == 1 ]] && ! incus exec "$PBX_NAME" -- test -f /etc/nimbora-pbx/provisioning-account.json; then
+        # Shared PBX enabled after the engine was installed: the operator's
+        # provisioning account alone, as install.sh --operator would create it.
+        log "Compte d'approvisionnement de l'opérateur (PBX partagé)"
+        incus exec "$PBX_NAME" -- bash -c 'umask 077; grep -q "^PROVISIONING_PASSWORD=" /etc/nimbora-pbx/secrets.env || echo "PROVISIONING_PASSWORD=$(openssl rand -base64 33 | tr -d "/+=" | cut -c1-32)" >> /etc/nimbora-pbx/secrets.env
+            set -a; . /etc/nimbora-pbx/secrets.env; set +a
+            cd /opt/nimbora/deploy/pbx && python3 scripts/create_service_account.py --url https://localhost --insecure --root-password "$ROOT_PASSWORD" --password "$PROVISIONING_PASSWORD" --provisioner > /etc/nimbora-pbx/provisioning-account.json'
     fi
     log "NAT d'Asterisk : adresse publique $PUBLIC_IP, réseau local $(bridge_network), RTP $RTP_RANGE"
     incus exec "$PBX_NAME" -- bash -c \
         "set -a; . /etc/nimbora-pbx/secrets.env; set +a; python3 /opt/nimbora/deploy/pbx/pbx_nat.py --insecure --root-password \"\$ROOT_PASSWORD\" --public-ip $PUBLIC_IP --local-net $(bridge_network) --rtp-range $RTP_RANGE"
     incus file pull -q "$PBX_NAME/etc/nimbora-pbx/secrets.env" "$STATE_DIR/pbx-secrets.env"
     incus file pull -q "$PBX_NAME/etc/nimbora-pbx/service-account.json" "$STATE_DIR/pbx-service-account.json"
-    chmod 600 "$STATE_DIR/pbx-secrets.env" "$STATE_DIR/pbx-service-account.json"
+    [[ "$SHARED_PBX" == 1 ]] && incus file pull -q "$PBX_NAME/etc/nimbora-pbx/provisioning-account.json" "$STATE_DIR/pbx-provisioning-account.json"
+    chmod 600 "$STATE_DIR"/pbx-*
     ok "PBX prêt sur $PBX_IP ; secrets copiés dans $STATE_DIR (root)"
 fi
 
@@ -266,6 +276,22 @@ if runs nimbora; then
     ensure_secret "$ENV" MINIO_ROOT_USER "echo nimbora$(openssl rand -hex 6)"
     ensure_secret "$ENV" MINIO_ROOT_PASSWORD
     ensure_secret "$ENV" TELEPHONY_WS_TOKEN_SECRET
+    if [[ "$SHARED_PBX" == 1 && -f "$STATE_DIR/pbx-secrets.env" ]]; then
+        # The operator's shared PBX (deploy/pbx --operator): the platform opens
+        # one tenant per company through the private network.
+        # shellcheck disable=SC1091
+        . "$STATE_DIR/pbx-secrets.env"
+        set_kv "$ENV" PBX_PROVISIONING_URL "https://$PBX_IP"
+        set_kv "$ENV" PBX_PROVISIONING_USERNAME nimbora-provisioning
+        set_kv "$ENV" PBX_PROVISIONING_PASSWORD "$PROVISIONING_PASSWORD"
+        set_kv "$ENV" PBX_PROVISIONING_VERIFY_TLS false
+        set_kv "$ENV" PBX_PROVISIONING_ON_SIGNUP false
+        set_kv "$ENV" PBX_PROVISIONING_ARI_ENDPOINT "http://$PBX_IP:5039"
+        set_kv "$ENV" PBX_PROVISIONING_ARI_USER xivo
+        set_kv "$ENV" PBX_PROVISIONING_ARI_PASSWORD "$ARI_PASSWORD"
+        set_kv "$ENV" PBX_PROVISIONING_ARI_WS_CLIENT nimbora
+        ok "PBX partagé : réglages PBX_PROVISIONING_* écrits dans .env"
+    fi
     if [[ -f "$SECRETS_FILE" ]]; then
         while IFS= read -r line; do
             [[ "$line" =~ ^[A-Za-z_][A-Za-z0-9_]*= ]] || continue
@@ -344,6 +370,7 @@ if runs summary; then
    Mot de passe       : SERVICE_PASSWORD dans ${STATE_DIR}/pbx-secrets.env
    Tenant             : ${STATE_DIR}/pbx-service-account.json
    Softphones         : Postes → Softphones → adresse wss://${PBX_DOMAIN}/api/asterisk/ws
+$( [[ "$SHARED_PBX" == 1 ]] && printf '\n PBX partagé (--shared-pbx) : chaque entreprise active sa téléphonie en un clic\n   (Téléphonie d'"'"'entreprise → Activer) ; compte d'"'"'approvisionnement nimbora-provisioning,\n   PBX_PROVISIONING_* déjà dans %s/.env.\n' "$DEPLOY_DIR" )
 
  Exploitation :
    incus exec ${PBX_NAME} -- wazo-service status

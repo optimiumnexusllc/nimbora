@@ -256,3 +256,17 @@ def test_lab_secrets_file_default_survives_a_partial_run():
     assert source.count(default_line) == 2
     after_reload = source.index("Lancez d'abord la phase preflight")
     assert source.index(default_line, after_reload) > after_reload
+
+
+def test_lab_kit_can_run_the_shared_pbx_of_the_operator():
+    """--shared-pbx: engine installed with --operator and PBX_PROVISIONING_* written."""
+    source = (DEPLOY / "lab" / "install.sh").read_text()
+    assert "--shared-pbx) SHARED_PBX=1" in source
+    assert "echo --operator" in source
+    assert "provisioning-account.json" in source
+    for key in ("PBX_PROVISIONING_URL", "PBX_PROVISIONING_PASSWORD", "PBX_PROVISIONING_VERIFY_TLS",
+                "PBX_PROVISIONING_ARI_ENDPOINT", "PBX_PROVISIONING_ARI_PASSWORD", "PBX_PROVISIONING_ARI_WS_CLIENT"):
+        assert f'set_kv "$ENV" {key}' in source, key
+    # The kit never exposes the ARI: the provisioning URL and ARI stay on the private bridge.
+    assert 'PBX_PROVISIONING_URL "https://$PBX_IP"' in source
+    assert 'PBX_PROVISIONING_ARI_ENDPOINT "http://$PBX_IP:5039"' in source
