@@ -1,0 +1,15 @@
+[Unit]
+Description=NIMBORA lab: Docker/Incus firewall glue (DOCKER-USER rules, RTP redirection to the PBX)
+Documentation=https://github.com/optimiumnexusllc/nimbora/blob/main/deploy/lab/README.md
+After=network-online.target docker.service incus.service
+Wants=network-online.target
+# Docker re-creates its chains when it restarts; re-apply ours right after.
+PartOf=docker.service
+
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/usr/local/sbin/nimbora-lab-firewall
+
+[Install]
+WantedBy=multi-user.target docker.service

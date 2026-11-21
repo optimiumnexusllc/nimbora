@@ -1,0 +1,70 @@
+# NIMBORA lab — Traefik dynamic configuration rendered by deploy/lab/install.sh.
+# Dropped into the existing Traefik's dynamic directory (file provider, watch).
+# Remove this file to detach the lab from Traefik; nothing else is touched.
+http:
+  routers:
+    nimbora-lab-app-http:
+      entryPoints: [http]
+      rule: Host(`__APP_DOMAIN__`)
+      middlewares: [nimbora-lab-https]
+      service: nimbora-lab-ui
+    nimbora-lab-api:
+      entryPoints: [https]
+      rule: Host(`__APP_DOMAIN__`) && PathPrefix(`/api/v1/`)
+      service: nimbora-lab-api
+      tls:
+        certResolver: letsencrypt
+    nimbora-lab-audio:
+      entryPoints: [https]
+      rule: Host(`__APP_DOMAIN__`) && PathPrefix(`/voice-audio/`)
+      service: nimbora-lab-audio
+      tls:
+        certResolver: letsencrypt
+    nimbora-lab-ui:
+      entryPoints: [https]
+      rule: Host(`__APP_DOMAIN__`)
+      service: nimbora-lab-ui
+      tls:
+        certResolver: letsencrypt
+    nimbora-lab-pbx-http:
+      entryPoints: [http]
+      rule: Host(`__PBX_DOMAIN__`)
+      middlewares: [nimbora-lab-https]
+      service: nimbora-lab-pbx
+    nimbora-lab-pbx:
+      entryPoints: [https]
+      rule: Host(`__PBX_DOMAIN__`)
+      service: nimbora-lab-pbx
+      tls:
+        certResolver: letsencrypt
+
+  middlewares:
+    nimbora-lab-https:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
+  services:
+    nimbora-lab-api:
+      loadBalancer:
+        servers:
+__API_SERVERS__
+    nimbora-lab-ui:
+      loadBalancer:
+        servers:
+          - url: http://nimbora_ui:3010
+    nimbora-lab-audio:
+      loadBalancer:
+        servers:
+          - url: http://nimbora_minio:9000
+    nimbora-lab-pbx:
+      loadBalancer:
+        serversTransport: nimbora-lab-pbx
+        servers:
+          - url: https://__PBX_IP__:443
+
+  serversTransports:
+    nimbora-lab-pbx:
+      # The PBX engine's nginx has a self-signed certificate; the public
+      # certificate is Traefik's (Let's Encrypt).
+      insecureSkipVerify: true

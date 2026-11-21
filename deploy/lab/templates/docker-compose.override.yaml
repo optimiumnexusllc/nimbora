@@ -1,0 +1,55 @@
+# NIMBORA lab — override rendered by deploy/lab/install.sh. Do not edit: edit the
+# template in deploy/lab/templates/ and re-run the installer.
+#
+# The stack runs behind the server's existing Traefik, so no port is published
+# except coturn's. The API and the UI join Traefik's network to be reached by
+# name, and keep the stack's own network as their default route (gw_priority)
+# so that their traffic to the PBX leaves through a bridge with a known name,
+# which the host firewall recognises.
+services:
+  postgres:
+    ports: !override []
+
+  redis:
+    ports: !override []
+
+  minio:
+    container_name: nimbora_minio
+    ports: !override []
+    networks:
+      app-network:
+        gw_priority: 1
+      traefik: {}
+
+  nimbora-init:
+    environment:
+      # Render only coturn's configuration: TLS and HTTP are Traefik's job here.
+      ENVIRONMENT: local
+      TURN_HOST: "${SERVER_IP}"
+
+  api:
+    container_name: nimbora_api
+    ports: !override []
+    networks:
+      app-network:
+        gw_priority: 1
+      traefik: {}
+
+  ui:
+    container_name: nimbora_ui
+    ports: !override []
+    networks:
+      app-network:
+        gw_priority: 1
+      traefik: {}
+
+networks:
+  app-network:
+    driver_opts:
+      com.docker.network.bridge.name: __NIMBORA_BRIDGE__
+    ipam:
+      config:
+        - subnet: __NIMBORA_SUBNET__
+  traefik:
+    external: true
+    name: __TRAEFIK_NETWORK__
