@@ -212,3 +212,10 @@ def test_backup_covers_the_engine_state_seen_on_a_real_26_11():
         "var/lib/wazo-agentd", "var/lib/wazo-chatd",
     ):
         assert path in script, path
+
+
+def test_backup_metric_file_is_readable_by_the_exporter(tmp_path):
+    """backup.sh runs with umask 077: the textfile metric must still be readable by
+    the node exporter's user (seen on the lab: node_textfile_scrape_error 1)."""
+    script = (Path(__file__).resolve().parents[2] / "pbx/scripts/backup.sh").read_text()
+    assert 'chmod 644 "$file.tmp"' in script

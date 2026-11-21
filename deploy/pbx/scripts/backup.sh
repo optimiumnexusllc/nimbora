@@ -61,6 +61,8 @@ metric() {  # metric NAME VALUE — Prometheus textfile collector
     if [[ -f "$file" ]]; then grep -v -e "^$1 " -e "^# TYPE $1 " "$file" || true; fi
     printf '# TYPE %s gauge\n%s %s\n' "$1" "$1" "$2"
   } > "$file.tmp"
+  # The script runs with umask 077; the exporter (user prometheus) must read it.
+  chmod 644 "$file.tmp"
   mv "$file.tmp" "$file"
 }
 
