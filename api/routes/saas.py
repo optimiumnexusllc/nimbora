@@ -385,6 +385,56 @@ async def admin_tenant_usage(
     )
 
 
+@router.post("/admin/tenants/{organization_id}/pbx/provision")
+async def admin_provision_pbx(
+    organization_id: int, _: UserModel = Depends(get_superuser)
+) -> dict[str, Any]:
+    """Create (or complete) the company's tenant on the shared PBX."""
+    from api.constants import BACKEND_API_ENDPOINT
+    from api.services.pbx import provisioning
+    from api.services.pbx.client import PbxError
+    from api.services.pbx.service import PbxRouteError
+
+    if await db_client.get_organization_by_id(organization_id) is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    try:
+        connection = await provisioning.provision_organization(
+            organization_id, public_base_url=BACKEND_API_ENDPOINT
+        )
+    except provisioning.ProvisioningUnavailable as error:
+        raise HTTPException(
+            404, "No shared PBX configured (PBX_PROVISIONING_URL)"
+        ) from error
+    except PbxRouteError as error:
+        raise HTTPException(error.status, str(error)) from error
+    except PbxError as error:
+        raise HTTPException(502, f"PBX: {error}") from error
+    return {
+        "tenant_uuid": connection.tenant_uuid,
+        "status": connection.status,
+        "provisioning": connection.provisioning,
+    }
+
+
+@router.delete("/admin/tenants/{organization_id}/pbx", status_code=204)
+async def admin_deprovision_pbx(
+    organization_id: int, _: UserModel = Depends(get_superuser)
+):
+    """Delete the company's tenant from the shared PBX (irreversible)."""
+    from fastapi import Response
+
+    from api.services.pbx import provisioning
+    from api.services.pbx.client import PbxError
+
+    try:
+        removed = await provisioning.deprovision_organization(organization_id)
+    except PbxError as error:
+        raise HTTPException(502, f"PBX: {error}") from error
+    if not removed:
+        raise HTTPException(404, "No platform-managed PBX for this organization")
+    return Response(status_code=204)
+
+
 @router.patch("/admin/tenants/{organization_id}", response_model=TenantResponse)
 async def admin_update_tenant(
     organization_id: int,

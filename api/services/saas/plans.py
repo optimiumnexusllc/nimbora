@@ -11,6 +11,10 @@ FEATURE_CAMPAIGNS = "campaigns"
 FEATURE_API_ACCESS = "api_access"
 FEATURE_WHITE_LABEL = "white_label"
 FEATURE_CUSTOM_VOICES = "custom_voices"
+# Enterprise PBX: a tenant on the operator's shared PBX, created automatically,
+# or the company's own dedicated PBX connected from the console.
+FEATURE_PBX_SHARED = "pbx_shared"
+FEATURE_PBX_DEDICATED = "pbx_dedicated"
 
 ALL_FEATURES = (
     FEATURE_LOCAL_AI,
@@ -19,6 +23,8 @@ ALL_FEATURES = (
     FEATURE_API_ACCESS,
     FEATURE_WHITE_LABEL,
     FEATURE_CUSTOM_VOICES,
+    FEATURE_PBX_SHARED,
+    FEATURE_PBX_DEDICATED,
 )
 
 # Limit columns, shared by plans and per-tenant overrides.
@@ -49,6 +55,8 @@ DEFAULT_PLANS: dict[str, dict] = {
             FEATURE_API_ACCESS: False,
             FEATURE_WHITE_LABEL: False,
             FEATURE_CUSTOM_VOICES: False,
+            FEATURE_PBX_SHARED: True,
+            FEATURE_PBX_DEDICATED: False,
         },
         "sort_order": 10,
     },
@@ -70,6 +78,8 @@ DEFAULT_PLANS: dict[str, dict] = {
             FEATURE_API_ACCESS: True,
             FEATURE_WHITE_LABEL: False,
             FEATURE_CUSTOM_VOICES: True,
+            FEATURE_PBX_SHARED: True,
+            FEATURE_PBX_DEDICATED: False,
         },
         "sort_order": 20,
     },

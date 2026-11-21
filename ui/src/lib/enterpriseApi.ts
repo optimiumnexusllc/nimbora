@@ -371,4 +371,6 @@ export const FEATURE_LABELS: Record<string, string> = {
     api_access: "Accès API et webhooks",
     white_label: "Marque blanche",
     custom_voices: "Voix et langues personnalisées",
+    pbx_shared: "Téléphonie d'entreprise sur le PBX de la plateforme",
+    pbx_dedicated: "Connexion de son propre PBX (serveur dédié)",
 };

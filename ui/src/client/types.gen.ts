@@ -2137,6 +2137,10 @@ export type ConnectionResponse = {
      * Events Connected
      */
     events_connected?: boolean;
+    /**
+     * Managed
+     */
+    managed?: boolean;
 };
 
 /**
@@ -5930,6 +5934,44 @@ export type PhoneNumberUpdateRequest = {
     extra_metadata?: {
         [key: string]: unknown;
     } | null;
+};
+
+/**
+ * PlanAccessResponse
+ */
+export type PlanAccessResponse = {
+    /**
+     * Shared
+     */
+    shared: boolean;
+    /**
+     * Dedicated
+     */
+    dedicated: boolean;
+    /**
+     * Shared Available
+     */
+    shared_available: boolean;
+    /**
+     * Seats Limit
+     */
+    seats_limit: number | null;
+    /**
+     * Seats Used
+     */
+    seats_used: number | null;
+    /**
+     * Plan Name
+     */
+    plan_name: string | null;
+    /**
+     * Connected
+     */
+    connected: boolean;
+    /**
+     * Managed
+     */
+    managed: boolean;
 };
 
 /**
@@ -21284,6 +21326,98 @@ export type AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses
 
 export type AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponse = AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses[keyof AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses];
 
+export type AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Organization Id
+         */
+        organization_id: number;
+    };
+    query?: never;
+    url: '/api/v1/saas/admin/tenants/{organization_id}/pbx/provision';
+};
+
+export type AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostError = AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostErrors[keyof AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostErrors];
+
+export type AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostResponses = {
+    /**
+     * Response Admin Provision Pbx Api V1 Saas Admin Tenants  Organization Id  Pbx Provision Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostResponse = AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostResponses[keyof AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostResponses];
+
+export type AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Organization Id
+         */
+        organization_id: number;
+    };
+    query?: never;
+    url: '/api/v1/saas/admin/tenants/{organization_id}/pbx';
+};
+
+export type AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteError = AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteErrors[keyof AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteErrors];
+
+export type AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteResponse = AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteResponses[keyof AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteResponses];
+
 export type AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchData = {
     body: TenantUpdateRequest;
     headers?: {
@@ -22966,6 +23100,84 @@ export type SaveConnectionApiV1PbxConnectionPutResponses = {
 };
 
 export type SaveConnectionApiV1PbxConnectionPutResponse = SaveConnectionApiV1PbxConnectionPutResponses[keyof SaveConnectionApiV1PbxConnectionPutResponses];
+
+export type ReadPlanAccessApiV1PbxPlanGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/plan';
+};
+
+export type ReadPlanAccessApiV1PbxPlanGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadPlanAccessApiV1PbxPlanGetError = ReadPlanAccessApiV1PbxPlanGetErrors[keyof ReadPlanAccessApiV1PbxPlanGetErrors];
+
+export type ReadPlanAccessApiV1PbxPlanGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PlanAccessResponse;
+};
+
+export type ReadPlanAccessApiV1PbxPlanGetResponse = ReadPlanAccessApiV1PbxPlanGetResponses[keyof ReadPlanAccessApiV1PbxPlanGetResponses];
+
+export type ProvisionApiV1PbxProvisionPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/provision';
+};
+
+export type ProvisionApiV1PbxProvisionPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ProvisionApiV1PbxProvisionPostError = ProvisionApiV1PbxProvisionPostErrors[keyof ProvisionApiV1PbxProvisionPostErrors];
+
+export type ProvisionApiV1PbxProvisionPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionResponse;
+};
+
+export type ProvisionApiV1PbxProvisionPostResponse = ProvisionApiV1PbxProvisionPostResponses[keyof ProvisionApiV1PbxProvisionPostResponses];
 
 export type TestConnectionApiV1PbxConnectionTestPostData = {
     body?: never;

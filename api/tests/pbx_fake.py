@@ -45,6 +45,9 @@ class FakePbx:
                 ],
             }
         ]
+        self.auth_tenants: list[dict] = []
+        self.auth_policies: list[dict] = []
+        self.auth_users: list[dict] = []
         self.users = [
             {
                 "id": 1,
@@ -330,9 +333,63 @@ class FakePbx:
                 401, json={"reason": ["Unauthorized"], "status_code": 401}
             )
 
+        # ----- auth: operator provisioning (tenants, policies, accounts)
+        tenant_header = request.headers.get("wazo-tenant")
+        if path == "/api/auth/0.1/tenants" and method == "GET":
+            search = request.url.params.get("search") or ""
+            items = [t for t in self.auth_tenants if search in (t["slug"] + t["name"])]
+            return httpx.Response(200, json={"items": items, "total": len(items)})
+        if path == "/api/auth/0.1/tenants" and method == "POST":
+            tenant = {"uuid": str(uuid.uuid4()), "name": body["name"], "slug": body.get("slug", "")}
+            self.auth_tenants.append(tenant)
+            return httpx.Response(200, json=tenant)
+        m = re.fullmatch(r"/api/auth/0\.1/tenants/([^/]+)", path)
+        if m and method == "DELETE":
+            before = len(self.auth_tenants)
+            self.auth_tenants = [t for t in self.auth_tenants if t["uuid"] != m.group(1)]
+            if len(self.auth_tenants) == before:
+                return httpx.Response(404, json={"message": "No such tenant"})
+            return httpx.Response(204)
+        if path == "/api/auth/0.1/policies" and method == "GET":
+            items = [
+                p for p in self.auth_policies
+                if p["tenant_uuid"] == tenant_header
+                and (request.url.params.get("search") or "") in p["name"]
+            ]
+            return httpx.Response(200, json={"items": items, "total": len(items)})
+        if path == "/api/auth/0.1/policies" and method == "POST":
+            policy = {**body, "uuid": str(uuid.uuid4()), "tenant_uuid": tenant_header}
+            self.auth_policies.append(policy)
+            return httpx.Response(200, json=policy)
+        if path == "/api/auth/0.1/users" and method == "GET":
+            items = [
+                u for u in self.auth_users
+                if u["tenant_uuid"] == tenant_header
+                and (request.url.params.get("search") or "") in u["username"]
+            ]
+            return httpx.Response(200, json={"items": items, "total": len(items)})
+        if path == "/api/auth/0.1/users" and method == "POST":
+            account = {**body, "uuid": str(uuid.uuid4()), "tenant_uuid": tenant_header, "policies": []}
+            self.auth_users.append(account)
+            return httpx.Response(200, json={k: v for k, v in account.items() if k != "password"})
+        m = re.fullmatch(r"/api/auth/0\.1/users/([^/]+)", path)
+        if m and method == "DELETE":
+            self.auth_users = [u for u in self.auth_users if u["uuid"] != m.group(1)]
+            return httpx.Response(204)
+        m = re.fullmatch(r"/api/auth/0\.1/users/([^/]+)/policies/([^/]+)", path)
+        if m and method == "PUT":
+            for account in self.auth_users:
+                if account["uuid"] == m.group(1):
+                    account["policies"].append(m.group(2))
+                    return httpx.Response(204)
+            return httpx.Response(404, json={"message": "No such user"})
+
         # ----- auth
         if path == f"/api/auth/0.1/tenants/{TENANT}" and method == "GET":
             return httpx.Response(200, json={"uuid": TENANT, "name": "Ivoire Immo"})
+        for created in self.auth_tenants:
+            if path == f"/api/auth/0.1/tenants/{created['uuid']}" and method == "GET":
+                return httpx.Response(200, json=created)
         if path.startswith("/api/auth/0.1/tenants/") and method == "GET":
             return httpx.Response(
                 404, json={"message": "No such tenant", "error_id": "unknown-tenant"}
@@ -348,7 +405,10 @@ class FakePbx:
             and path != f"{prefix}/infos"
             and "asterisk" not in path
         ):
-            if request.headers.get("wazo-tenant") != TENANT:
+            if request.headers.get("wazo-tenant") not in {
+                TENANT,
+                *(t["uuid"] for t in self.auth_tenants),
+            }:
                 return httpx.Response(401, json={"message": "Unauthorized tenant"})
         if path == f"{prefix}/users" and method == "GET":
             return httpx.Response(
@@ -362,10 +422,28 @@ class FakePbx:
             return httpx.Response(
                 200, json={"items": self.agents, "total": len(self.agents)}
             )
+        if path == f"{prefix}/contexts" and method == "POST":
+            context = {
+                **body,
+                "id": self._id(),
+                "name": f"ctx-{body['type']}-{self._next}",
+                "tenant_uuid": tenant_header,
+            }
+            self.contexts.append(context)
+            return httpx.Response(200, json=context)
+        m = re.fullmatch(rf"{prefix}/contexts/(\d+)/contexts", path)
+        if m and method == "PUT":
+            for context in self.contexts:
+                if context["id"] == int(m.group(1)):
+                    context["contexts"] = body["contexts"]
+                    return httpx.Response(204)
+            return httpx.Response(404, json=["Context not found"])
         if path == f"{prefix}/contexts":
-            return httpx.Response(
-                200, json={"items": self.contexts, "total": len(self.contexts)}
-            )
+            items = [
+                c for c in self.contexts
+                if not tenant_header or c.get("tenant_uuid") == tenant_header
+            ]
+            return httpx.Response(200, json={"items": items, "total": len(items)})
         if path == f"{prefix}/incalls" and method == "GET":
             return httpx.Response(
                 200, json={"items": self.incalls, "total": len(self.incalls)}
