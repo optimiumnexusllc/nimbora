@@ -3,9 +3,14 @@
 # Debian 12 server, rebrand it and prepare it for the AI platform.
 #
 #   sudo ./install.sh --brand "NIMBORA" --nimbora-url https://app.example.com \
-#        --nimbora-ip 203.0.113.10 --company "Ivoire Immo" [--support-email ...]
+#        --nimbora-ip 203.0.113.10 --company "Ivoire Immo" [--support-email ...] \
+#        [--ssh-from CIDR,…] [--sip-from CIDR,…|any|none] [--phones-from CIDR,…] \
+#        [--rtp-range 10000-20000] [--firewall-only]
 #
+# Firewall: only SSH, HTTPS, SIP/RTP (from --sip-from, default any) and the ARI
+# from the platform are open; everything else the engine listens on is closed.
 # Re-runnable: secrets are generated once in /etc/nimbora-pbx/secrets.env.
+# --firewall-only re-applies the firewall alone (after changing its options).
 set -euo pipefail
 
 BRAND="NIMBORA"
@@ -18,11 +23,16 @@ NOREPLY_EMAIL=""
 ARI_TLS_CERT=""
 ARI_TLS_KEY=""
 ENGINE_VERSION="stable"
+SSH_FROM="any"
+SIP_FROM="any"
+PHONES_FROM="none"
+RTP_RANGE="10000-20000"
+FIREWALL_ONLY=0
 KIT_DIR="$(cd "$(dirname "$0")" && pwd)"
 STATE_DIR=/etc/nimbora-pbx
 WORK_DIR=/opt/nimbora-pbx
 
-usage() { sed -n '2,10p' "$0"; exit 1; }
+usage() { sed -n '2,14p' "$0"; exit 1; }
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --brand) BRAND="$2"; shift 2 ;;
@@ -35,6 +45,11 @@ while [[ $# -gt 0 ]]; do
     --ari-tls-cert) ARI_TLS_CERT="$2"; shift 2 ;;
     --ari-tls-key) ARI_TLS_KEY="$2"; shift 2 ;;
     --engine-version) ENGINE_VERSION="$2"; shift 2 ;;
+    --ssh-from) SSH_FROM="$2"; shift 2 ;;
+    --sip-from) SIP_FROM="$2"; shift 2 ;;
+    --phones-from) PHONES_FROM="$2"; shift 2 ;;
+    --rtp-range) RTP_RANGE="$2"; shift 2 ;;
+    --firewall-only) FIREWALL_ONLY=1; shift ;;
     -h|--help) usage ;;
     *) echo "Option inconnue : $1"; usage ;;
   esac
@@ -44,6 +59,62 @@ done
 [[ -n "$NIMBORA_URL" && -n "$NIMBORA_IP" ]] || { echo "--nimbora-url et --nimbora-ip sont requis."; usage; }
 grep -q 'VERSION_CODENAME=bookworm' /etc/os-release || { echo "Debian 12 (bookworm) requis."; exit 1; }
 [[ "$COMPANY" != *[\"\'\\]* ]] || { echo "--company ne peut contenir ni guillemet ni barre oblique inverse."; exit 1; }
+[[ "$RTP_RANGE" =~ ^[0-9]+-[0-9]+$ ]] || { echo "--rtp-range attend début-fin (ex. 10000-20000)."; exit 1; }
+for v in SSH_FROM SIP_FROM PHONES_FROM; do
+  [[ "${!v}" =~ ^(any|none|([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?(,([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?)*)$ ]] \
+    || { flag="${v,,}"; echo "--${flag//_/-} attend any, none ou des adresses IPv4/CIDR séparées par des virgules."; exit 1; }
+done
+
+# One nftables rule per source list: "any" opens to everyone, "none" writes
+# nothing, a CIDR list restricts to those IPv4 sources.
+nft_rule() {  # nft_rule SOURCES RULE…
+  local src=$1; shift
+  case "$src" in
+    none) ;;
+    any) printf '    %s\n' "$*" ;;
+    *) printf '    ip saddr { %s } %s\n' "${src//,/, }" "$*" ;;
+  esac
+}
+
+# Everything the engine listens on and that is not listed here (RabbitMQ 5672,
+# 25672 and 15672, epmd 4369, Postfix 25, SCCP 2000, wazo-phoned 9498/9499,
+# provd 8667, HTTP 80, the internal REST services) stays reachable from the
+# server itself only. Loopback, replies, ICMP and the DHCP lease stay allowed.
+apply_firewall() {
+  echo "==> Pare-feu : tout fermé sauf SSH, HTTPS, SIP/RTP et l'ARI depuis la plateforme"
+  cat > /etc/nftables.d-nimbora-pbx.conf <<EOF
+# NIMBORA PBX kit (deploy/pbx/install.sh): the only ports open from outside.
+table inet nimbora_pbx {
+  chain input {
+    type filter hook input priority -10; policy drop;
+    iif lo accept
+    ct state established,related accept
+    ct state invalid drop
+    meta l4proto { icmp, ipv6-icmp } accept
+    udp sport 67 udp dport 68 accept
+$(nft_rule "$SSH_FROM" "tcp dport 22 accept")
+    tcp dport 443 accept
+    tcp dport 5039 ip saddr { 127.0.0.1, ${NIMBORA_IP} } accept
+    tcp dport 5038 ip saddr 127.0.0.1 accept
+    tcp dport { 5038, 5039 } ip6 saddr ::1 accept
+$(nft_rule "$SIP_FROM" "udp dport 5060 accept")
+$(nft_rule "$SIP_FROM" "tcp dport { 5060, 5061 } accept")
+$(nft_rule "$SIP_FROM" "udp dport ${RTP_RANGE} accept")
+$(nft_rule "$PHONES_FROM" "tcp dport { 8667, 9498, 9499 } accept")
+  }
+}
+EOF
+  grep -q 'nftables.d-nimbora-pbx.conf' /etc/nftables.conf || echo 'include "/etc/nftables.d-nimbora-pbx.conf"' >> /etc/nftables.conf
+  systemctl enable --now nftables >/dev/null
+  nft -f /etc/nftables.conf
+}
+
+if [[ "$FIREWALL_ONLY" == 1 ]]; then
+  command -v nft >/dev/null || { apt-get update -q; DEBIAN_FRONTEND=noninteractive apt-get install -yq nftables; }
+  apply_firewall
+  nft list table inet nimbora_pbx
+  exit 0
+fi
 
 # The engine's installer runs `wazo-auth-cli tenant create {{ tenant_name }}`
 # unquoted: a company name with a space ("Ivoire Immo") would be split into two
@@ -166,20 +237,7 @@ chmod 600 "$STATE_DIR/branding.yml"
 cd "$KIT_DIR"
 ansible-playbook -i "$WORK_DIR/inventory.ini" whitelabel.yml -e "@$STATE_DIR/branding.yml"
 
-echo "==> Pare-feu : ARI (5039) réservé à la plateforme IA, AMI (5038) local"
-cat > /etc/nftables.d-nimbora-pbx.conf <<EOF
-table inet nimbora_pbx {
-  chain input {
-    type filter hook input priority -10; policy accept;
-    tcp dport 5039 ip saddr != { 127.0.0.1, ${NIMBORA_IP} } drop
-    tcp dport 5038 ip saddr != 127.0.0.1 drop
-    tcp dport { 5038, 5039 } ip6 saddr != ::1 drop
-  }
-}
-EOF
-grep -q 'nftables.d-nimbora-pbx.conf' /etc/nftables.conf || echo 'include "/etc/nftables.d-nimbora-pbx.conf"' >> /etc/nftables.conf
-systemctl enable --now nftables >/dev/null
-nft -f /etc/nftables.conf
+apply_firewall
 
 echo "==> Compte de service de la plateforme (droits minimaux)"
 python3 "$KIT_DIR/scripts/create_service_account.py" --url https://localhost --insecure \

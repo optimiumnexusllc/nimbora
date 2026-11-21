@@ -145,6 +145,36 @@ $ iptables -S DOCKER-USER | grep -c nimbora-lab      # 7 règles
 $ iptables -t nat -S PREROUTING | grep nimbora-lab   # DNAT udp 10000:20000 → 10.250.0.10
 ```
 
+## Rapport d'étape 3 — image MinIO figée, durcissement du PBX (21 novembre 2026)
+
+Snapshot B pris. Deux corrections avant la phase Traefik.
+
+**Image MinIO.** Vérification sur Docker Hub : le dépôt `bitnami/minio` existe mais n'expose
+plus aucune étiquette publique (« Bitnami Secure Image », abonnement) ; `bitnamilegacy/minio`
+est décrit « Legacy Bitnami images (no longer updated) », dernière mise à jour le
+19 août 2025, étiquette `2025.4.22` poussée le 3 juillet 2025 (amd64 et arm64). Décision :
+épingler cette étiquette **par digest** (`sha256:50cec18a…`) dans les trois fichiers compose,
+et inscrire « stockage objet durable » à la feuille de route (image MinIO construite depuis les
+sources, ou Garage / SeaweedFS). Test : `deploy/lab/tests/test_compose.py`.
+
+**Pare-feu du PBX fermé par défaut** (`deploy/pbx/install.sh`, table `inet nimbora_pbx`,
+politique `drop`) : bouclage local, réponses, ICMP et bail DHCP permis ; ouverts : SSH
+(`--ssh-from`, défaut `any`), 443, SIP 5060/5061 et RTP (`--sip-from`, défaut `any`,
+`--rtp-range`), ARI 5039 depuis l'IP NIMBORA et localhost, AMI 5038 localhost, provisioning
+8667/9498/9499 seulement avec `--phones-from`. Nouvelle option `--firewall-only` pour
+réappliquer après un changement d'options. Tests : rendu réel du fichier nftables par le
+script (`test_pbx_firewall_*`), listes de sources valides et refusées.
+
+| Vérification dans le conteneur après application | Résultat |
+|---|---|
+| `wazo-service status` : 18 services en marche | ✅ |
+| Sortie Internet (`curl https://mirror.wazo.community/version/stable`) | ✅ 200 |
+| Renouvellement du bail DHCP (`networkctl renew eth0`), adresse conservée | ✅ |
+| API confd et wazo-auth par le nginx local (443) | ✅ |
+| Depuis l'hôte (10.250.0.1) : 5672, 25672, 4369, 25, 2000, 8667, 9498, 80 | ✅ fermés (timeout) |
+| Depuis l'hôte : 443 ouvert, ARI 5039 → 401 (IP NIMBORA autorisée) | ✅ |
+| Depuis `nimbora_api` : 443 → 200, ARI → 401, 5672 → fermé | ✅ |
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**

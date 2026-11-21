@@ -58,6 +58,11 @@ sudo ./install.sh \
 | `--support-email`, `--noreply-email` | Expéditeur et contact des e-mails (défaut : domaine de NIMBORA) |
 | `--ari-tls-cert`, `--ari-tls-key` | Chiffre l'ARI en HTTPS — **obligatoire** si NIMBORA joint le PBX par Internet |
 | `--engine-version` | Version du moteur (défaut : dernière stable, ex. `26.09`) |
+| `--ssh-from` | Sources autorisées en SSH : `any` (défaut), `none`, ou CIDR IPv4 séparés par des virgules |
+| `--sip-from` | Sources autorisées en SIP (5060 UDP/TCP, 5061 TCP) et RTP : `any` (défaut), `none`, ou CIDR (vos opérateurs) |
+| `--phones-from` | Sources autorisées pour l'auto-provisioning des téléphones (8667, 9498, 9499) : `none` (défaut) ou CIDR |
+| `--rtp-range` | Plage RTP ouverte (défaut `10000-20000`, celle du moteur) |
+| `--firewall-only` | Réapplique seulement le pare-feu (après avoir changé les options ci-dessus) |
 
 Le script :
 
@@ -67,8 +72,13 @@ Le script :
 2. installe la **dernière version stable** du moteur (`pelican-bookworm`, version épinglée
    par l'étiquette de l'installateur), **sans son interface web** ;
 3. applique la **marque blanche** (`whitelabel.yml`, détail ci-dessous) ;
-4. ferme l'ARI (5039) à tout sauf NIMBORA et l'AMI (5038) à tout sauf le serveur lui-même,
-   en IPv4 comme en IPv6 ;
+4. installe un **pare-feu nftables fermé par défaut** : seuls SSH (`--ssh-from`), HTTPS 443,
+   SIP et RTP (`--sip-from`), l'ARI (5039) depuis NIMBORA et, en option, le provisioning des
+   téléphones (`--phones-from`) sont joignables ; l'AMI (5038) ne l'est que depuis le serveur.
+   Tout ce que le moteur écoute par ailleurs sur toutes les interfaces, RabbitMQ (5672,
+   25672, 15672), epmd (4369), Postfix (25), SCCP (2000), wazo-phoned (9498, 9499), provd
+   (8667), HTTP (80), reste réservé au serveur lui-même. Les réponses, le bouclage local,
+   ICMP et le bail DHCP restent permis ;
 5. crée le **compte de service** `nimbora-integration` dans le tenant de l'entreprise ;
 6. affiche les valeurs à saisir dans NIMBORA.
 
@@ -127,3 +137,14 @@ ansible-playbook -i /opt/nimbora-pbx/inventory.ini whitelabel.yml \
 
 Après chaque mise à jour du moteur, relancez `whitelabel.yml` : un paquet peut réinstaller
 ses gabarits ou sa page d'accueil.
+
+Pare-feu : `nft list table inet nimbora_pbx` montre ce qui est ouvert. Pour restreindre SIP à
+vos opérateurs ou ouvrir le provisioning à votre réseau de téléphones :
+
+```bash
+sudo ./install.sh --nimbora-url https://app.votre-marque.com --nimbora-ip 203.0.113.10 \
+  --sip-from 198.51.100.0/24,203.0.113.5 --phones-from 192.168.10.0/24 --firewall-only
+```
+
+Le pare-feu de l'hébergeur reste la première ligne : n'y ouvrez que 22, 443, 5060/5061 et
+la plage RTP.

@@ -77,33 +77,6 @@ def test_lab_firewall_rules_are_tagged_and_flushable():
     assert '|| true; }' in source
 
 
-REPO = DEPLOY.parent
-COMPOSE_FILES = [
-    REPO / "docker-compose.yaml",
-    REPO / "docker-compose-local.yaml",
-    DEPLOY / "enterprise" / "docker-compose.yml",
-]
-
-
-@pytest.mark.parametrize("compose", COMPOSE_FILES, ids=lambda p: str(p.relative_to(REPO)))
-def test_minio_image_is_pullable_and_health_check_has_its_alias(compose: Path):
-    """MinIO removed its images from quay.io and Docker Hub (401 / pull denied).
-
-    The default must be a build that still exists, started with an explicit
-    `minio` binary (Bitnami's entrypoint executes the command as given), and
-    `mc ready local` needs the `local` alias the official image used to define.
-    """
-    yaml = pytest.importorskip("yaml")
-    doc = yaml.safe_load(compose.read_text())
-    minio = doc["services"]["minio"]
-    default_image = minio["image"].split(":-")[-1].rstrip("}")
-    assert not default_image.startswith(("quay.io/minio/", "minio/", "docker.io/minio/")), default_image
-    assert str(minio["command"]).startswith("minio server /data")
-    assert minio["healthcheck"]["test"] == ["CMD", "mc", "ready", "local"]
-    assert "MC_HOST_local" in minio["environment"]
-    assert minio.get("user") == "0"
-
-
 def test_pbx_inventory_defines_ari_port_with_its_address():
     """The engine's b2bua role binds ARI to the address only if the port is also set.
 
@@ -153,3 +126,57 @@ def test_pbx_install_refuses_company_name_with_quotes():
     )
     assert result.returncode == 1
     assert "guillemet" in result.stdout + result.stderr
+
+
+def render_pbx_firewall(**options: str) -> str:
+    """Render the PBX kit's nftables file the way install.sh --firewall-only would."""
+    args = ["--nimbora-url", "https://app.example.com", "--nimbora-ip", "203.0.113.10", "--firewall-only"]
+    for key, value in options.items():
+        args += [f"--{key.replace('_', '-')}", value]
+    script = (DEPLOY / "pbx" / "install.sh").read_text()
+    head = script[: script.index('if [[ "$FIREWALL_ONLY" == 1 ]]; then')]
+    head = head.replace("[[ $EUID -eq 0 ]]", "true").replace(
+        "grep -q 'VERSION_CODENAME=bookworm' /etc/os-release", "true"
+    )
+    # Print the file instead of writing /etc and loading nft.
+    head = head.replace("cat > /etc/nftables.d-nimbora-pbx.conf <<EOF", "cat <<EOF")
+    head = head[: head.index("  grep -q 'nftables.d-nimbora-pbx.conf'")] + "}\napply_firewall\n"
+    result = subprocess.run(["bash", "-c", head + ' "$@"', "install.sh", *args], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr + result.stdout
+    return result.stdout
+
+
+def test_pbx_firewall_denies_by_default_and_opens_only_the_documented_ports():
+    rules = render_pbx_firewall()
+    assert "policy drop;" in rules
+    assert "iif lo accept" in rules
+    assert "ct state established,related accept" in rules
+    assert "udp sport 67 udp dport 68 accept" in rules            # DHCP lease keeps working
+    assert "    tcp dport 22 accept" in rules                      # SSH from anywhere by default
+    assert "    tcp dport 443 accept" in rules
+    assert "tcp dport 5039 ip saddr { 127.0.0.1, 203.0.113.10 } accept" in rules
+    assert "tcp dport 5038 ip saddr 127.0.0.1 accept" in rules
+    assert "    udp dport 5060 accept" in rules
+    assert "    udp dport 10000-20000 accept" in rules
+    for closed in ("5672", "25672", "15672", "4369", " 25 ", "2000", "8667", "9498", "9499", "dport 80 "):
+        assert f"dport {closed}" not in rules and f"{closed} accept" not in rules, closed
+
+
+def test_pbx_firewall_restricts_sip_and_opens_phones_on_request():
+    rules = render_pbx_firewall(sip_from="198.51.100.0/24,203.0.113.5", phones_from="192.168.10.0/24", rtp_range="20000-30000")
+    assert "ip saddr { 198.51.100.0/24, 203.0.113.5 } udp dport 5060 accept" in rules
+    assert "ip saddr { 198.51.100.0/24, 203.0.113.5 } udp dport 20000-30000 accept" in rules
+    assert "ip saddr { 192.168.10.0/24 } tcp dport { 8667, 9498, 9499 } accept" in rules
+    assert "    udp dport 5060 accept" not in rules
+
+
+def test_pbx_firewall_can_close_sip_and_rejects_bad_sources():
+    rules = render_pbx_firewall(sip_from="none", ssh_from="none")
+    assert "5060" not in rules and "dport 22" not in rules
+    script = (DEPLOY / "pbx" / "install.sh").read_text()
+    head = script[: script.index('if [[ "$FIREWALL_ONLY" == 1 ]]; then')]
+    head = head.replace("[[ $EUID -eq 0 ]]", "true").replace("grep -q 'VERSION_CODENAME=bookworm' /etc/os-release", "true")
+    bad = subprocess.run(["bash", "-c", head + ' "$@"', "install.sh", "--nimbora-url", "https://a.example.com",
+                          "--nimbora-ip", "203.0.113.10", "--sip-from", "office"], capture_output=True, text=True)
+    assert bad.returncode == 1 and "--sip-from" in bad.stdout + bad.stderr
+
