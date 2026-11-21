@@ -12,8 +12,17 @@ permissions:
 jobs:
   release-please:
     runs-on: ubuntu-latest
+    env:
+      HAS_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN != '' }}
     steps:
+      # Release PRs need a personal access token (RELEASE_PLEASE_TOKEN) so
+      # that the release triggers the deployment workflow. Without it the job
+      # says so instead of failing on every push.
+      - name: Release token missing
+        if: env.HAS_TOKEN != 'true'
+        run: echo "::notice::RELEASE_PLEASE_TOKEN is not set, so release PRs are not created."
       - uses: googleapis/release-please-action@v4
+        if: env.HAS_TOKEN == 'true'
         with:
           # Config files location
           config-file: release-please-config.json

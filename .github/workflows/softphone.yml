@@ -74,16 +74,34 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf
       - run: npm ci
-      - uses: tauri-apps/tauri-action@v0
+      # Optional macOS signing / notarization: exported only when the secrets
+      # exist (an empty APPLE_CERTIFICATE makes the bundler fail).
+      - name: Apple signing (when configured)
+        if: matrix.name == 'macOS'
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          # Optional signing (set these secrets to sign / notarize):
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "::notice::No Apple certificate configured: unsigned macOS build."
+            exit 0
+          fi
+          for name in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            value="${!name}"
+            if [ -n "$value" ]; then
+              echo "::add-mask::$value"
+              delimiter="EOF_$(openssl rand -hex 8)"
+              printf '%s<<%s\n%s\n%s\n' "$name" "$delimiter" "$value" "$delimiter" >> "$GITHUB_ENV"
+            fi
+          done
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           projectPath: softphone
           args: ${{ matrix.args }}
@@ -119,6 +137,9 @@ jobs:
           distribution: temurin
           java-version: 17
       - uses: android-actions/setup-android@v3
+        with:
+          # The legacy "tools" package no longer exists in recent SDK managers.
+          packages: platform-tools
       - name: Android NDK
         run: |
           sdkmanager --install "ndk;27.0.12077973" "platforms;android-34" "build-tools;34.0.0"
