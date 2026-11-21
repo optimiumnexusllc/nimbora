@@ -105,6 +105,16 @@ def test_brand_comes_from_environment(monkeypatch):
     assert b.noreply_email == "noreply@sahelconnect.africa"
 
 
+def test_brand_treats_empty_variables_as_unset(monkeypatch):
+    """Compose passes `${BRAND_PBX_NAME:-}` as "" when .env has no value: that must
+    not produce an empty PBX name or SIP User-Agent."""
+    for name in ("BRAND_NAME", "BRAND_PBX_NAME", "BRAND_DOMAIN", "BRAND_SIP_USER_AGENT"):
+        monkeypatch.setenv(name, "")
+    b = brand()
+    assert (b.name, b.pbx_name, b.sip_user_agent) == ("NIMBORA", "NIMBORA Voice", "NIMBORA-Voice")
+    assert b.noreply_email == "noreply@nimbora.io"
+
+
 # ---------------------------------------------------------- with the DB
 
 

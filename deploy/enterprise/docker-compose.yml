@@ -109,6 +109,11 @@ services:
       SERVER_IP: "${PUBLIC_IP:?}"
       # Privacy: nothing leaves the platform.
       ENABLE_TELEMETRY: "false"
+      # White label (api/services/branding.py). Empty = NIMBORA defaults.
+      BRAND_NAME: "${BRAND_NAME:-}"
+      BRAND_PBX_NAME: "${BRAND_PBX_NAME:-}"
+      BRAND_DOMAIN: "${BRAND_DOMAIN:-}"
+      BRAND_SIP_USER_AGENT: "${BRAND_SIP_USER_AGENT:-}"
       # --- Multi-tenant SaaS operator mode ---
       SAAS_MODE: "true"
       SAAS_PLATFORM_NAME: "${SAAS_PLATFORM_NAME:-NIMBORA}"
