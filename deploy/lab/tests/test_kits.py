@@ -180,3 +180,51 @@ def test_pbx_firewall_can_close_sip_and_rejects_bad_sources():
                           "--nimbora-ip", "203.0.113.10", "--sip-from", "office"], capture_output=True, text=True)
     assert bad.returncode == 1 and "--sip-from" in bad.stdout + bad.stderr
 
+
+
+FAIL2BAN = DEPLOY / "pbx" / "templates" / "fail2ban"
+WAZO_AUTH_FAILURE = (
+    "2026-11-21 20:34:13,781 UTC [pid 45056] [tid 126367618275008] (INFO) "
+    "(wazo_auth.plugins.http.tokens.http): Failed login: unknown username or password "
+    'for login baduser from 203.0.113.9 using agent "curl/8.5.0"'
+)
+WAZO_AUTH_RESPONSE = (
+    "2026-11-21 20:34:13,825 UTC [pid 45056] [tid 126367618275008] (INFO) (wazo-auth): "
+    "response to 203.0.113.9 in 0.19s: POST https://localhost/api/auth/0.1/token 401 [span_id=1]"
+)
+
+
+def fail2ban_regexes(filter_file: Path) -> list[re.Pattern]:
+    """The filter's failregex lines as Python patterns (fail2ban's <HOST> → an IPv4/IPv6)."""
+    import configparser
+
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.read(filter_file)
+    lines = [l.strip() for l in parser["Definition"]["failregex"].splitlines() if l.strip()]
+    return [re.compile(l.replace("<HOST>", r"(?P<host>[0-9a-fA-F.:]+)")) for l in lines]
+
+
+def test_fail2ban_filter_matches_refused_logins_only():
+    patterns = fail2ban_regexes(FAIL2BAN / "filter-nimbora-pbx-auth.conf")
+    assert patterns
+    hits = [p.search(WAZO_AUTH_FAILURE) for p in patterns]
+    assert any(hits), "the refused-login line must match"
+    assert next(h for h in hits if h).group("host") == "203.0.113.9"
+    assert not any(p.search(WAZO_AUTH_RESPONSE) for p in patterns), "a plain 401 response line must not"
+
+
+def test_fail2ban_jail_targets_wazo_auth_and_spares_the_platform():
+    import configparser
+
+    parser = configparser.ConfigParser(interpolation=None)
+    parser.read(FAIL2BAN / "jail-nimbora-pbx.conf")
+    jail = parser["nimbora-pbx-auth"]
+    assert jail["enabled"] == "true"
+    assert jail["filter"] == "nimbora-pbx-auth"
+    assert jail["logpath"] == "/var/log/wazo-auth.log"
+    assert "__NIMBORA_IPS__" in jail["ignoreip"] and "127.0.0.1/8" in jail["ignoreip"]
+    assert int(jail["maxretry"]) <= 5 and int(jail["bantime"]) >= 600
+    assert "iptables-multiport" in jail["action"] and "443" in jail["action"]
+    source = (DEPLOY / "pbx" / "install.sh").read_text()
+    assert "__NIMBORA_IPS__#${platform_ips}" in source
+    assert 'getent ahostsv4 "$DOMAIN"' in source        # the platform's public address too

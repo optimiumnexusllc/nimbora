@@ -5,12 +5,13 @@
 #   sudo ./install.sh --brand "NIMBORA" --nimbora-url https://app.example.com \
 #        --nimbora-ip 203.0.113.10 --company "Ivoire Immo" [--support-email ...] \
 #        [--ssh-from CIDR,…] [--sip-from CIDR,…|any|none] [--phones-from CIDR,…] \
-#        [--rtp-range 10000-20000] [--firewall-only]
+#        [--rtp-range 10000-20000] [--trusted-proxy CIDR,…] [--firewall-only]
 #
 # Firewall: only SSH, HTTPS, SIP/RTP (from --sip-from, default any) and the ARI
 # from the platform are open; everything else the engine listens on is closed.
+# fail2ban bans repeated authentication failures on the engine's API.
 # Re-runnable: secrets are generated once in /etc/nimbora-pbx/secrets.env.
-# --firewall-only re-applies the firewall alone (after changing its options).
+# --firewall-only re-applies firewall and fail2ban alone (after a change).
 set -euo pipefail
 
 BRAND="NIMBORA"
@@ -27,6 +28,7 @@ SSH_FROM="any"
 SIP_FROM="any"
 PHONES_FROM="none"
 RTP_RANGE="10000-20000"
+TRUSTED_PROXY="none"
 FIREWALL_ONLY=0
 KIT_DIR="$(cd "$(dirname "$0")" && pwd)"
 STATE_DIR=/etc/nimbora-pbx
@@ -49,6 +51,7 @@ while [[ $# -gt 0 ]]; do
     --sip-from) SIP_FROM="$2"; shift 2 ;;
     --phones-from) PHONES_FROM="$2"; shift 2 ;;
     --rtp-range) RTP_RANGE="$2"; shift 2 ;;
+    --trusted-proxy) TRUSTED_PROXY="$2"; shift 2 ;;
     --firewall-only) FIREWALL_ONLY=1; shift ;;
     -h|--help) usage ;;
     *) echo "Option inconnue : $1"; usage ;;
@@ -57,10 +60,12 @@ done
 
 [[ $EUID -eq 0 ]] || { echo "À lancer en root (sudo)."; exit 1; }
 [[ -n "$NIMBORA_URL" && -n "$NIMBORA_IP" ]] || { echo "--nimbora-url et --nimbora-ip sont requis."; usage; }
+# The platform's host name: e-mail domain, and its addresses for fail2ban.
+DOMAIN="${NIMBORA_URL#https://}"; DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN%%/*}"; DOMAIN="${DOMAIN%%:*}"
 grep -q 'VERSION_CODENAME=bookworm' /etc/os-release || { echo "Debian 12 (bookworm) requis."; exit 1; }
 [[ "$COMPANY" != *[\"\'\\]* ]] || { echo "--company ne peut contenir ni guillemet ni barre oblique inverse."; exit 1; }
 [[ "$RTP_RANGE" =~ ^[0-9]+-[0-9]+$ ]] || { echo "--rtp-range attend début-fin (ex. 10000-20000)."; exit 1; }
-for v in SSH_FROM SIP_FROM PHONES_FROM; do
+for v in SSH_FROM SIP_FROM PHONES_FROM TRUSTED_PROXY; do
   [[ "${!v}" =~ ^(any|none|([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?(,([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?)*)$ ]] \
     || { flag="${v,,}"; echo "--${flag//_/-} attend any, none ou des adresses IPv4/CIDR séparées par des virgules."; exit 1; }
 done
@@ -109,10 +114,41 @@ EOF
   nft -f /etc/nftables.conf
 }
 
+# The engine ships fail2ban with jails for SIP (asterisk-wazo), provisioning and
+# SSH, but none for its authentication API: this one bans addresses that fail to
+# log in repeatedly (wazo-auth.log). Behind a reverse proxy the engine sees the
+# proxy's address; the platform's address is excluded and --trusted-proxy makes
+# nginx (and so wazo-auth) log the real client address.
+apply_fail2ban() {
+  echo "==> fail2ban : échecs d'authentification sur l'API du moteur"
+  command -v fail2ban-client >/dev/null || DEBIAN_FRONTEND=noninteractive apt-get install -yq fail2ban
+  install -m 644 "$KIT_DIR/templates/fail2ban/filter-nimbora-pbx-auth.conf" /etc/fail2ban/filter.d/nimbora-pbx-auth.conf
+  local platform_ips="${NIMBORA_IP}"
+  for ip in $(getent ahostsv4 "$DOMAIN" 2>/dev/null | awk '{print $1}' | sort -u); do
+    [[ " $platform_ips " == *" $ip "* ]] || platform_ips+=" $ip"
+  done
+  sed "s#__NIMBORA_IPS__#${platform_ips}#" "$KIT_DIR/templates/fail2ban/jail-nimbora-pbx.conf" > /etc/fail2ban/jail.d/nimbora-pbx.conf
+  if [[ "$TRUSTED_PROXY" != "none" ]]; then
+    {
+      echo "# NIMBORA PBX kit: the real client address when a reverse proxy sits in front."
+      for cidr in ${TRUSTED_PROXY//,/ }; do echo "set_real_ip_from ${cidr};"; done
+      echo "real_ip_header X-Forwarded-For;"
+      echo "real_ip_recursive on;"
+    } > /etc/nginx/conf.d/nimbora-realip.conf
+    nginx -t >/dev/null 2>&1 && systemctl reload nginx
+  else
+    rm -f /etc/nginx/conf.d/nimbora-realip.conf
+  fi
+  systemctl enable --now fail2ban >/dev/null
+  systemctl reload fail2ban 2>/dev/null || systemctl restart fail2ban
+}
+
 if [[ "$FIREWALL_ONLY" == 1 ]]; then
   command -v nft >/dev/null || { apt-get update -q; DEBIAN_FRONTEND=noninteractive apt-get install -yq nftables; }
   apply_firewall
+  apply_fail2ban
   nft list table inet nimbora_pbx
+  fail2ban-client status nimbora-pbx-auth
   exit 0
 fi
 
@@ -123,7 +159,6 @@ fi
 ansible_quote() { printf "'\"%s\"'" "$1"; }
 [[ "${NIMBORA_URL}" == https://* ]] || echo "⚠ ${NIMBORA_URL} n'est pas en HTTPS : l'audio des agents IA circulera en clair."
 
-DOMAIN="${NIMBORA_URL#https://}"; DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN%%/*}"; DOMAIN="${DOMAIN%%:*}"
 PBX_NAME="${PBX_NAME:-$BRAND Voice}"
 SUPPORT_EMAIL="${SUPPORT_EMAIL:-support@$DOMAIN}"
 NOREPLY_EMAIL="${NOREPLY_EMAIL:-noreply@$DOMAIN}"
@@ -238,6 +273,7 @@ cd "$KIT_DIR"
 ansible-playbook -i "$WORK_DIR/inventory.ini" whitelabel.yml -e "@$STATE_DIR/branding.yml"
 
 apply_firewall
+apply_fail2ban
 
 echo "==> Compte de service de la plateforme (droits minimaux)"
 python3 "$KIT_DIR/scripts/create_service_account.py" --url https://localhost --insecure \

@@ -62,7 +62,8 @@ sudo ./install.sh \
 | `--sip-from` | Sources autorisées en SIP (5060 UDP/TCP, 5061 TCP) et RTP : `any` (défaut), `none`, ou CIDR (vos opérateurs) |
 | `--phones-from` | Sources autorisées pour l'auto-provisioning des téléphones (8667, 9498, 9499) : `none` (défaut) ou CIDR |
 | `--rtp-range` | Plage RTP ouverte (défaut `10000-20000`, celle du moteur) |
-| `--firewall-only` | Réapplique seulement le pare-feu (après avoir changé les options ci-dessus) |
+| `--trusted-proxy` | CIDR d'un reverse proxy placé devant le PBX (ex. Traefik) : nginx et wazo-auth journalisent alors l'adresse réelle du client (`X-Forwarded-For`) |
+| `--firewall-only` | Réapplique seulement le pare-feu et fail2ban (après avoir changé les options ci-dessus) |
 
 Le script :
 
@@ -79,6 +80,10 @@ Le script :
    25672, 15672), epmd (4369), Postfix (25), SCCP (2000), wazo-phoned (9498, 9499), provd
    (8667), HTTP (80), reste réservé au serveur lui-même. Les réponses, le bouclage local,
    ICMP et le bail DHCP restent permis ;
+   et ajoute aux prisons **fail2ban** du moteur (SIP, provisioning, SSH) la prison
+   `nimbora-pbx-auth` : cinq échecs d'authentification sur l'API du moteur en dix minutes
+   bannissent l'adresse une heure (443, 5060, 5061). Les adresses de NIMBORA (privée et
+   publique) ne sont jamais bannies ;
 5. crée le **compte de service** `nimbora-integration` dans le tenant de l'entreprise ;
 6. affiche les valeurs à saisir dans NIMBORA.
 
