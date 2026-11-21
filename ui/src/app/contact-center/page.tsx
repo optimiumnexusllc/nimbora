@@ -24,6 +24,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { useAuth } from "@/lib/auth";
 import {
@@ -340,6 +341,20 @@ export default function ContactCenterPage() {
         }
     };
 
+    const toggleSupervisor = async (agent: Agent) => {
+        try {
+            await enterpriseApi.updateAgent(agent.id, { is_supervisor: !agent.is_supervisor });
+            toast.success(
+                agent.is_supervisor
+                    ? `${agent.display_name} n'est plus superviseur.`
+                    : `${agent.display_name} peut écouter, chuchoter et intervenir dans les appels.`,
+            );
+            void load();
+        } catch (e) {
+            toast.error(e instanceof Error ? e.message : "Modification impossible");
+        }
+    };
+
     if (unavailable) {
         return (
             <PageLayout title="Centre d'appels">
@@ -464,6 +479,7 @@ export default function ContactCenterPage() {
                                 <TableHead>Utilisateur SIP</TableHead>
                                 <TableHead>Files</TableHead>
                                 <TableHead>Statut</TableHead>
+                                <TableHead>Superviseur</TableHead>
                                 <TableHead />
                             </TableRow>
                         </TableHeader>
@@ -484,6 +500,18 @@ export default function ContactCenterPage() {
                                         >
                                             {agent.is_active ? "Actif" : "Désactivé"}
                                         </Badge>
+                                        {agent.presence === "paused" && (
+                                            <span className="ml-2 text-xs text-amber-300">
+                                                En pause{agent.presence_reason ? ` · ${agent.presence_reason}` : ""}
+                                            </span>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Switch
+                                            aria-label={`Droits superviseur pour ${agent.display_name}`}
+                                            checked={Boolean(agent.is_supervisor)}
+                                            onCheckedChange={() => toggleSupervisor(agent)}
+                                        />
                                     </TableCell>
                                     <TableCell className="text-right">
                                         {agent.user_id === null && !seat && (

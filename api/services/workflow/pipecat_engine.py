@@ -1018,6 +1018,9 @@ class PipecatEngine:
             language_directive=(getattr(self, "_call_context_vars", None) or {}).get(
                 "call_language_directive"
             ),
+            supervisor_instructions=(
+                getattr(self, "_call_context_vars", None) or {}
+            ).get("supervisor_instructions"),
         )
         functions = await compose_functions_for_node(
             node=node, custom_tool_manager=manager
@@ -1082,6 +1085,9 @@ class PipecatEngine:
                     language_directive=(
                         getattr(self, "_call_context_vars", None) or {}
                     ).get("call_language_directive"),
+                    supervisor_instructions=(
+                        getattr(self, "_call_context_vars", None) or {}
+                    ).get("supervisor_instructions"),
                 )
                 functions = await compose_functions_for_node(
                     node=target, custom_tool_manager=manager

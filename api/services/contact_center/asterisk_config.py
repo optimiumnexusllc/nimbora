@@ -69,6 +69,7 @@ _SAFE_TEXT_RE = re.compile(r"[^\w \-\.'À-ÿ]", re.UNICODE)
 
 HANDOFF_GOSUB_CONTEXT = "nimbora-handoff"
 CALLBACK_DIALPLAN_CONTEXT = "nimbora-callback-out"
+SUPERVISE_DIALPLAN_CONTEXT = "nimbora-supervise"
 
 _reload_lock = asyncio.Lock()
 
@@ -182,6 +183,10 @@ def render_queues(queues: Iterable[ContactCenterQueueModel]) -> str:
         for agent in sorted(queue.agents, key=lambda a: a.extension):
             if not agent.is_active or agent.organization_id != queue.organization_id:
                 continue
+            # Paused or signed-off agents are left out: the queue does not
+            # ring them (works on every Asterisk version, unlike "paused").
+            if (getattr(agent, "presence", None) or "available") != "available":
+                continue
             user = agent_sip_username(agent.organization_id, agent.extension)
             name = sanitize_display_name(agent.display_name).replace(",", " ")
             lines.append(f"member => PJSIP/{user},0,{name},PJSIP/{user}")
@@ -230,6 +235,16 @@ def render_extensions(
         "; header and shows the AI agent's handoff card.",
         f'exten => s,1,ExecIf($["${{{HANDOFF_CHANNEL_VARIABLE}}}" != ""]?Set(PJSIP_HEADER(add,{HANDOFF_HEADER})=${{{HANDOFF_CHANNEL_VARIABLE}}}))',
         " same => n,Return()",
+        "",
+        f"[{SUPERVISE_DIALPLAN_CONTEXT}]",
+        "; Listen / whisper / barge: reached only by the API's ARI originate",
+        "; to a supervisor's softphone. Target and mode are set by the API",
+        "; (channel prefix of one agent of the same tenant). DTMF 4/5/6",
+        "; switches listen/whisper/barge during the session (option d).",
+        "exten => spy,1,NoOp(NIMBORA supervision of ${NIMBORA_SPY_TARGET})",
+        " same => n,Answer()",
+        " same => n,ChanSpy(${NIMBORA_SPY_TARGET},${NIMBORA_SPY_OPTIONS})",
+        " same => n,Hangup()",
         "",
         f"[{CALLBACK_DIALPLAN_CONTEXT}]",
         "; Click-to-call callbacks: reached only by the API's ARI originate,",

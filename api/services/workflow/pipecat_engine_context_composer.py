@@ -70,6 +70,7 @@ def compose_system_prompt_for_node(
     prompt_variables: PromptVariablesConfiguration | None = None,
     customer_memory: str | None = None,
     language_directive: str | None = None,
+    supervisor_instructions: list[str] | None = None,
 ) -> ComposedNodePrompt:
     """Compose the full system prompt text for a workflow node.
 
@@ -127,6 +128,11 @@ def compose_system_prompt_for_node(
     )
     if memory:
         parts.append(memory)
+    # Live supervisor instructions (supervision console) outlive node changes.
+    if supervisor_instructions:
+        from api.services.supervision.call_actions import with_supervisor_section
+
+        parts.append(with_supervisor_section("", list(supervisor_instructions)))
     # The caller's language (automatic language detection) comes last, so it
     # wins over any language the prompts were written in.
     if language_directive:

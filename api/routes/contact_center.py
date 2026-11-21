@@ -142,6 +142,7 @@ class AgentUpdateRequest(BaseModel):
     display_name: str | None = Field(default=None, min_length=1, max_length=128)
     user_id: int | None = None
     is_active: bool | None = None
+    is_supervisor: bool | None = None
 
 
 class AgentResponse(BaseModel):
@@ -152,6 +153,10 @@ class AgentResponse(BaseModel):
     user_id: int | None
     is_active: bool
     queues: list[str]
+    presence: str = "available"
+    presence_reason: str | None = None
+    presence_changed_at: datetime | None = None
+    is_supervisor: bool = False
 
 
 class SoftphoneCredentials(BaseModel):
@@ -193,6 +198,10 @@ def _agent_response(agent: ContactCenterAgentModel) -> AgentResponse:
         user_id=agent.user_id,
         is_active=agent.is_active,
         queues=sorted(q.slug for q in agent.queues),
+        presence=agent.presence or "available",
+        presence_reason=agent.presence_reason,
+        presence_changed_at=agent.presence_changed_at,
+        is_supervisor=bool(agent.is_supervisor),
     )
 
 
@@ -788,3 +797,38 @@ async def complete_callback(
         organization_id, callback_id, fields
     )
     return _callback_response(callback)
+
+
+# --------------------------------------------------------------- presence
+class PresenceRequest(BaseModel):
+    presence: Literal["available", "paused", "offline"]
+    reason: Optional[str] = Field(default=None, max_length=64)
+
+
+@router.put("/me/presence", response_model=AgentResponse)
+async def set_my_presence(
+    request: PresenceRequest, user: UserModel = Depends(get_user)
+):
+    """Available / paused (break, training…) / signed off.
+
+    Only available agents are rung by the queues.
+    """
+    organization_id = await _org(user)
+    seat = await db_client.get_contact_center_agent_for_user(organization_id, user.id)
+    if seat is None:
+        raise HTTPException(status_code=404, detail="No softphone seat for this user")
+    changed = (seat.presence or "available") != request.presence
+    agent = await db_client.update_contact_center_agent(
+        organization_id,
+        seat.id,
+        {
+            "presence": request.presence,
+            "presence_reason": request.reason if request.presence == "paused" else None,
+            "presence_changed_at": datetime.now(UTC)
+            if changed
+            else seat.presence_changed_at,
+        },
+    )
+    if changed:
+        await regenerate_asterisk_config()
+    return _agent_response(agent)

@@ -176,6 +176,22 @@ export type AgentResponse = {
      * Queues
      */
     queues: Array<string>;
+    /**
+     * Presence
+     */
+    presence?: string;
+    /**
+     * Presence Reason
+     */
+    presence_reason?: string | null;
+    /**
+     * Presence Changed At
+     */
+    presence_changed_at?: string | null;
+    /**
+     * Is Supervisor
+     */
+    is_supervisor?: boolean;
 };
 
 /**
@@ -212,6 +228,10 @@ export type AgentUpdateRequest = {
      * Is Active
      */
     is_active?: boolean | null;
+    /**
+     * Is Supervisor
+     */
+    is_supervisor?: boolean | null;
 };
 
 /**
@@ -734,6 +754,24 @@ export type CalculatorToolDefinition = {
      * Tool type.
      */
     type: 'calculator';
+};
+
+/**
+ * CallActionRequest
+ */
+export type CallActionRequest = {
+    /**
+     * Action
+     */
+    action: 'instruct' | 'say' | 'takeover' | 'hangup';
+    /**
+     * Text
+     */
+    text?: string | null;
+    /**
+     * Queue Slug
+     */
+    queue_slug?: string | null;
 };
 
 /**
@@ -4664,6 +4702,20 @@ export type PlivoConfigurationRequest = {
 };
 
 /**
+ * PresenceRequest
+ */
+export type PresenceRequest = {
+    /**
+     * Presence
+     */
+    presence: 'available' | 'paused' | 'offline';
+    /**
+     * Reason
+     */
+    reason?: string | null;
+};
+
+/**
  * PresetToolParameter
  *
  * A parameter injected by NIMBORA at runtime.
@@ -6234,6 +6286,20 @@ export type SoftphoneCredentials = {
 };
 
 /**
+ * SpyRequest
+ */
+export type SpyRequest = {
+    /**
+     * Agent Id
+     */
+    agent_id: number;
+    /**
+     * Mode
+     */
+    mode?: 'listen' | 'whisper' | 'barge';
+};
+
+/**
  * SubjectRequest
  */
 export type SubjectRequest = {
@@ -6427,6 +6493,56 @@ export type SuperuserWorkflowRunsListResponse = {
      * Total Pages
      */
     total_pages: number;
+};
+
+/**
+ * SupervisionSnapshot
+ */
+export type SupervisionSnapshot = {
+    /**
+     * Ai Calls
+     */
+    ai_calls: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Agents
+     */
+    agents: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Queues
+     */
+    queues: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Waiting Callers
+     */
+    waiting_callers: Array<{
+        [key: string]: unknown;
+    }>;
+    /**
+     * Kpis
+     */
+    kpis: {
+        [key: string]: number;
+    };
+    /**
+     * Telephony
+     */
+    telephony: string;
+    /**
+     * Contact Center Enabled
+     */
+    contact_center_enabled: boolean;
+    /**
+     * My Seat
+     */
+    my_seat: {
+        [key: string]: unknown;
+    } | null;
 };
 
 /**
@@ -19534,6 +19650,189 @@ export type ListRequestsApiV1PrivacyRequestsGetResponses = {
 
 export type ListRequestsApiV1PrivacyRequestsGetResponse = ListRequestsApiV1PrivacyRequestsGetResponses[keyof ListRequestsApiV1PrivacyRequestsGetResponses];
 
+export type SnapshotApiV1SupervisionGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/supervision';
+};
+
+export type SnapshotApiV1SupervisionGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SnapshotApiV1SupervisionGetError = SnapshotApiV1SupervisionGetErrors[keyof SnapshotApiV1SupervisionGetErrors];
+
+export type SnapshotApiV1SupervisionGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: SupervisionSnapshot;
+};
+
+export type SnapshotApiV1SupervisionGetResponse = SnapshotApiV1SupervisionGetResponses[keyof SnapshotApiV1SupervisionGetResponses];
+
+export type CallEventsApiV1SupervisionCallsRunIdEventsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: number;
+    };
+    query?: {
+        /**
+         * After
+         */
+        after?: number;
+    };
+    url: '/api/v1/supervision/calls/{run_id}/events';
+};
+
+export type CallEventsApiV1SupervisionCallsRunIdEventsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CallEventsApiV1SupervisionCallsRunIdEventsGetError = CallEventsApiV1SupervisionCallsRunIdEventsGetErrors[keyof CallEventsApiV1SupervisionCallsRunIdEventsGetErrors];
+
+export type CallEventsApiV1SupervisionCallsRunIdEventsGetResponses = {
+    /**
+     * Response Call Events Api V1 Supervision Calls  Run Id  Events Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type CallEventsApiV1SupervisionCallsRunIdEventsGetResponse = CallEventsApiV1SupervisionCallsRunIdEventsGetResponses[keyof CallEventsApiV1SupervisionCallsRunIdEventsGetResponses];
+
+export type CallActionApiV1SupervisionCallsRunIdActionsPostData = {
+    body: CallActionRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Run Id
+         */
+        run_id: number;
+    };
+    query?: never;
+    url: '/api/v1/supervision/calls/{run_id}/actions';
+};
+
+export type CallActionApiV1SupervisionCallsRunIdActionsPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CallActionApiV1SupervisionCallsRunIdActionsPostError = CallActionApiV1SupervisionCallsRunIdActionsPostErrors[keyof CallActionApiV1SupervisionCallsRunIdActionsPostErrors];
+
+export type CallActionApiV1SupervisionCallsRunIdActionsPostResponses = {
+    /**
+     * Response Call Action Api V1 Supervision Calls  Run Id  Actions Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type CallActionApiV1SupervisionCallsRunIdActionsPostResponse = CallActionApiV1SupervisionCallsRunIdActionsPostResponses[keyof CallActionApiV1SupervisionCallsRunIdActionsPostResponses];
+
+export type SpyApiV1SupervisionSpyPostData = {
+    body: SpyRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/supervision/spy';
+};
+
+export type SpyApiV1SupervisionSpyPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SpyApiV1SupervisionSpyPostError = SpyApiV1SupervisionSpyPostErrors[keyof SpyApiV1SupervisionSpyPostErrors];
+
+export type SpyApiV1SupervisionSpyPostResponses = {
+    /**
+     * Response Spy Api V1 Supervision Spy Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SpyApiV1SupervisionSpyPostResponse = SpyApiV1SupervisionSpyPostResponses[keyof SpyApiV1SupervisionSpyPostResponses];
+
 export type ListQueuesApiV1ContactCenterQueuesGetData = {
     body?: never;
     headers?: {
@@ -20357,6 +20656,45 @@ export type CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostRes
 };
 
 export type CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostResponse = CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostResponses[keyof CompleteCallbackApiV1ContactCenterCallbacksCallbackIdCompletePostResponses];
+
+export type SetMyPresenceApiV1ContactCenterMePresencePutData = {
+    body: PresenceRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/contact-center/me/presence';
+};
+
+export type SetMyPresenceApiV1ContactCenterMePresencePutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetMyPresenceApiV1ContactCenterMePresencePutError = SetMyPresenceApiV1ContactCenterMePresencePutErrors[keyof SetMyPresenceApiV1ContactCenterMePresencePutErrors];
+
+export type SetMyPresenceApiV1ContactCenterMePresencePutResponses = {
+    /**
+     * Successful Response
+     */
+    200: AgentResponse;
+};
+
+export type SetMyPresenceApiV1ContactCenterMePresencePutResponse = SetMyPresenceApiV1ContactCenterMePresencePutResponses[keyof SetMyPresenceApiV1ContactCenterMePresencePutResponses];
 
 export type HealthApiV1HealthGetData = {
     body?: never;

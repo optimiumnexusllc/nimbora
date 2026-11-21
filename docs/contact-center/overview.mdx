@@ -1,0 +1,30 @@
+---
+title: "Human Contact Center"
+description: "Queues, softphone seats in the browser, AI-to-human handoff with a summary card, and callbacks."
+---
+
+NIMBORA runs AI agents and a human team side by side, on the platform's own telephony (Asterisk, deployed by `deploy/enterprise`).
+
+## Queues and seats
+
+- **Queues** (`support`, `ventes`…) distribute calls to their members with a strategy, a ring timeout, a maximum wait and an overflow destination.
+- **Seats** are softphone extensions. Each agent answers in the browser (**Centre d'appels → Mon softphone**) with no SIP client to install. Credentials are shown once.
+- Only **available** agents are rung. With **Pause** in the softphone (pick a reason: lunch, training…), the agent leaves every queue until they resume. The supervision console shows the pause too.
+
+## From the AI to a person
+
+When an AI agent transfers to `queue:<slug>`, the agent who answers sees a **handoff card** on their softphone. It contains:
+
+- the reason;
+- a summary of the conversation;
+- the customer's name and mood;
+- the suggested next step;
+- the data collected and the transcript.
+
+## Callbacks
+
+See [Schedule Callback](/voice-agent/tools/schedule-callback). Callers who leave a queue unanswered become callbacks automatically. **Rappels** lists them, and one click calls the customer back.
+
+## Supervision
+
+See [Live supervision](/contact-center/supervision).

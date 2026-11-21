@@ -109,6 +109,9 @@ class CallLanguageController:
                 spoken.append(language)
             gathered["languages_spoken"] = spoken
         logger.info(f"[language] Caller language is now '{language}' ({reason})")
+        publisher = getattr(engine, "live_publisher", None)
+        if publisher is not None:
+            publisher.update_meta(language=language)
 
         agent = getattr(engine, "active_agent", None)
         if agent is None:

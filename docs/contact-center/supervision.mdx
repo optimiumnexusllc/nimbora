@@ -1,0 +1,62 @@
+---
+title: "Live supervision"
+description: "See every live call, follow AI conversations word by word, steer the AI, take over, and listen to, whisper to or join your agents' calls."
+---
+
+**Supervision** in the sidebar shows what is happening right now. It refreshes every 3 seconds.
+
+| Indicator | Meaning |
+|---|---|
+| Appels IA | AI calls in progress, on every server |
+| Appels conseillers | Human agents currently on a call |
+| En attente | Callers waiting in a queue, and the longest wait |
+| Disponibles / Occupés / pause | Agent availability |
+| Rappels | Callbacks still to make |
+
+## AI calls: follow and steer
+
+Each AI call card shows:
+
+- the agent and the caller;
+- the duration;
+- who is speaking;
+- the detected language;
+- the current step;
+- the last sentences.
+
+Open a card to follow the conversation **word by word**, with tool calls. You can then:
+
+- **Souffler à l'IA** (whisper to the AI): add an instruction the caller does not hear. For example, "offer a 10% discount" or "suggest a callback tomorrow". It applies from the AI's next reply and stays in force for the rest of the call, across steps.
+- **Faire dire** (make it say): the agent says your sentence right away.
+- **Transférer à un conseiller** (transfer to an agent): hand the caller to a queue. This works like the agent's own transfer tool, so the handoff card is included.
+- **Raccrocher** (hang up): end the call, optionally after a last sentence.
+
+Every action is written into the call's feed.
+
+<Note>
+Calls run on whichever server picked them up. Their live feed and the supervisors' commands go through Redis, so the console works with any number of API and worker instances.
+</Note>
+
+## Human agents: listen, whisper, barge
+
+The agents table shows each agent's state: available, ringing, on a call (with whom and for how long), paused (with the reason) or offline. Queues show the callers waiting, the longest wait, the calls in progress and the available agents.
+
+Seats marked **Superviseur** (**Centre d'appels → Postes**) can supervise an agent who is on a call. NIMBORA rings the supervisor's own softphone, and once they answer:
+
+- **Écouter** (listen): hear the call without being heard;
+- **Chuchoter** (whisper): talk to the agent only, while the customer hears nothing;
+- **Intervenir** (barge): join the conversation.
+
+During the session, keys **4 / 5 / 6** switch between listen, whisper and barge.
+
+Supervision runs `ChanSpy` in a dialplan context that only the API can reach. It is limited to one agent of the same organization.
+
+## API
+
+| Endpoint | |
+|---|---|
+| `GET /api/v1/supervision` | Snapshot: AI calls, agents, queues, KPIs |
+| `GET /api/v1/supervision/calls/{run_id}/events?after=n` | Live feed of an AI call |
+| `POST /api/v1/supervision/calls/{run_id}/actions` | `instruct`, `say`, `takeover`, `hangup` |
+| `POST /api/v1/supervision/spy` | Listen / whisper / barge on an agent |
+| `PUT /api/v1/contact-center/me/presence` | Available / paused (with reason) / offline |

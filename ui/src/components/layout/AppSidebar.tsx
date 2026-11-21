@@ -18,6 +18,7 @@ import {
   Megaphone,
   Phone,
   Plug,
+  Radio,
   ReceiptText,
   Settings,
   ShieldCheck,
@@ -161,6 +162,11 @@ const NAV_SECTIONS: SidebarNavSection[] = [
         title: "Confidentialité",
         url: "/privacy",
         icon: LockKeyhole,
+      },
+      {
+        title: "Supervision",
+        url: "/supervision",
+        icon: Radio,
       },
       {
         title: "Centre d'appels",

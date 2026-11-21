@@ -9,12 +9,15 @@ import { Headphones, Mic, MicOff, Pause, Phone, PhoneOff, Play } from "lucide-re
 import { useCallback, useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
+import { setMyPresenceApiV1ContactCenterMePresencePut } from "@/client/sdk.gen";
 import { HandoffCard } from "@/components/contact-center/HandoffCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { detailFromError } from "@/lib/apiError";
 import { type Agent, enterpriseApi, type Handoff } from "@/lib/enterpriseApi";
 
 type JsSIPModule = typeof import("jssip");
@@ -22,6 +25,8 @@ type UA = InstanceType<JsSIPModule["UA"]>;
 type RTCSession = import("jssip/lib/RTCSession").RTCSession;
 
 type Status = "disconnected" | "connecting" | "registered" | "error";
+
+const PAUSE_REASONS = ["Pause", "Déjeuner", "Formation", "Administratif", "Réunion"];
 
 const SESSION_KEY = "nimbora-softphone-password";
 const HANDOFF_HEADER = "X-Nimbora-Handoff";
@@ -52,7 +57,8 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
     const [incoming, setIncoming] = useState<RTCSession | null>(null);
     const [active, setActive] = useState<RTCSession | null>(null);
     const [muted, setMuted] = useState(false);
-    const [paused, setPaused] = useState(false);
+    const [paused, setPaused] = useState(seat.presence === "paused");
+    const [pauseReason, setPauseReason] = useState(seat.presence_reason || "Pause");
     const [peer, setPeer] = useState<string>("");
     const [handoff, setHandoff] = useState<Handoff | null>(null);
     // Set when this ringing call is a click-to-call callback (our own originate).
@@ -211,20 +217,33 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
         setMuted(!muted);
     };
 
-    // *45 / *46 feature codes pause/unpause this agent in all of its queues.
-    const togglePause = () => {
+    // Presence is saved server-side (supervision console, queue membership)
+    // and applied at once with the *45 / *46 pause feature codes.
+    const setPresence = async (next: "available" | "paused", reason?: string) => {
+        const response = await setMyPresenceApiV1ContactCenterMePresencePut({
+            body: { presence: next, reason: next === "paused" ? (reason ?? pauseReason) : null },
+        });
+        if (response.error) {
+            toast.error(detailFromError(response.error, "Impossible de changer votre statut"));
+            return;
+        }
         const ua = uaRef.current;
-        if (!ua) return;
-        const code = paused ? "*46" : "*45";
-        ua.call(`sip:${code}@${realm}`, { mediaConstraints: { audio: true, video: false } });
-        setPaused(!paused);
-        toast.success(paused ? "Vous recevez à nouveau des appels." : "Pause : aucun appel ne vous sera distribué.");
+        if (ua) {
+            const code = next === "paused" ? "*45" : "*46";
+            ua.call(`sip:${code}@${realm}`, { mediaConstraints: { audio: true, video: false } });
+        }
+        setPaused(next === "paused");
+        toast.success(
+            next === "paused"
+                ? `${reason ?? pauseReason} : aucun appel ne vous sera distribué.`
+                : "Vous recevez à nouveau des appels.",
+        );
     };
 
     const statusBadge = {
         disconnected: <Badge variant="secondary">Hors ligne</Badge>,
         connecting: <Badge variant="secondary">Connexion…</Badge>,
-        registered: <Badge>{paused ? "En pause" : "Disponible"}</Badge>,
+        registered: <Badge>{paused ? `En pause · ${pauseReason}` : "Disponible"}</Badge>,
         error: <Badge variant="destructive">Erreur</Badge>,
     }[status];
 
@@ -300,10 +319,31 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
                         {!incoming && !active && (
                             <>
                                 <span className="text-muted-foreground">En attente d&apos;appels…</span>
-                                <Button variant="outline" onClick={togglePause}>
-                                    {paused ? <Play className="mr-2 h-4 w-4" /> : <Pause className="mr-2 h-4 w-4" />}
-                                    {paused ? "Reprendre" : "Pause"}
-                                </Button>
+                                {paused ? (
+                                    <Button variant="outline" onClick={() => setPresence("available")}>
+                                        <Play className="mr-2 h-4 w-4" />
+                                        Reprendre
+                                    </Button>
+                                ) : (
+                                    <span className="flex items-center gap-2">
+                                        <Select value={pauseReason} onValueChange={setPauseReason}>
+                                            <SelectTrigger className="h-9 w-40" aria-label="Motif de pause">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {PAUSE_REASONS.map((r) => (
+                                                    <SelectItem key={r} value={r}>
+                                                        {r}
+                                                    </SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                        <Button variant="outline" onClick={() => setPresence("paused")}>
+                                            <Pause className="mr-2 h-4 w-4" />
+                                            Pause
+                                        </Button>
+                                    </span>
+                                )}
                                 <Button variant="ghost" onClick={disconnect}>
                                     Se déconnecter
                                 </Button>

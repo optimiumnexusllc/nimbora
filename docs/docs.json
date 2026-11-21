@@ -30,11 +30,11 @@
           {
             "group": "Build your First Agent",
             "pages": [
-                  "getting-started/first-agent",
-                  "getting-started/trigger-calls-from-your-backend",
-                  "getting-started/send-call-data-with-webhooks",
-                  "getting-started/connect-telephony",
-                  "getting-started/add-tools-and-knowledge-base"
+              "getting-started/first-agent",
+              "getting-started/trigger-calls-from-your-backend",
+              "getting-started/send-call-data-with-webhooks",
+              "getting-started/connect-telephony",
+              "getting-started/add-tools-and-knowledge-base"
             ]
           },
           {
@@ -128,6 +128,13 @@
               "integrations/telephony/webhooks",
               "integrations/telephony/agent-stream",
               "integrations/telephony/custom"
+            ]
+          },
+          {
+            "group": "Contact Center",
+            "pages": [
+              "contact-center/overview",
+              "contact-center/supervision"
             ]
           },
           {

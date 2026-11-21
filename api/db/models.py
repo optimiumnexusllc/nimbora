@@ -1883,6 +1883,11 @@ class ContactCenterAgentModel(Base):
     sip_username = Column(String(64), nullable=False, unique=True)
     sip_md5_cred = Column(String(32), nullable=False)
     is_active = Column(Boolean, nullable=False, default=True)
+    # Supervision console: availability, and who may listen to colleagues.
+    presence = Column(String(16), nullable=False, default="available")
+    presence_reason = Column(String(64), nullable=True)
+    presence_changed_at = Column(DateTime(timezone=True), nullable=True)
+    is_supervisor = Column(Boolean, nullable=False, default=False)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     queues = relationship(
         "ContactCenterQueueModel",

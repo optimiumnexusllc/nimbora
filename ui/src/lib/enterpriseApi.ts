@@ -108,6 +108,10 @@ export type Agent = {
     user_id: number | null;
     is_active: boolean;
     queues: string[];
+    presence?: "available" | "paused" | "offline";
+    presence_reason?: string | null;
+    presence_changed_at?: string | null;
+    is_supervisor?: boolean;
 };
 
 export type SoftphoneCredentials = {
@@ -286,7 +290,10 @@ export const enterpriseApi = {
     listAgents: () => call<Agent[]>("get", `${BASE}/contact-center/agents`),
     createAgent: (input: { display_name: string; extension: string; user_id?: number | null }) =>
         call<SoftphoneCredentials>("post", `${BASE}/contact-center/agents`, input),
-    updateAgent: (id: number, input: Partial<Pick<Agent, "display_name" | "user_id" | "is_active">>) =>
+    updateAgent: (
+        id: number,
+        input: Partial<Pick<Agent, "display_name" | "user_id" | "is_active" | "is_supervisor">>,
+    ) =>
         call<Agent>("patch", `${BASE}/contact-center/agents/${id}`, input),
     resetAgentPassword: (id: number) =>
         call<SoftphoneCredentials>("post", `${BASE}/contact-center/agents/${id}/reset-password`),

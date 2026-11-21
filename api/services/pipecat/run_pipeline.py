@@ -1242,9 +1242,34 @@ async def _run_pipeline_impl(
             task, user_context_aggregator, call_monitor_processor
         )
 
+    # Live supervision: the call's feed and state go to Redis, supervisors'
+    # commands come back (instruct / say / takeover / hang up).
+    from api.services.supervision.call_actions import SupervisorActions
+    from api.services.supervision.live_calls import LiveCallPublisher
+
+    live_initial = dict(getattr(workflow_run, "initial_context", None) or {})
+    live_publisher = LiveCallPublisher(
+        organization_id=workflow.organization_id,
+        run_id=workflow_run_id,
+        meta={
+            "workflow_id": workflow_id,
+            "agent_name": workflow.name,
+            "channel": getattr(workflow_run, "mode", None),
+            "direction": live_initial.get("direction") or "inbound",
+            "caller": live_initial.get("caller_number")
+            or live_initial.get("phone_number")
+            or live_initial.get("from_number")
+            or "",
+            "campaign_id": getattr(workflow_run, "campaign_id", None),
+        },
+    )
+    supervisor_actions = SupervisorActions(engine)
+    supervisor_actions.register(live_publisher)
+    engine.live_publisher = live_publisher
+
     # Share frame-ID deduplication across the call and all agent workers.
     feedback_observer = RealtimeFeedbackObserver(
-        ws_sender=ws_sender,
+        ws_sender=live_publisher.wrap_sender(ws_sender),
         logs_buffer=in_memory_logs_buffer,
         selected_visit=lambda: engine.selected_visit_id,
         call_event_recorder=(
@@ -1387,6 +1412,7 @@ async def _run_pipeline_impl(
 
     register_audio_data_handler(audio_buffer, workflow_run_id, in_memory_audio_buffer)
 
+    await live_publisher.start()
     try:
         # Run the pipeline
         await run_worker_runner(worker_runner, task)
@@ -1410,6 +1436,7 @@ async def _run_pipeline_impl(
                     workflow_run_id,
                     type(exc).__name__,
                 )
+        await live_publisher.stop()
         await engine.close_mcp_sessions()
         await feedback_observer.cleanup()
         logger.debug(f"Cleaned up context providers for workflow run {workflow_run_id}")

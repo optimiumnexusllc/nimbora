@@ -34,7 +34,16 @@ QUEUE_MUTABLE_FIELDS = {
     "overflow_destination",
     "is_active",
 }
-AGENT_MUTABLE_FIELDS = {"display_name", "user_id", "is_active", "sip_md5_cred"}
+AGENT_MUTABLE_FIELDS = {
+    "display_name",
+    "user_id",
+    "is_active",
+    "sip_md5_cred",
+    "presence",
+    "presence_reason",
+    "presence_changed_at",
+    "is_supervisor",
+}
 
 
 class ContactCenterClient(BaseDBClient):
