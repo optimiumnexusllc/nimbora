@@ -1,0 +1,77 @@
+---
+title: "NIMBORA Softphone"
+description: "The enterprise PBX extension on Windows, macOS, Linux, Android, iPhone and in the browser, paired with a one-time code."
+---
+
+NIMBORA Softphone turns a computer, a phone or a browser tab into an [enterprise PBX](/integrations/telephony/enterprise-pbx) extension. One app runs on every platform and carries the platform's name, so it is white-label too.
+
+## What it does
+
+- Places and receives calls on the PBX. Signaling is SIP over a secure WebSocket; audio is WebRTC, encrypted with SRTP. It rings, shows a notification, and displays the caller's number or name.
+- During a call: mute, hold, a keypad for menus (DTMF), **transfer**, and a call timer. A second caller hears busy.
+- **Recents**: the extension's calls from the PBX's call log, missed calls in red.
+- **Contacts**: colleagues, call groups and queues, with accent-insensitive search.
+- **Voicemail** in one tap. It dials `*98`.
+- **Do-not-disturb** and **forward all calls**, from the app.
+- Audio output selection, physical keyboard on computers, and light or dark theme.
+
+<Frame caption="Pairing an extension: one-time code, QR code and downloads">
+  <img src="/images/screenshots/softphone-pairing.webp" alt="Softphone dialog with the activation code, the QR code and the download links per platform" />
+</Frame>
+
+## Pairing a device
+
+1. In the console, open **Téléphonie d'entreprise → Postes** and click **Softphone** on the person's extension.
+2. A **one-time code** appears, with a **QR code**. The code is valid for 15 minutes.
+3. On the device, scan the QR code: its `nimbora-softphone://` link opens the app already filled in. Or open the app and type the platform address and the code.
+
+The extension needs a **browser (WebRTC) line**. Extensions created with **Ligne : navigateur** have one. A desk-phone line is refused with an explanation.
+
+<Frame caption="The app on a phone: keypad, recents, colleagues, settings">
+  <img src="/images/screenshots/softphone-app.webp" alt="NIMBORA Softphone showing the keypad, the recent calls and the colleagues directory" />
+</Frame>
+
+## Security
+
+- **A code works once.** It expires after 15 minutes. After 10 wrong attempts from one address in 10 minutes, that address is blocked for 10 minutes.
+- **Device token**: pairing returns a token that the app keeps on the device. The platform stores only its SHA-256 hash.
+- **SIP secret**: neither the platform nor the device stores it. The app reads it from the PBX each time it starts, over HTTPS with its device token, and keeps it in memory. When an administrator changes the line's secret on the PBX, the app uses the new one on its next start.
+- **Revoking**: **Postes → Softphones** lists the paired devices with their platform, version and last connection. **Révoquer** cuts a device off at once. **Déconnecter cet appareil** in the app does the same. Deleting an extension revokes all its devices.
+- STUN and TURN servers come from the platform's configuration. The TURN credentials expire.
+
+## Connection to the PBX
+
+By default the app connects to `wss://<PBX host>/api/asterisk/ws`, the engine's WebSocket. Its SIP domain is the PBX host. If the PBX is behind another name or a proxy, set **Connexion des softphones au PBX** in **Postes → Softphones**.
+
+The PBX must have a valid TLS certificate for its WebSocket address, because browsers and apps refuse self-signed ones.
+
+## Platforms and downloads
+
+| Platform | Package |
+|---|---|
+| Windows | `.msi` or `.exe` installer |
+| macOS (Intel and Apple Silicon) | `.dmg`; signed and notarized when the Apple secrets are set in CI |
+| Linux | `.deb`, `.rpm`, `.AppImage` |
+| Android | `.apk` |
+| iPhone / iPad | Simulator build in CI; TestFlight / App Store needs an Apple certificate |
+| Browser | Installable web app (PWA), from `softphone/dist` |
+
+The app lives in [`softphone/`](https://github.com/optimiumnexusllc/nimbora/tree/main/softphone): a React and JsSIP web app inside a Tauri 2 shell. The `NIMBORA Softphone` workflow builds every platform. Pushing a tag `softphone-vX.Y.Z` drafts a release with all the packages.
+
+## API
+
+The app uses `/api/v1/softphone/*` with `Authorization: Bearer <device token>`:
+
+| Method | Path | |
+|---|---|---|
+| `POST` | `/softphone/activate` | `{code, device_name, platform, app_version}` → `{token, config}` |
+| `GET` | `/softphone/config` | SIP account, WebSocket, domain, ICE servers, brand |
+| `GET` | `/softphone/history` | Recent calls of the extension |
+| `GET` | `/softphone/directory` | Colleagues, groups, queues |
+| `GET` / `PUT` | `/softphone/status` | Do-not-disturb, forward all calls |
+| `DELETE` | `/softphone/device` | Sign out (revoke this device) |
+
+## Limits
+
+- **Mobile calls with the app closed** need VoIP push notifications (PushKit on iOS, FCM on Android), relayed by the platform. This is planned. Until then, calls ring while the app is open; on computers it can stay minimized.
+- One call at a time. Transfers are blind (no consultation).

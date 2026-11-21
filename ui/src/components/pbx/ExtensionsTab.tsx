@@ -1,6 +1,6 @@
 "use client";
 
-import { FileUp, KeyRound, PhoneForwarded,Plus, Trash2, UserPlus } from "lucide-react";
+import { FileUp, KeyRound, PhoneForwarded, Plus, Smartphone, Trash2, UserPlus } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -52,11 +52,13 @@ export function ExtensionsTab({
     error,
     onChanged,
     onCallSettings,
+    onSoftphone,
 }: {
     users: PbxUser[];
     error?: string;
     onChanged: () => void;
     onCallSettings?: (user: PbxUser) => void;
+    onSoftphone?: (user: PbxUser) => void;
 }) {
     const [creating, setCreating] = useState(false);
     const [form, setForm] = useState<Form>(EMPTY);
@@ -152,6 +154,11 @@ export function ExtensionsTab({
                                 <TableCell className="font-mono">{u.extension ?? "—"}</TableCell>
                                 <TableCell className="text-sm text-muted-foreground">{u.email ?? "—"}</TableCell>
                                 <TableCell className="space-x-1 text-right">
+                                    {onSoftphone && (
+                                        <Button variant="ghost" size="sm" aria-label={`Softphone de ${u.name}`} onClick={() => onSoftphone(u)}>
+                                            <Smartphone /> Softphone
+                                        </Button>
+                                    )}
                                     {onCallSettings && u.id != null && (
                                         <Button variant="ghost" size="sm" aria-label={`Renvois de ${u.name}`} onClick={() => onCallSettings(u)}>
                                             <PhoneForwarded /> Renvois

@@ -685,6 +685,22 @@ class PbxClient:
             "call_logd", "DELETE", f"/cdr/{cdr_id}/recordings/{recording_uuid}/media"
         )
 
+    # --------------------------------------------------------- softphone
+
+    async def endpoint_sip(self, sip_uuid: str) -> dict:
+        """A SIP account, with its authentication options (secret included)."""
+        return await self.request("confd", "GET", f"/endpoints/sip/{sip_uuid}")
+
+    async def user_cdr(self, user_uuid: str, limit: int = 50) -> list[dict]:
+        return await self._items(
+            "call_logd",
+            "/cdr",
+            user_uuid=user_uuid,
+            limit=limit,
+            order="start",
+            direction="desc",
+        )
+
     async def send_password_reset_email(self, login: str) -> None:
         """Ask the PBX to e-mail a reset link (white-label template)."""
         try:
@@ -857,4 +873,7 @@ REQUIRED_ACL: dict[str, str] = {
     "recorded_cdr": "call-logd.cdr.read",
     "recording_media": "call-logd.cdr.{cdr_id}.recordings.{recording_uuid}.media.read",
     "delete_recording_media": "call-logd.cdr.{cdr_id}.recordings.{recording_uuid}.media.delete",
+    # NIMBORA Softphone
+    "endpoint_sip": "confd.endpoints.sip.{sip_uuid}.read",
+    "user_cdr": "call-logd.cdr.read",
 }

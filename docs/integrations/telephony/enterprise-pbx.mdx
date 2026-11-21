@@ -40,7 +40,7 @@ The install script:
 - generates every secret, so the installer's public default passwords are never used;
 - leaves out the engine's own web UI;
 - firewalls ARI (port 5039) to NIMBORA only and AMI (port 5038) to the server itself, over IPv4 and IPv6;
-- creates the service account. Its policy grants only the 105 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
+- creates the service account. Its policy grants only the 106 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
 
 See `deploy/pbx/README.md` for every option and what the white label changes.
 
@@ -136,6 +136,10 @@ The PBX keeps a single schedule per company. When the hours change, open the dia
 <Frame caption="Company hours applied to PBX numbers, an AI agent answering outside them">
   <img src="/images/screenshots/pbx-schedule.webp" alt="Opening hours dialog with numbers to cover and the after-hours destination" />
 </Frame>
+
+### NIMBORA Softphone
+
+**Postes → Softphone** pairs an extension with [NIMBORA Softphone](/integrations/telephony/softphone) on Windows, macOS, Linux, Android, iPhone or in the browser, with a one-time code or a QR code. **Postes → Softphones** lists the paired devices and revokes them.
 
 ### Call groups
 

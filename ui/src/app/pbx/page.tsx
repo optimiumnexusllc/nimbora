@@ -62,6 +62,8 @@ import { QueuesTab } from "@/components/pbx/QueuesTab";
 import { RecordingsTab } from "@/components/pbx/RecordingsTab";
 import { RestrictionsSection } from "@/components/pbx/RestrictionsSection";
 import { ScheduleDialog } from "@/components/pbx/ScheduleDialog";
+import { SoftphoneDialog } from "@/components/pbx/SoftphoneDialog";
+import { SoftphonesSection } from "@/components/pbx/SoftphonesSection";
 import { TrunksTab } from "@/components/pbx/TrunksTab";
 import {
     DIRECTION_LABELS,
@@ -112,6 +114,7 @@ export default function PbxPage() {
     const [editing, setEditing] = useState(false);
     const [numberEdit, setNumberEdit] = useState<NumberEdit | null>(null);
     const [callSettingsUser, setCallSettingsUser] = useState<PbxUser | null>(null);
+    const [softphoneUser, setSoftphoneUser] = useState<PbxUser | null>(null);
     const [groups, setGroups] = useState<{ groups: PbxGroup[]; strategies: Record<string, string>; error: string | null }>({
         groups: [],
         strategies: {},
@@ -582,7 +585,11 @@ export default function PbxPage() {
                             error={errors.users}
                             onChanged={() => void loadInventory()}
                             onCallSettings={setCallSettingsUser}
+                            onSoftphone={setSoftphoneUser}
                         />
+                        <div className="mt-4">
+                            <SoftphonesSection key={softphoneUser ? "open" : "closed"} />
+                        </div>
                     </TabsContent>
 
                     <TabsContent value="numbers">
@@ -807,6 +814,7 @@ export default function PbxPage() {
                 />
             )}
 
+            <SoftphoneDialog user={softphoneUser} onClose={() => setSoftphoneUser(null)} />
             <CallSettingsDialog user={callSettingsUser} onClose={() => setCallSettingsUser(null)} sources={sources} />
             <NumberDialog edit={numberEdit} onClose={() => setNumberEdit(null)} sources={sources} onDone={() => void loadInventory()} />
         </PageLayout>

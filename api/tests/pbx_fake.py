@@ -153,7 +153,46 @@ class FakePbx:
                 "options": [["protocol", "tls"]],
             },
         ]
-        self.endpoints_sip: dict[str, dict] = {}
+        # SIP accounts of the seeded extensions: Koffi has a browser (WebRTC)
+        # line, Aya a classic SIP desk phone.
+        self.endpoints_sip: dict[str, dict] = {}  # trunks
+        self.user_endpoints: dict[str, dict] = {
+            "sip-u1": {
+                "uuid": "sip-u1",
+                "name": "koffi1001",
+                "templates": [
+                    {"uuid": "tpl-webrtc", "label": "webrtc"},
+                    {"uuid": "tpl-global", "label": "global"},
+                ],
+                "auth_section_options": [
+                    ["username", "koffi1001"],
+                    ["password", "Sip-Secret-1001"],
+                ],
+            },
+            "sip-u2": {
+                "uuid": "sip-u2",
+                "name": "aya1002",
+                "templates": [{"uuid": "tpl-global", "label": "global"}],
+                "auth_section_options": [
+                    ["username", "aya1002"],
+                    ["password", "Sip-Secret-1002"],
+                ],
+            },
+        }
+        self.users[0]["lines"] = [
+            {
+                "id": 1,
+                "endpoint_sip": {"uuid": "sip-u1"},
+                "extensions": [{"exten": "1001", "context": "default"}],
+            }
+        ]
+        self.users[1]["lines"] = [
+            {
+                "id": 2,
+                "endpoint_sip": {"uuid": "sip-u2"},
+                "extensions": [{"exten": "1002", "context": "default"}],
+            }
+        ]
         self.trunks: list[dict] = []
         self.trunk_status: dict[int, dict] = {}
         self.outcalls: list[dict] = []
@@ -389,6 +428,20 @@ class FakePbx:
                         404, json=["Resource Not Found - EndpointSIPTemplate"]
                     )
             user = {"uuid": str(uuid.uuid4()), "id": self._id(), **body}
+            created_lines = []
+            for line in body.get("lines") or []:
+                sip_uuid = str(uuid.uuid4())
+                self.user_endpoints[sip_uuid] = {
+                    "uuid": sip_uuid,
+                    **(line.get("endpoint_sip") or {}),
+                }
+                created_lines.append(
+                    {
+                        "id": self._id(),
+                        "endpoint_sip": {"uuid": sip_uuid},
+                        "extensions": line.get("extensions") or [],
+                    }
+                )
             for line in body.get("lines") or []:
                 for ext in line.get("extensions") or []:
                     self.extensions.append(
@@ -412,6 +465,7 @@ class FakePbx:
                     .get("exten"),
                     "email": body.get("email"),
                     "enabled": True,
+                    "lines": created_lines,
                 }
             )
             self.created_users.append(user)
@@ -682,6 +736,13 @@ class FakePbx:
             self.endpoints_sip[endpoint["uuid"]] = endpoint
             return httpx.Response(201, json=endpoint)
         m = re.fullmatch(rf"{prefix}/endpoints/sip/([^/]+)", path)
+        if m and method == "GET" and m.group(1) != "templates":
+            endpoint = self.endpoints_sip.get(m.group(1)) or self.user_endpoints.get(
+                m.group(1)
+            )
+            if endpoint is None:
+                return httpx.Response(404, json=["Resource Not Found - EndpointSIP"])
+            return httpx.Response(200, json=endpoint)
         if m and method == "DELETE":
             if self.endpoints_sip.pop(m.group(1), None) is None:
                 return httpx.Response(404, json=["Resource Not Found - EndpointSIP"])
@@ -1058,6 +1119,14 @@ class FakePbx:
             items = self.cdr
             if request.url.params.get("recorded") == "true":
                 items = [c for c in items if c.get("recordings")]
+            if request.url.params.get("user_uuid"):
+                wanted = request.url.params["user_uuid"]
+                items = [
+                    c
+                    for c in items
+                    if wanted
+                    in (c.get("source_user_uuid"), c.get("destination_user_uuid"))
+                ]
             return httpx.Response(
                 200,
                 json={"items": items, "total": len(self.cdr), "filtered": len(items)},

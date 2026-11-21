@@ -28,6 +28,7 @@ _UPDATABLE = {
     "branding_applied_at",
     "recording_policy",
     "recordings_synced_at",
+    "softphone_settings",
 }
 
 

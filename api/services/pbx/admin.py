@@ -195,9 +195,13 @@ async def create_extension(
 async def delete_extension(
     organization_id: int, user_uuid: str, **client_kwargs
 ) -> None:
+    from api.db import db_client
+
     connection = await _connection(organization_id)
     async with client_for(connection, **client_kwargs) as client:
         await client.delete_user(user_uuid)
+    # The extension is gone: so are its softphones.
+    await db_client.revoke_softphone_devices_for_extension(organization_id, user_uuid)
 
 
 async def send_password_reset(

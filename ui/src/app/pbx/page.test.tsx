@@ -21,6 +21,8 @@ const mocks = vi.hoisted(() => ({
     conferences: vi.fn(),
     callSettings: vi.fn(),
     recordings: vi.fn(),
+    devices: vi.fn(),
+    softphoneSettings: vi.fn(),
     restrictions: vi.fn(),
     unroute: vi.fn(),
     branding: vi.fn(),
@@ -50,6 +52,8 @@ vi.mock("@/client/sdk.gen", () => ({
     listConferencesApiV1PbxConferencesGet: mocks.conferences,
     readCallSettingsApiV1PbxExtensionsUserIdCallSettingsGet: mocks.callSettings,
     listRecordingsApiV1PbxRecordingsGet: mocks.recordings,
+    listSoftphoneDevicesApiV1PbxSoftphoneDevicesGet: mocks.devices,
+    readSoftphoneSettingsApiV1PbxSoftphoneSettingsGet: mocks.softphoneSettings,
     listRestrictionsApiV1PbxRestrictionsGet: mocks.restrictions,
     unrouteNumberApiV1PbxRoutesNumberDelete: mocks.unroute,
     applyBrandingApiV1PbxBrandingApplyPost: mocks.branding,
@@ -115,6 +119,8 @@ beforeEach(() => {
     mocks.recordings.mockResolvedValue({
         data: { total: 0, items: [], synced_at: null, policy: { incoming_external: true, outgoing_external: false, internal: false, user_uuids: null, import_enabled: true, transcribe: true, remove_from_pbx: false } },
     });
+    mocks.devices.mockResolvedValue({ data: [] });
+    mocks.softphoneSettings.mockResolvedValue({ data: { wss_url: "wss://x", sip_domain: "x", overrides: {} } });
     mocks.restrictions.mockResolvedValue({
         data: { presets: [], restrictions: [{ id: 70, name: "Accueil", mode: "deny", patterns: ["_00."], enabled: true, has_pin: true, users: [{ uuid: "u-1", name: "Koffi Yao" }] }] },
     });

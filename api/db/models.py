@@ -2289,6 +2289,8 @@ class PbxConnectionModel(Base):
     # (import, transcription, removal from the PBX). See services/pbx/recordings.
     recording_policy = Column(JSONB, nullable=False, default=dict)
     recordings_synced_at = Column(DateTime(timezone=True), nullable=True)
+    # NIMBORA Softphone: WebSocket URL and SIP domain overrides.
+    softphone_settings = Column(JSONB, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime(timezone=True),
@@ -2401,4 +2403,49 @@ class PbxCallRecordingModel(Base):
     transcript = Column(Text, nullable=True)
     transcript_status = Column(String(16), nullable=False, default="none")
     removed_from_pbx = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
+class SoftphoneActivationModel(Base):
+    """A one-time code that pairs a NIMBORA Softphone with a PBX extension."""
+
+    __tablename__ = "softphone_activations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    pbx_user_uuid = Column(String(64), nullable=False)
+    code_hash = Column(String(64), nullable=False, unique=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    used_at = Column(DateTime(timezone=True), nullable=True)
+    created_by_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
+class SoftphoneDeviceModel(Base):
+    """A NIMBORA Softphone installation (desktop, mobile or browser).
+
+    Holds a hash of the device token only; the SIP secret is fetched live from
+    the PBX each time the app starts and is never stored by the platform.
+    """
+
+    __tablename__ = "softphone_devices"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer,
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    pbx_user_uuid = Column(String(64), nullable=False)
+    name = Column(String(128), nullable=False)
+    platform = Column(String(32), nullable=False, default="web")
+    app_version = Column(String(32), nullable=True)
+    token_hash = Column(String(64), nullable=False, unique=True)
+    last_seen_at = Column(DateTime(timezone=True), nullable=True)
+    revoked_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))

@@ -131,6 +131,17 @@ Aucun client ne reste sans réponse.
 <p align="center"><img src="docs/images/screenshots/pbx-recordings.webp" alt="Enregistrements des appels humains avec transcription masquée" width="88%"></p>
 <p align="center"><img src="docs/images/screenshots/pbx-ai-outbound.webp" alt="Appels sortants des agents IA par le PBX et restrictions d'appel" width="88%"></p>
 
+### 📱 NIMBORA Softphone : le poste d'entreprise sur tous les appareils
+
+Une seule application, à votre marque, sur **Windows, macOS, Linux, Android, iPhone/iPad** et dans
+**le navigateur** : appels entrants et sortants sur le PBX, attente, transfert, clavier, messagerie,
+appels récents, annuaire des collègues, ne pas déranger et renvoi. Le jumelage se fait par **QR code**
+ou code à usage unique depuis la console ; le mot de passe SIP n'est jamais stocké, ni sur l'appareil
+ni dans la plateforme, et chaque appareil se révoque en un clic.
+
+<p align="center"><img src="docs/images/screenshots/softphone-app.webp" alt="NIMBORA Softphone : clavier, récents et contacts" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/softphone-pairing.webp" alt="Jumelage d'un poste par QR code" width="88%"></p>
+
 ### 💬 WhatsApp : l'agent répond aussi aux messages
 
 Le même agent répond aux **appels et aux messages WhatsApp** de votre numéro Business : textes,
@@ -221,7 +232,8 @@ swahili, haoussa, yoruba, lingala…
 | **Confidentialité** | Masquage des données personnelles, mode PCI, journaux masqués, durées de conservation, export et effacement RGPD |
 | **SaaS multi-entreprises** | Offres et abonnements, essai gratuit, quotas de minutes, limites par client, paiement Stripe optionnel, console opérateur |
 | **Téléphonie** | Asterisk (SIP), Twilio, Vonage, Telnyx, Plivo, WhatsApp… |
-| **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; création de postes en une action et import CSV ; files avec débordement vers un agent IA ; horaires de l'entreprise appliqués aux numéros ; **serveurs vocaux en éditeur visuel**, messages dits par la voix de l'entreprise, touche « parler à l'agent IA » ; numéros vers IA, menu, file, poste ou messagerie ; **lignes opérateurs SIP** et routes sortantes avec relais et numéro présenté ; **appels sortants des agents IA par les lignes du PBX** ; restrictions d'appel par poste ; **groupes d'appel**, renvois, ne-pas-déranger et agent IA quand un poste ne répond pas ; **salles de conférence** avec participants en direct ; **enregistrement des appels humains** copiés, transcrits et masqués ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 105 ACL) |
+| **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; création de postes en une action et import CSV ; files avec débordement vers un agent IA ; horaires de l'entreprise appliqués aux numéros ; **serveurs vocaux en éditeur visuel**, messages dits par la voix de l'entreprise, touche « parler à l'agent IA » ; numéros vers IA, menu, file, poste ou messagerie ; **lignes opérateurs SIP** et routes sortantes avec relais et numéro présenté ; **appels sortants des agents IA par les lignes du PBX** ; restrictions d'appel par poste ; **groupes d'appel**, renvois, ne-pas-déranger et agent IA quand un poste ne répond pas ; **salles de conférence** avec participants en direct ; **enregistrement des appels humains** copiés, transcrits et masqués ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 106 ACL) |
+| **NIMBORA Softphone** | Application Windows, macOS, Linux, Android, iOS et web (Tauri 2 + WebRTC) : appels, attente, transfert, DTMF, messagerie, récents, annuaire, ne pas déranger, renvoi ; jumelage par QR code, jeton d'appareil révocable, secret SIP jamais stocké |
 | **Marque blanche** | Nom de la plateforme et du PBX centralisés (`BRAND_*`), e-mails et page de réinitialisation à la marque, en-têtes SIP |
 | **Sécurité** | Isolation stricte entre entreprises, protection SSRF, secrets générés à l'installation, télémétrie désactivée |
 
@@ -371,7 +383,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Routage d'un numéro du PBX vers un agent IA (`Stasis(app,inbound,called=…)`), sans jamais écraser une destination existante ; retrait propre des deux côtés |
 | ✅ | Console : appels en cours (raccrocher), agents (pause, reprise, déconnexion), files, postes, numéros, journal des appels ; pannes partielles affichées par section |
 | ✅ | Événements du PBX : chaque appel humain rejoint l'historique client multicanal (appels manqués compris), dédoublonné, sans doublonner les appels IA |
-| ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **105 ACL** (testé contre le code) |
+| ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **106 ACL** (testé contre le code) |
 | ✅ | Marque blanche : e-mails d'authentification en français à votre nom (fini `noreply@wazo.community` et le lien vers `app.wazo.io`), page `/pbx-password` à la marque (sans SSRF), en-têtes SIP `User-Agent`/`Server`, page d'accueil, bannière |
 | ✅ | Conformité : moteur GPL-3.0 non modifié, licences conservées sur le serveur, `NOTICE.md` ; NIMBORA (BSD-2) reste un programme distinct |
 | 🧪 | Validation sur un PBX réel : modules `chan_websocket` / `res_websocket_client` de l'Asterisk du moteur, appel IA de bout en bout, livraison des webhooks |
@@ -406,7 +418,12 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 
 | Statut | Fonctionnalité |
 |---|---|
-| 🔜 | Softphone NIMBORA (WebRTC) enregistré sur le PBX ; présence ; annuaire unifié (contacts du PBX + mémoire client) |
+| ✅ | **NIMBORA Softphone** multiplateforme (Windows, macOS, Linux, Android, iOS, navigateur) : une application React + JsSIP dans une coque Tauri 2, enregistrée sur le poste du PBX en WebRTC ; appels entrants/sortants, sonnerie et notification, micro, attente, DTMF, transfert, second appel « occupé », messagerie, récents, annuaire (collègues, groupes, files), ne pas déranger et renvoi |
+| ✅ | Jumelage par **QR code** ou code à usage unique (15 min, anti-force brute), lien `nimbora-softphone://`, jeton d'appareil haché, **secret SIP lu sur le PBX à chaque démarrage et jamais stocké**, révocation par appareil, révocation automatique à la suppression du poste, adresse WebSocket/domaine SIP réglables |
+| ✅ | CI de compilation pour toutes les plateformes (`softphone.yml` : PWA, `.msi`/`.exe`, `.dmg` universel, `.deb`/`.rpm`/`.AppImage`, `.apk`, iOS simulateur), release sur tag `softphone-v*` ; paquet `.deb` Linux construit et lancé (≈ 2 Mo, lien `nimbora-softphone://` déclaré au bureau) ; inscription SIP et appel entrant validés contre un registraire WebSocket de test |
+| 🧪 | Appels réels sur un PBX du moteur (WebSocket `/api/asterisk/ws`, certificats), builds Windows/macOS/Android/iOS sur la CI |
+| 🔜 | Appels entrants application fermée sur mobile (notifications push VoIP PushKit / FCM relayées par la plateforme), signature des builds (Apple, Windows, Play Store) |
+| 🔜 | Présence des collègues ; annuaire unifié (contacts du PBX + mémoire client) ; transfert avec consultation, conférence à trois |
 | 🔜 | Supervision unifiée IA + humains : files en temps réel, écoute, chuchotement et intervention via le PBX |
 | 🔜 | Passation IA → file du PBX avec fiche de contexte ; rappel automatique des appels manqués par un agent IA |
 | 🔜 | Événements en temps réel par WebSocket au lieu du rafraîchissement toutes les 10 s |

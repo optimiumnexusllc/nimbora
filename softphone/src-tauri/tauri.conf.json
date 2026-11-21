@@ -1,0 +1,91 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "NIMBORA Softphone",
+  "version": "1.0.0",
+  "identifier": "io.nimbora.softphone",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:5175",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "label": "main",
+        "title": "NIMBORA Softphone",
+        "width": 420,
+        "height": 780,
+        "minWidth": 360,
+        "minHeight": 620,
+        "resizable": true,
+        "center": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "publisher": "NIMBORA",
+    "category": "Business",
+    "shortDescription": "Votre poste téléphonique d'entreprise",
+    "longDescription": "NIMBORA Softphone relie cet appareil à votre poste du PBX d'entreprise : appels entrants et sortants, transfert, attente, messagerie, collègues, appels récents, ne pas déranger et renvoi.",
+    "copyright": "NIMBORA",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "macOS": {
+      "minimumSystemVersion": "11.0",
+      "entitlements": "./Entitlements.plist"
+    },
+    "windows": {
+      "nsis": {
+        "languages": [
+          "French",
+          "English"
+        ],
+        "installMode": "currentUser"
+      }
+    },
+    "linux": {
+      "deb": {
+        "section": "comm",
+        "desktopTemplate": "nimbora-softphone.desktop"
+      },
+      "rpm": {
+        "desktopTemplate": "nimbora-softphone.desktop"
+      }
+    },
+    "iOS": {
+      "minimumSystemVersion": "14.0"
+    },
+    "android": {
+      "minSdkVersion": 26
+    }
+  },
+  "plugins": {
+    "deep-link": {
+      "desktop": {
+        "schemes": [
+          "nimbora-softphone"
+        ]
+      },
+      "mobile": [
+        {
+          "scheme": [
+            "nimbora-softphone"
+          ],
+          "appLink": false
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,161 @@
+name: NIMBORA Softphone
+
+# Builds the softphone for every platform from the same web app:
+# PWA (any browser), Windows, macOS (Intel + Apple Silicon), Linux,
+# Android and iOS (simulator build; store builds need signing secrets).
+on:
+  push:
+    branches: [main]
+    paths: ["softphone/**", ".github/workflows/softphone.yml"]
+    tags: ["softphone-v*"]
+  pull_request:
+    paths: ["softphone/**", ".github/workflows/softphone.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+defaults:
+  run:
+    working-directory: softphone
+
+jobs:
+  web:
+    name: Tests and PWA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: softphone/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npm run build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nimbora-softphone-web
+          path: softphone/dist
+
+  desktop:
+    name: Desktop (${{ matrix.name }})
+    needs: web
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: Windows
+            os: windows-latest
+            args: ""
+          - name: macOS
+            os: macos-latest
+            args: "--target universal-apple-darwin"
+          - name: Linux
+            os: ubuntu-22.04
+            args: ""
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: softphone/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.name == 'macOS' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: softphone/src-tauri -> target
+      - name: Linux build dependencies
+        if: matrix.name == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev libxdo-dev patchelf
+      - run: npm ci
+      - uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Optional signing (set these secrets to sign / notarize):
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        with:
+          projectPath: softphone
+          args: ${{ matrix.args }}
+          tagName: ${{ startsWith(github.ref, 'refs/tags/softphone-v') && github.ref_name || '' }}
+          releaseName: "NIMBORA Softphone __VERSION__"
+          releaseBody: "Windows (.msi, .exe), macOS (.dmg), Linux (.deb, .rpm, .AppImage)."
+          releaseDraft: true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nimbora-softphone-${{ matrix.name }}
+          path: |
+            softphone/src-tauri/target/**/release/bundle/**/*.msi
+            softphone/src-tauri/target/**/release/bundle/**/*.exe
+            softphone/src-tauri/target/**/release/bundle/**/*.dmg
+            softphone/src-tauri/target/**/release/bundle/**/*.deb
+            softphone/src-tauri/target/**/release/bundle/**/*.rpm
+            softphone/src-tauri/target/**/release/bundle/**/*.AppImage
+          if-no-files-found: ignore
+
+  android:
+    name: Android
+    needs: web
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: softphone/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: android-actions/setup-android@v3
+      - name: Android NDK
+        run: |
+          sdkmanager --install "ndk;27.0.12077973" "platforms;android-34" "build-tools;34.0.0"
+          echo "NDK_HOME=$ANDROID_SDK_ROOT/ndk/27.0.12077973" >> "$GITHUB_ENV"
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+      - run: npm ci
+      - run: npx tauri icon src-tauri/icons/icon.png
+      - run: npx tauri android init --ci
+      - run: node scripts/android-permissions.mjs
+      - run: npx tauri android build --apk --ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nimbora-softphone-android
+          path: softphone/src-tauri/gen/android/app/build/outputs/apk/**/*.apk
+
+  ios:
+    name: iOS (simulator)
+    needs: web
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: softphone/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-ios,aarch64-apple-ios-sim,x86_64-apple-ios
+      - run: npm ci
+      - run: npx tauri icon src-tauri/icons/icon.png
+      - run: npx tauri ios init --ci
+      - run: npx tauri ios build --target aarch64-sim --ci
+      - uses: actions/upload-artifact@v4
+        with:
+          name: nimbora-softphone-ios-simulator
+          path: softphone/src-tauri/gen/apple/build/**/*.app
+          if-no-files-found: warn

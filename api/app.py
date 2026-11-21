@@ -177,7 +177,13 @@ else:
         raise RuntimeError(
             "CORS_ALLOWED_ORIGINS cannot contain '*' with credentialed requests"
         )
-    cors_origins = CORS_ALLOWED_ORIGINS
+    # NIMBORA Softphone (desktop and mobile apps) calls the API from the
+    # webview's own origin, authenticated by its device token (no cookies).
+    cors_origins = list(CORS_ALLOWED_ORIGINS) + [
+        "tauri://localhost",
+        "http://tauri.localhost",
+        "https://tauri.localhost",
+    ]
     cors_allow_credentials = True
 
 app.add_middleware(

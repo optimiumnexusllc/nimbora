@@ -127,6 +127,28 @@ export type AriConfigurationRequest = {
 };
 
 /**
+ * ActivateRequest
+ */
+export type ActivateRequest = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Device Name
+     */
+    device_name?: string;
+    /**
+     * Platform
+     */
+    platform?: 'windows' | 'macos' | 'linux' | 'android' | 'ios' | 'web';
+    /**
+     * App Version
+     */
+    app_version?: string | null;
+};
+
+/**
  * ActiveCallsResponse
  */
 export type ActiveCallsResponse = {
@@ -7993,6 +8015,20 @@ export type SoftphoneCredentials = {
 };
 
 /**
+ * SoftphoneSettingsRequest
+ */
+export type SoftphoneSettingsRequest = {
+    /**
+     * Wss Url
+     */
+    wss_url?: string;
+    /**
+     * Sip Domain
+     */
+    sip_domain?: string;
+};
+
+/**
  * SpyRequest
  */
 export type SpyRequest = {
@@ -8004,6 +8040,24 @@ export type SpyRequest = {
      * Mode
      */
     mode?: 'listen' | 'whisper' | 'barge';
+};
+
+/**
+ * StatusRequest
+ */
+export type StatusRequest = {
+    /**
+     * Dnd
+     */
+    dnd?: boolean;
+    /**
+     * Forward Enabled
+     */
+    forward_enabled?: boolean;
+    /**
+     * Forward To
+     */
+    forward_to?: string;
 };
 
 /**
@@ -25445,6 +25499,227 @@ export type DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteResponses = {
 
 export type DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteResponse = DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteResponses[keyof DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteResponses];
 
+export type CreateSoftphoneActivationApiV1PbxExtensionsUserUuidSoftphonePostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * User Uuid
+         */
+        user_uuid: string;
+    };
+    query?: never;
+    url: '/api/v1/pbx/extensions/{user_uuid}/softphone';
+};
+
+export type CreateSoftphoneActivationApiV1PbxExtensionsUserUuidSoftphonePostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateSoftphoneActivationApiV1PbxExtensionsUserUuidSoftphonePostError = CreateSoftphoneActivationApiV1PbxExtensionsUserUuidSoftphonePostErrors[keyof CreateSoftphoneActivationApiV1PbxExtensionsUserUuidSoftphonePostErrors];
+
+export type CreateSoftphoneActivationApiV1PbxExtensionsUserUuidSoftphonePostResponses = {
+    /**
+     * Response Create Softphone Activation Api V1 Pbx Extensions  User Uuid  Softphone Post
+     *
+     * Successful Response
+     */
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type CreateSoftphoneActivationApiV1PbxExtensionsUserUuidSoftphonePostResponse = CreateSoftphoneActivationApiV1PbxExtensionsUserUuidSoftphonePostResponses[keyof CreateSoftphoneActivationApiV1PbxExtensionsUserUuidSoftphonePostResponses];
+
+export type ListSoftphoneDevicesApiV1PbxSoftphoneDevicesGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/softphone/devices';
+};
+
+export type ListSoftphoneDevicesApiV1PbxSoftphoneDevicesGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListSoftphoneDevicesApiV1PbxSoftphoneDevicesGetError = ListSoftphoneDevicesApiV1PbxSoftphoneDevicesGetErrors[keyof ListSoftphoneDevicesApiV1PbxSoftphoneDevicesGetErrors];
+
+export type ListSoftphoneDevicesApiV1PbxSoftphoneDevicesGetResponses = {
+    /**
+     * Response List Softphone Devices Api V1 Pbx Softphone Devices Get
+     *
+     * Successful Response
+     */
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type ListSoftphoneDevicesApiV1PbxSoftphoneDevicesGetResponse = ListSoftphoneDevicesApiV1PbxSoftphoneDevicesGetResponses[keyof ListSoftphoneDevicesApiV1PbxSoftphoneDevicesGetResponses];
+
+export type RevokeSoftphoneDeviceApiV1PbxSoftphoneDevicesDeviceIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Device Id
+         */
+        device_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/softphone/devices/{device_id}';
+};
+
+export type RevokeSoftphoneDeviceApiV1PbxSoftphoneDevicesDeviceIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RevokeSoftphoneDeviceApiV1PbxSoftphoneDevicesDeviceIdDeleteError = RevokeSoftphoneDeviceApiV1PbxSoftphoneDevicesDeviceIdDeleteErrors[keyof RevokeSoftphoneDeviceApiV1PbxSoftphoneDevicesDeviceIdDeleteErrors];
+
+export type RevokeSoftphoneDeviceApiV1PbxSoftphoneDevicesDeviceIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type RevokeSoftphoneDeviceApiV1PbxSoftphoneDevicesDeviceIdDeleteResponse = RevokeSoftphoneDeviceApiV1PbxSoftphoneDevicesDeviceIdDeleteResponses[keyof RevokeSoftphoneDeviceApiV1PbxSoftphoneDevicesDeviceIdDeleteResponses];
+
+export type ReadSoftphoneSettingsApiV1PbxSoftphoneSettingsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/softphone/settings';
+};
+
+export type ReadSoftphoneSettingsApiV1PbxSoftphoneSettingsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadSoftphoneSettingsApiV1PbxSoftphoneSettingsGetError = ReadSoftphoneSettingsApiV1PbxSoftphoneSettingsGetErrors[keyof ReadSoftphoneSettingsApiV1PbxSoftphoneSettingsGetErrors];
+
+export type ReadSoftphoneSettingsApiV1PbxSoftphoneSettingsGetResponses = {
+    /**
+     * Response Read Softphone Settings Api V1 Pbx Softphone Settings Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadSoftphoneSettingsApiV1PbxSoftphoneSettingsGetResponse = ReadSoftphoneSettingsApiV1PbxSoftphoneSettingsGetResponses[keyof ReadSoftphoneSettingsApiV1PbxSoftphoneSettingsGetResponses];
+
+export type SaveSoftphoneSettingsApiV1PbxSoftphoneSettingsPutData = {
+    body: SoftphoneSettingsRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/softphone/settings';
+};
+
+export type SaveSoftphoneSettingsApiV1PbxSoftphoneSettingsPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveSoftphoneSettingsApiV1PbxSoftphoneSettingsPutError = SaveSoftphoneSettingsApiV1PbxSoftphoneSettingsPutErrors[keyof SaveSoftphoneSettingsApiV1PbxSoftphoneSettingsPutErrors];
+
+export type SaveSoftphoneSettingsApiV1PbxSoftphoneSettingsPutResponses = {
+    /**
+     * Response Save Softphone Settings Api V1 Pbx Softphone Settings Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SaveSoftphoneSettingsApiV1PbxSoftphoneSettingsPutResponse = SaveSoftphoneSettingsApiV1PbxSoftphoneSettingsPutResponses[keyof SaveSoftphoneSettingsApiV1PbxSoftphoneSettingsPutResponses];
+
 export type ResetPasswordApiV1PbxPasswordResetPostData = {
     body: PasswordResetRequest;
     path?: never;
@@ -25639,6 +25914,278 @@ export type ImportBlockedNumbersApiV1BlockedNumbersImportPostResponses = {
 };
 
 export type ImportBlockedNumbersApiV1BlockedNumbersImportPostResponse = ImportBlockedNumbersApiV1BlockedNumbersImportPostResponses[keyof ImportBlockedNumbersApiV1BlockedNumbersImportPostResponses];
+
+export type ActivateApiV1SoftphoneActivatePostData = {
+    body: ActivateRequest;
+    path?: never;
+    query?: never;
+    url: '/api/v1/softphone/activate';
+};
+
+export type ActivateApiV1SoftphoneActivatePostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ActivateApiV1SoftphoneActivatePostError = ActivateApiV1SoftphoneActivatePostErrors[keyof ActivateApiV1SoftphoneActivatePostErrors];
+
+export type ActivateApiV1SoftphoneActivatePostResponses = {
+    /**
+     * Response Activate Api V1 Softphone Activate Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ActivateApiV1SoftphoneActivatePostResponse = ActivateApiV1SoftphoneActivatePostResponses[keyof ActivateApiV1SoftphoneActivatePostResponses];
+
+export type ConfigApiV1SoftphoneConfigGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-App-Version
+         */
+        'x-app-version'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/softphone/config';
+};
+
+export type ConfigApiV1SoftphoneConfigGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ConfigApiV1SoftphoneConfigGetError = ConfigApiV1SoftphoneConfigGetErrors[keyof ConfigApiV1SoftphoneConfigGetErrors];
+
+export type ConfigApiV1SoftphoneConfigGetResponses = {
+    /**
+     * Response Config Api V1 Softphone Config Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ConfigApiV1SoftphoneConfigGetResponse = ConfigApiV1SoftphoneConfigGetResponses[keyof ConfigApiV1SoftphoneConfigGetResponses];
+
+export type DirectoryApiV1SoftphoneDirectoryGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/softphone/directory';
+};
+
+export type DirectoryApiV1SoftphoneDirectoryGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DirectoryApiV1SoftphoneDirectoryGetError = DirectoryApiV1SoftphoneDirectoryGetErrors[keyof DirectoryApiV1SoftphoneDirectoryGetErrors];
+
+export type DirectoryApiV1SoftphoneDirectoryGetResponses = {
+    /**
+     * Response Directory Api V1 Softphone Directory Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type DirectoryApiV1SoftphoneDirectoryGetResponse = DirectoryApiV1SoftphoneDirectoryGetResponses[keyof DirectoryApiV1SoftphoneDirectoryGetResponses];
+
+export type HistoryApiV1SoftphoneHistoryGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Limit
+         */
+        limit?: number;
+    };
+    url: '/api/v1/softphone/history';
+};
+
+export type HistoryApiV1SoftphoneHistoryGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type HistoryApiV1SoftphoneHistoryGetError = HistoryApiV1SoftphoneHistoryGetErrors[keyof HistoryApiV1SoftphoneHistoryGetErrors];
+
+export type HistoryApiV1SoftphoneHistoryGetResponses = {
+    /**
+     * Response History Api V1 Softphone History Get
+     *
+     * Successful Response
+     */
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type HistoryApiV1SoftphoneHistoryGetResponse = HistoryApiV1SoftphoneHistoryGetResponses[keyof HistoryApiV1SoftphoneHistoryGetResponses];
+
+export type ReadStatusApiV1SoftphoneStatusGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/softphone/status';
+};
+
+export type ReadStatusApiV1SoftphoneStatusGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadStatusApiV1SoftphoneStatusGetError = ReadStatusApiV1SoftphoneStatusGetErrors[keyof ReadStatusApiV1SoftphoneStatusGetErrors];
+
+export type ReadStatusApiV1SoftphoneStatusGetResponses = {
+    /**
+     * Response Read Status Api V1 Softphone Status Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadStatusApiV1SoftphoneStatusGetResponse = ReadStatusApiV1SoftphoneStatusGetResponses[keyof ReadStatusApiV1SoftphoneStatusGetResponses];
+
+export type SaveStatusApiV1SoftphoneStatusPutData = {
+    body: StatusRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/softphone/status';
+};
+
+export type SaveStatusApiV1SoftphoneStatusPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveStatusApiV1SoftphoneStatusPutError = SaveStatusApiV1SoftphoneStatusPutErrors[keyof SaveStatusApiV1SoftphoneStatusPutErrors];
+
+export type SaveStatusApiV1SoftphoneStatusPutResponses = {
+    /**
+     * Response Save Status Api V1 Softphone Status Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SaveStatusApiV1SoftphoneStatusPutResponse = SaveStatusApiV1SoftphoneStatusPutResponses[keyof SaveStatusApiV1SoftphoneStatusPutResponses];
+
+export type SignOutApiV1SoftphoneDeviceDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/softphone/device';
+};
+
+export type SignOutApiV1SoftphoneDeviceDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SignOutApiV1SoftphoneDeviceDeleteError = SignOutApiV1SoftphoneDeviceDeleteErrors[keyof SignOutApiV1SoftphoneDeviceDeleteErrors];
+
+export type SignOutApiV1SoftphoneDeviceDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type SignOutApiV1SoftphoneDeviceDeleteResponse = SignOutApiV1SoftphoneDeviceDeleteResponses[keyof SignOutApiV1SoftphoneDeviceDeleteResponses];
 
 export type ListQueuesApiV1ContactCenterQueuesGetData = {
     body?: never;

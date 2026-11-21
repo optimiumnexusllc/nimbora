@@ -9,6 +9,7 @@ from api.db.privacy_client import PrivacyClient
 from api.db.actions_client import ActionsClient
 from api.db.whatsapp_conversation_client import WhatsAppConversationClient
 from api.db.blocked_number_client import BlockedNumberClient
+from api.db.softphone_client import SoftphoneClient
 from api.db.pbx_client import (
     PbxCallRecordingClient,
     PbxConnectionClient,
@@ -79,6 +80,7 @@ class DBClient(
     PbxIvrMenuClient,
     BlockedNumberClient,
     PbxCallRecordingClient,
+    SoftphoneClient,
 ):
     """
     Unified database client that combines all specialized database operations.

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from datetime import datetime
 from typing import Any, Literal
 
@@ -22,6 +23,7 @@ from api.services.pbx import (
     outbound,
     permissions,
     recordings,
+    softphone,
     trunks,
 )
 from api.services.pbx import service as pbx
@@ -983,6 +985,81 @@ async def delete_recording(recording_id: int, user: UserModel = Depends(get_user
     if not await recordings.delete_recording(_org(user), recording_id):
         raise HTTPException(status_code=404, detail="Enregistrement introuvable")
     return Response(status_code=204)
+
+
+# ------------------------------------------------------ NIMBORA Softphone
+
+
+class SoftphoneSettingsRequest(BaseModel):
+    wss_url: str = Field(default="", max_length=512)
+    sip_domain: str = Field(default="", max_length=253)
+
+
+@router.post("/extensions/{user_uuid}/softphone", status_code=201)
+async def create_softphone_activation(
+    user_uuid: str, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    """A one-time code (and QR link) to pair NIMBORA Softphone with this extension."""
+    return await _call(
+        softphone.create_activation(_org(user), user_uuid, created_by=user.id)
+    )
+
+
+@router.get("/softphone/devices")
+async def list_softphone_devices(
+    user: UserModel = Depends(get_user),
+) -> list[dict[str, Any]]:
+    return await _call(softphone.list_devices(_org(user)))
+
+
+@router.delete("/softphone/devices/{device_id}", status_code=204)
+async def revoke_softphone_device(device_id: int, user: UserModel = Depends(get_user)):
+    if not await db_client.revoke_softphone_device(_org(user), device_id):
+        raise HTTPException(status_code=404, detail="Appareil introuvable")
+    return Response(status_code=204)
+
+
+@router.get("/softphone/settings")
+async def read_softphone_settings(
+    user: UserModel = Depends(get_user),
+) -> dict[str, Any]:
+    connection = await db_client.get_pbx_connection(_org(user))
+    if connection is None:
+        raise HTTPException(status_code=404, detail="Aucun PBX connecté")
+    return {
+        **softphone._transport(connection),
+        "overrides": connection.softphone_settings or {},
+    }
+
+
+@router.put("/softphone/settings")
+async def save_softphone_settings(
+    request: SoftphoneSettingsRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    """Where apps reach the PBX (when it is not the default address)."""
+    wss = request.wss_url.strip()
+    if wss and not wss.startswith("wss://"):
+        raise HTTPException(
+            status_code=422, detail="L'adresse doit commencer par wss://"
+        )
+    domain = request.sip_domain.strip().lower()
+    if domain and not re.fullmatch(r"[a-z0-9.-]{1,253}", domain):
+        raise HTTPException(status_code=422, detail="Domaine SIP invalide")
+    organization_id = _org(user)
+    if await db_client.get_pbx_connection(organization_id) is None:
+        raise HTTPException(status_code=404, detail="Aucun PBX connecté")
+    connection = await db_client.save_pbx_connection(
+        organization_id,
+        {
+            "softphone_settings": {
+                k: v for k, v in {"wss_url": wss, "sip_domain": domain}.items() if v
+            }
+        },
+    )
+    return {
+        **softphone._transport(connection),
+        "overrides": connection.softphone_settings,
+    }
 
 
 class PasswordResetRequest(BaseModel):

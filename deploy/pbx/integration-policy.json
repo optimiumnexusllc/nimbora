@@ -1,6 +1,6 @@
 {
   "name": "nimbora-integration",
-  "description": "Platform integration: PBX management and administration, voice menus, operator lines, call restrictions, groups, forwards, conferences, call recordings, AI routing, events",
+  "description": "Platform integration: PBX management and administration, voice menus, operator lines, call restrictions, groups, forwards, conferences, call recordings, NIMBORA Softphone, AI routing, events",
   "acl": [
     "auth.tenants.*.read",
     "confd.infos.read",
@@ -106,6 +106,7 @@
     "confd.users.*.read",
     "confd.users.*.update",
     "call-logd.cdr.*.recordings.*.media.read",
-    "call-logd.cdr.*.recordings.*.media.delete"
+    "call-logd.cdr.*.recordings.*.media.delete",
+    "confd.endpoints.sip.*.read"
   ]
 }
