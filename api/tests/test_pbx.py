@@ -105,6 +105,16 @@ def test_brand_comes_from_environment(monkeypatch):
     assert b.noreply_email == "noreply@sahelconnect.africa"
 
 
+def test_brand_treats_empty_variables_as_unset(monkeypatch):
+    """Compose passes `${BRAND_PBX_NAME:-}` as "" when .env has no value: that must
+    not produce an empty PBX name or SIP User-Agent."""
+    for name in ("BRAND_NAME", "BRAND_PBX_NAME", "BRAND_DOMAIN", "BRAND_SIP_USER_AGENT"):
+        monkeypatch.setenv(name, "")
+    b = brand()
+    assert (b.name, b.pbx_name, b.sip_user_agent) == ("NIMBORA", "NIMBORA Voice", "NIMBORA-Voice")
+    assert b.noreply_email == "noreply@nimbora.io"
+
+
 # ---------------------------------------------------------- with the DB
 
 
@@ -158,7 +168,9 @@ async def test_route_a_pbx_number_to_an_ai_agent(db_session, monkeypatch):
         "type": "custom",
         "command": "Stasis(nimbora_ab12cd34ef56,inbound,called=+22527000099)",
     }
-    assert incall["extensions"][0]["exten"] == "+22527000099"
+    # The engine refuses "+" in an extension: the DID is written without it,
+    # while NIMBORA's record and the Stasis argument keep the +E.164 form.
+    assert incall["extensions"][0]["exten"] == "22527000099"
     assert (
         incall["extensions"][0]["context"] == "from-extern"
     )  # the PBX's incall context
@@ -181,14 +193,14 @@ async def test_route_a_pbx_number_to_an_ai_agent(db_session, monkeypatch):
     assert len([i for i in fake.incalls if i["id"] == 5]) == 1
 
     inventory = await pbx.inventory(org.id)
-    numbers = {n["number"]: n for n in inventory["numbers"]}
-    assert numbers["+22527000099"]["destination"] == "Agent IA"
-    assert numbers["+22527000099"]["ai_workflow_name"] == "Accueil Ivoire Immo"
-    assert numbers["+22527000000"]["destination"] == "File d'attente"
+    numbers = {n["number"]: n for n in inventory["numbers"]}  # as the engine holds them
+    assert numbers["22527000099"]["destination"] == "Agent IA"
+    assert numbers["22527000099"]["ai_workflow_name"] == "Accueil Ivoire Immo"
+    assert numbers["22527000000"]["destination"] == "File d'attente"
 
     assert await pbx.unroute_number(org.id, "+22527000099") is True
     assert not any(i["id"] == route["incall_id"] for i in fake.incalls)
-    assert not any(e["exten"] == "+22527000099" for e in fake.extensions)
+    assert not any(e["exten"] == "22527000099" for e in fake.extensions)
     assert (
         await db_session.find_active_phone_number_for_inbound(
             org.id, "+22527000099", "ari"

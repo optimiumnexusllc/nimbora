@@ -37,6 +37,18 @@ DEDUP_TTL_SECONDS = 7 * 24 * 3600
 _NUMBER = re.compile(r"^\+?[0-9]{2,20}$")
 
 
+def pbx_exten(number: str) -> str:
+    """A public number as the engine stores it: digits only.
+
+    NIMBORA keeps +E.164 ("+2250700000001"); the engine's extension pattern
+    refuses the "+" (seen on the lab engine: "exten: String does not match
+    expected pattern"), so DIDs are written to and compared with the PBX
+    without it. NIMBORA's own records and the Stasis ``called=`` argument keep
+    the number as entered.
+    """
+    return (number or "").lstrip("+")
+
+
 class PbxNotConfigured(Exception):
     pass
 
@@ -142,11 +154,13 @@ async def refresh_status(organization_id: int, **client_kwargs) -> Any:
 
 
 def _routed_numbers(phone_rows) -> dict[str, Any]:
-    return {
-        row.address_normalized: row
-        for row in phone_rows
-        if (row.extra_metadata or {}).get(ROUTE_METADATA_KEY)
-    }
+    """AI-routed numbers by +E.164 and by the digits-only form the engine holds."""
+    routed: dict[str, Any] = {}
+    for row in phone_rows:
+        if (row.extra_metadata or {}).get(ROUTE_METADATA_KEY):
+            routed[row.address_normalized] = row
+            routed[pbx_exten(row.address_normalized or "")] = row
+    return routed
 
 
 async def _ai_phone_rows(connection) -> list:
@@ -406,14 +420,14 @@ async def route_number_to_agent(
 
     async with client_for(connection, **client_kwargs) as client:
         context = await _incall_context(client, connection)
-        existing = await client.extensions(exten=number, context=context)
+        existing = await client.extensions(exten=pbx_exten(number), context=context)
         if existing:
             raise PbxRouteError(
                 f"Le numéro {number} a déjà une destination sur le PBX : "
                 "retirez-la d'abord pour éviter de couper un routage existant.",
                 409,
             )
-        extension = await client.create_extension(number, context)
+        extension = await client.create_extension(pbx_exten(number), context)
         try:
             incall = await client.create_incall(
                 {

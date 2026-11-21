@@ -141,6 +141,8 @@ if runs preflight; then
 else
     # shellcheck disable=SC1090
     . "$LAB_ENV" 2>/dev/null || die "Lancez d'abord la phase preflight."
+    # lab.env stores SECRETS_FILE= when none was given: the default applies again.
+    [[ -n "$SECRETS_FILE" ]] || SECRETS_FILE="$DEFAULT_SECRETS_FILE"
 fi
 
 # -------------------------------------------------------------------- incus
