@@ -47,6 +47,14 @@ const PBX_CALL = {
     on_hold: false,
     recording: false,
     spyable: true,
+    handoff: {
+        id: "card-1",
+        reason: "Visite de l'appartement de Cocody",
+        summary: "Souhaite visiter samedi matin.",
+        sentiment: "positive",
+        next_step: "Confirmer le créneau",
+        customer_name: "Awa Koné",
+    },
 };
 
 function pbxLive(overrides: Record<string, unknown> = {}) {
@@ -241,6 +249,9 @@ describe("supervision console", () => {
         await waitFor(() => expect(screen.getByLabelText("Votre poste").textContent).toContain("Aya Diallo"));
         const agentRow = screen.getAllByTestId("pbx-live-agent")[0];
         expect(agentRow.textContent).toContain("Awa");
+        // The AI's handoff card follows the caller to the agent.
+        expect(screen.getByTestId("handoff-line").textContent).toContain("Visite de l'appartement de Cocody");
+        expect(screen.getByTestId("handoff-line").textContent).toContain("satisfait");
         expect(screen.queryByRole("button", { name: /Intervenir Koffi/ })).toBeNull(); // mode not allowed
         await act(async () => {
             fireEvent.click(screen.getByRole("button", { name: "Chuchoter Koffi Yao" }));

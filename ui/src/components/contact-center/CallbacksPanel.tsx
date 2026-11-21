@@ -37,6 +37,7 @@ const SOURCE_LABEL: Record<Callback["source"], string> = {
     ai_agent: "Demandé à l'agent IA",
     queue_timeout: "Appel sans réponse",
     manual: "Ajouté à la main",
+    pbx_missed: "Appel manqué (PBX)",
 };
 
 const STATUS_LABEL: Record<Callback["status"], string> = {

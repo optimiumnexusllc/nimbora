@@ -65,7 +65,22 @@ async def resolve_transfer_dial_string(
     *,
     organization_id: int | None,
     dial_string_template: str,
+    ari_endpoint: str | None = None,
 ) -> str:
+    # "pbx-queue:<id>" / "pbx-extension:<n>": the company's enterprise PBX,
+    # reachable only when the call runs on that PBX's Asterisk.
+    from api.services.pbx import handoff as pbx_handoff
+
+    pbx_target = pbx_handoff.parse_destination(destination)
+    if pbx_target is not None:
+        if organization_id is None:
+            raise ContactCenterDestinationError(
+                "PBX transfers need the call's organization"
+            )
+        target = await pbx_handoff.resolve(
+            int(organization_id), *pbx_target, ari_endpoint=ari_endpoint
+        )
+        return target.dial_string
     slug = parse_queue_destination(destination)
     if slug is None:
         assert_tenant_may_dial(destination)

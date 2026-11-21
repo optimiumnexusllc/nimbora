@@ -2,7 +2,9 @@ import { ArrowRightLeft, Grid3x3, Mic, MicOff, Pause, Phone, PhoneOff, Play } fr
 import { useEffect, useState } from "react";
 
 import { formatDuration, initials, isDialable } from "../lib/format";
+import type { HandoffCard } from "../lib/api";
 import type { Call } from "../lib/phone";
+import { HandoffPanel } from "./HandoffPanel";
 import { Keypad } from "./Dialpad";
 
 const STATUS: Record<Call["status"], string> = {
@@ -34,6 +36,7 @@ export function CallScreen({
     onTransfer,
     canTransfer,
     contactName,
+    handoff,
 }: {
     call: Call;
     onAnswer: () => void;
@@ -45,12 +48,14 @@ export function CallScreen({
     onTransfer: (target: string) => void;
     canTransfer: boolean;
     contactName?: string | null;
+    handoff?: HandoffCard | null;
 }) {
     const [panel, setPanel] = useState<"none" | "keypad" | "transfer">("none");
     const [tones, setTones] = useState("");
     const [target, setTarget] = useState("");
     const now = useTicker(call.status === "active");
-    const name = call.name || contactName || null;
+    // A caller sent by the AI shows as "IA · <name>": the card's name is nicer.
+    const name = handoff?.customer_name || contactName || call.name || null;
     const elapsed = call.startedAt ? formatDuration((now - call.startedAt) / 1000) : null;
 
     return (
@@ -65,6 +70,8 @@ export function CallScreen({
                     {call.status === "active" ? (call.held ? `En attente · ${elapsed}` : elapsed) : call.status === "ended" && call.endReason ? call.endReason : STATUS[call.status]}
                 </p>
             </div>
+
+            {handoff && call.status !== "ended" && <HandoffPanel card={handoff} />}
 
             {panel === "keypad" && call.status === "active" && (
                 <div className="panel">

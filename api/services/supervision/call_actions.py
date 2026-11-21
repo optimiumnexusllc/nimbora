@@ -99,7 +99,14 @@ class SupervisorActions:
             category="transfer_call",
             definition={
                 "type": "transfer_call",
-                "config": {"destination": f"queue:{slug}", "timeout": 30},
+                # A built-in queue slug, or an enterprise PBX target
+                # ("pbx-queue:<id>", "pbx-extension:<n>") checked on dial.
+                "config": {
+                    "destination": slug
+                    if slug.startswith(("pbx-queue:", "pbx-extension:"))
+                    else f"queue:{slug}",
+                    "timeout": 30,
+                },
                 "messages": [],
             },
         )

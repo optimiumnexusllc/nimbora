@@ -30,6 +30,7 @@ _UPDATABLE = {
     "recordings_synced_at",
     "softphone_settings",
     "supervision_settings",
+    "missed_call_policy",
 }
 
 

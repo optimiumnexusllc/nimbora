@@ -70,7 +70,7 @@ class FakePbx:
                 "id": 1,
                 "name": "ventes",
                 "label": "Ventes",
-                "extensions": [{"exten": "3001"}],
+                "extensions": [{"exten": "3001", "context": "default"}],
                 "members": {"agents": [{"id": 7}], "users": []},
             },
         ]

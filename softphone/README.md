@@ -10,6 +10,9 @@ Votre poste téléphonique d'entreprise sur **Windows, macOS, Linux, Android, iP
 - **Récents** (journal du PBX, appels manqués en rouge), **Contacts** (collègues, groupes et files,
   recherche sans accents), **messagerie vocale** en un bouton.
 - **Ne pas déranger** et **renvoi de tous les appels** depuis l'application.
+- **Appels transférés par l'agent IA** (depuis 1.1.0) : la **fiche de passation** de l'IA s'affiche
+  dès la sonnerie et pendant l'appel — motif, résumé, humeur du client, prochaine étape, données
+  recueillies et conversation avec l'IA. Décrocher marque la fiche comme prise en charge.
 - Choix de la sortie audio, clavier physique sur ordinateur, thème clair ou sombre.
 
 ## Jumelage

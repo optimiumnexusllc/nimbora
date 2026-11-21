@@ -263,6 +263,10 @@ async def test_supervisor_actions_on_engine(monkeypatch):
     failed = await actions.takeover({"queue_slug": "support"})
     assert failed == {"status": "error", "error": "no agent"}
     assert (await actions.takeover({}))["status"] == "error"
+    # Or to a queue of the enterprise PBX.
+    captured.pop("result")
+    assert (await actions.takeover({"queue_slug": "pbx-queue:1"}))["status"] == "ok"
+    assert captured["destination"] == "pbx-queue:1"
 
 
 def _seat(org, ext, **kw):

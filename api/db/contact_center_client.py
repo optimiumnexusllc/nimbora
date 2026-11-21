@@ -384,6 +384,23 @@ class ContactCenterClient(BaseDBClient):
             result = await session.execute(query)
             return list(result.scalars().all())
 
+    async def list_recent_pbx_handoffs(
+        self, organization_id: int, *, since: Any, limit: int = 100
+    ) -> list[CallHandoffModel]:
+        """AI handoff cards to the enterprise PBX (queue_slug ``pbx:…``)."""
+        async with self.async_session() as session:
+            result = await session.execute(
+                select(CallHandoffModel)
+                .where(
+                    CallHandoffModel.organization_id == organization_id,
+                    CallHandoffModel.queue_slug.startswith("pbx:"),
+                    CallHandoffModel.created_at >= since,
+                )
+                .order_by(CallHandoffModel.created_at.desc())
+                .limit(limit)
+            )
+            return list(result.scalars().all())
+
     async def list_queue_slugs_for_agent(
         self, organization_id: int, agent_id: int
     ) -> list[str]:

@@ -13,10 +13,27 @@ NIMBORA Softphone turns a computer, a phone or a browser tab into an [enterprise
 - **Contacts**: colleagues, call groups and queues, with accent-insensitive search.
 - **Voicemail** in one tap. It dials `*98`.
 - **Do-not-disturb** and **forward all calls**, from the app.
+- **Calls handed over by the AI** come with the AI agent's handoff card (see below).
 - Audio output selection, physical keyboard on computers, and light or dark theme.
 
 <Frame caption="Pairing an extension: one-time code, QR code and downloads">
   <img src="/images/screenshots/softphone-pairing.webp" alt="Softphone dialog with the activation code, the QR code and the download links per platform" />
+</Frame>
+
+## Calls handed over by the AI
+
+When an AI agent transfers a caller to a PBX queue or extension, the app shows the agent's **handoff card** as soon as the call rings, and keeps it during the call. The card holds:
+
+- the reason for the call and a three-sentence summary;
+- the customer's mood: satisfied, neutral, annoyed or angry;
+- the suggested next step;
+- the data the AI collected, such as a budget, an address or a date;
+- the conversation with the AI, on demand.
+
+The agent never asks the customer to start over. Answering marks the card as taken. The card is matched by the caller's number, presented nationally or internationally, among the cards of the last 10 minutes. Version 1.1.0 or later of the app is needed.
+
+<Frame caption="An incoming call handed over by the AI, dark and light themes">
+  <img src="/images/screenshots/ai-handoff-pbx.webp" alt="Incoming call in NIMBORA Softphone with the AI handoff card" />
 </Frame>
 
 ## Pairing a device
@@ -69,6 +86,8 @@ The app uses `/api/v1/softphone/*` with `Authorization: Bearer <device token>`:
 | `GET` | `/softphone/history` | Recent calls of the extension |
 | `GET` | `/softphone/directory` | Colleagues, groups, queues |
 | `GET` / `PUT` | `/softphone/status` | Do-not-disturb, forward all calls |
+| `GET` | `/softphone/handoff?number=…` | The AI's handoff card for the call ringing now (`{card: … \| null}`) |
+| `POST` | `/softphone/handoff/{id}/answered` | The person took the call |
 | `DELETE` | `/softphone/device` | Sign out (revoke this device) |
 
 ## Limits

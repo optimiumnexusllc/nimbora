@@ -1,6 +1,6 @@
 [package]
 name = "nimbora-softphone"
-version = "1.0.0"
+version = "1.1.0"
 description = "NIMBORA Softphone — the enterprise PBX on every device"
 authors = ["NIMBORA"]
 license = "BSD-2-Clause"

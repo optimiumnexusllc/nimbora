@@ -2,7 +2,7 @@
 
 import type { Platform } from "./format";
 
-export const APP_VERSION = "1.0.0";
+export const APP_VERSION = "1.1.0";
 
 export type IceServer = { urls: string[] | string; username?: string; credential?: string };
 export type SoftphoneConfig = {
@@ -33,6 +33,19 @@ export type Directory = {
     services: { name: string; extension: string; kind: "group" | "queue" }[];
 };
 export type Status = { dnd: boolean; forward: { enabled: boolean; destination: string } };
+/** What the AI agent knew when it handed this caller to a human. */
+export type HandoffCard = {
+    id: string;
+    caller_number: string | null;
+    customer_name: string | null;
+    reason: string | null;
+    summary: string | null;
+    sentiment: "positive" | "neutral" | "frustrated" | "angry" | null;
+    next_step: string | null;
+    summary_status: string;
+    collected_data: Record<string, unknown>;
+    transcript: { speaker: string; text: string }[];
+};
 
 export class ApiError extends Error {
     constructor(
@@ -114,6 +127,14 @@ export class SoftphoneApi {
     }
     signOut() {
         return this.call<void>("DELETE", "/device");
+    }
+    /** The AI's handoff card for the call ringing now, if the AI sent it. */
+    async handoff(number: string): Promise<HandoffCard | null> {
+        const result = await this.call<{ card: HandoffCard | null }>("GET", `/handoff?number=${encodeURIComponent(number)}`);
+        return result?.card ?? null;
+    }
+    handoffAnswered(cardId: string) {
+        return this.call<void>("POST", `/handoff/${encodeURIComponent(cardId)}/answered`);
     }
 }
 

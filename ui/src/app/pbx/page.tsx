@@ -57,6 +57,7 @@ import type { Destination, DestinationSources, PbxVoicemail } from "@/components
 import { ExtensionsTab } from "@/components/pbx/ExtensionsTab";
 import { GroupsTab, type PbxGroup } from "@/components/pbx/GroupsTab";
 import { MenusTab } from "@/components/pbx/MenusTab";
+import { MissedCallsCard } from "@/components/pbx/MissedCallsCard";
 import { NumberDialog, type NumberEdit } from "@/components/pbx/NumberDialog";
 import { QueuesTab } from "@/components/pbx/QueuesTab";
 import { RecordingsTab } from "@/components/pbx/RecordingsTab";
@@ -759,6 +760,7 @@ export default function PbxPage() {
                     </TabsContent>
 
                     <TabsContent value="logs">
+                        <MissedCallsCard workflows={workflows} />
                         <PageSection title="Derniers appels">
                             {logs === null ? (
                                 <Skeleton className="h-40" />

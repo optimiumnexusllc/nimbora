@@ -919,6 +919,25 @@ class CustomToolManager:
                     queue_slug = parse_queue_destination(destination)
                 except ValueError:
                     queue_slug = None
+                # Enterprise PBX queue or extension: same card, and the
+                # customer's number shown on the human's phone.
+                pbx_extra: dict = {}
+                if not queue_slug:
+                    from api.services.pbx import handoff as pbx_handoff
+
+                    try:
+                        pbx_target = pbx_handoff.parse_destination(destination)
+                    except ValueError:
+                        pbx_target = None
+                    if pbx_target is not None:
+                        queue_slug = pbx_handoff.card_key(*pbx_target)
+                        initial = workflow_run.initial_context or {}
+                        pbx_caller_id = pbx_handoff.caller_id(
+                            initial.get("caller_number") or initial.get("phone_number"),
+                            (self._engine._gathered_context or {}).get("customer_name"),
+                        )
+                        if pbx_caller_id:
+                            pbx_extra["caller_id"] = pbx_caller_id
                 if queue_slug:
                     from api.services.contact_center.handoff import (
                         create_handoff_for_transfer,
@@ -969,6 +988,7 @@ class CustomToolManager:
                             else {}
                         ),
                         **({"handoff_id": handoff_id} if handoff_id else {}),
+                        **pbx_extra,
                     )
                 except Exception as e:
                     logger.error(f"Transfer provider failed: {e}")

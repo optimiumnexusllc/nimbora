@@ -617,3 +617,55 @@ input[type="checkbox"][role="switch"]:checked::after {
     display: grid;
     gap: 6px;
 }
+
+/* ------------------------------------------------------- AI handoff card */
+.handoff {
+    margin: 0 18px 12px;
+    padding: 12px 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(167, 139, 250, 0.4);
+    background: rgba(124, 58, 237, 0.12);
+    text-align: left;
+    max-height: 38vh;
+    overflow-y: auto;
+    font-size: 14px;
+}
+.handoff header {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 12px;
+    color: #c4b5fd;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+.handoff .mood {
+    margin-left: auto;
+    text-transform: none;
+    letter-spacing: 0;
+    border-radius: 999px;
+    padding: 1px 8px;
+    border: 1px solid currentColor;
+}
+.handoff .mood.positive { color: #6ee7b7; }
+.handoff .mood.neutral { color: var(--muted); }
+.handoff .mood.frustrated { color: #fcd34d; }
+.handoff .mood.angry { color: #fca5a5; }
+.handoff .reason { margin: 8px 0 4px; font-weight: 600; font-size: 15px; }
+.handoff .summary { margin: 0 0 6px; line-height: 1.4; }
+.handoff .next { display: flex; gap: 6px; align-items: center; margin: 0 0 6px; color: #67e8f9; }
+.handoff dl { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 12px; margin: 8px 0; }
+.handoff dt { font-size: 11px; color: var(--muted); }
+.handoff dd { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.handoff .link { display: flex; align-items: center; gap: 4px; color: #c4b5fd; font-size: 13px; padding: 4px 0; }
+.handoff .link svg.open { transform: rotate(180deg); }
+.handoff .transcript { margin: 4px 0 0; padding-left: 0; list-style: none; display: grid; gap: 4px; font-size: 13px; }
+.handoff .transcript strong { color: var(--muted); font-weight: 600; margin-right: 4px; }
+@media (prefers-color-scheme: light) {
+    .handoff { background: #f3efff; border-color: #c4b5fd; }
+    .handoff header, .handoff .link { color: #6d28d9; }
+    .handoff .next { color: #0e7490; }
+    .handoff .mood.positive { color: #047857; }
+    .handoff .mood.frustrated { color: #b45309; }
+    .handoff .mood.angry { color: #b91c1c; }
+}

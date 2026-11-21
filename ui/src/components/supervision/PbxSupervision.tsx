@@ -1,6 +1,6 @@
 "use client";
 
-import { AlertTriangle, Ear, Headphones, Mic, Pause, PhoneCall, Play, Settings2, ShieldAlert, Users } from "lucide-react";
+import { AlertTriangle, Bot, Ear, Headphones, Mic, Pause, PhoneCall, Play, Settings2, ShieldAlert, Users } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -14,8 +14,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { detailFromError } from "@/lib/apiError";
 
 import { formatDuration } from "./format";
-import type { PbxCall, PbxLive, PbxLiveAgent, SpyMode } from "./types";
-import { SPY_LABELS } from "./types";
+import type { HandoffCard, PbxCall, PbxLive, PbxLiveAgent, SpyMode } from "./types";
+import { SENTIMENT_LABELS, SPY_LABELS } from "./types";
 
 export type Extension = { uuid: string; name: string; extension: string | null };
 
@@ -28,6 +28,24 @@ const AGENT_STATE: Record<PbxLiveAgent["state"], { label: string; className: str
 };
 
 const SPY_ICONS: Record<SpyMode, typeof Ear> = { listen: Ear, whisper: Mic, barge: Headphones };
+
+/** The AI's card, in one line: what the customer wants, and their mood. */
+function HandoffLine({ card }: { card: HandoffCard }) {
+    const mood = card.sentiment ? SENTIMENT_LABELS[card.sentiment] : null;
+    return (
+        <span
+            className="mt-1 flex items-start gap-1.5 text-xs text-violet-200"
+            title={[card.summary, card.next_step && `À faire : ${card.next_step}`].filter(Boolean).join("\n")}
+            data-testid="handoff-line"
+        >
+            <Bot className="mt-0.5 h-3.5 w-3.5 shrink-0 text-violet-300" />
+            <span>
+                {card.reason || "Transféré par l'agent IA"}
+                {mood && <span className={`ml-1 ${mood.className}`}>· {mood.label}</span>}
+            </span>
+        </span>
+    );
+}
 
 function direction(call: PbxCall) {
     if (call.direction === "inbound") return "←";
@@ -224,9 +242,15 @@ export function PbxSupervision({
                                                     <Badge
                                                         key={`${q.id}-${c.position}`}
                                                         variant="outline"
-                                                        className={c.wait_seconds + tick > q.sla_seconds ? "border-red-500/50 text-red-300" : ""}
+                                                        className={`${c.wait_seconds + tick > q.sla_seconds ? "border-red-500/50 text-red-300" : ""} ${c.handoff ? "border-violet-500/50" : ""}`}
+                                                        title={
+                                                            c.handoff
+                                                                ? `Transféré par l'agent IA : ${c.handoff.reason ?? ""}${c.handoff.summary ? `\n${c.handoff.summary}` : ""}`
+                                                                : undefined
+                                                        }
                                                     >
-                                                        {c.position}. {c.name || c.number || "Numéro masqué"} ·{" "}
+                                                        {c.handoff && <Bot className="mr-1 h-3 w-3 text-violet-300" aria-label="Transféré par l'IA" />}
+                                                        {c.position}. {c.name || c.handoff?.customer_name || c.number || "Numéro masqué"} ·{" "}
                                                         {formatDuration(c.wait_seconds + tick)}
                                                     </Badge>
                                                 ))}
@@ -299,14 +323,17 @@ export function PbxSupervision({
                                         </TableCell>
                                         <TableCell className="text-sm">
                                             {a.call ? (
-                                                <span className="flex items-center gap-2">
-                                                    <PhoneCall className="h-3.5 w-3.5 text-cyan-400" />
-                                                    {direction(a.call)} {a.call.with_name || a.call.with_number || "Appel"}
-                                                    <span className="font-mono text-xs tabular-nums text-muted-foreground">
-                                                        {formatDuration(a.call.seconds + tick)}
+                                                <>
+                                                    <span className="flex items-center gap-2">
+                                                        <PhoneCall className="h-3.5 w-3.5 text-cyan-400" />
+                                                        {direction(a.call)} {a.call.with_name || a.call.with_number || "Appel"}
+                                                        <span className="font-mono text-xs tabular-nums text-muted-foreground">
+                                                            {formatDuration(a.call.seconds + tick)}
+                                                        </span>
+                                                        {a.call.on_hold && <Badge variant="outline">En attente</Badge>}
                                                     </span>
-                                                    {a.call.on_hold && <Badge variant="outline">En attente</Badge>}
-                                                </span>
+                                                    {a.call.handoff && <HandoffLine card={a.call.handoff} />}
+                                                </>
                                             ) : (
                                                 <span className="text-muted-foreground">—</span>
                                             )}
@@ -348,6 +375,7 @@ export function PbxSupervision({
                                                 Sonne
                                             </Badge>
                                         )}
+                                        {c.handoff && <HandoffLine card={c.handoff} />}
                                     </TableCell>
                                     <TableCell className="text-right font-mono tabular-nums">
                                         {formatDuration(c.seconds + tick)}

@@ -122,6 +122,41 @@ async def save_status(
     )
 
 
+@router.get("/handoff")
+async def incoming_handoff(
+    number: str = "",
+    authorization: str | None = Header(default=None),
+) -> dict[str, Any]:
+    """The AI's handoff card for the call ringing now (matched by caller number)."""
+    from api.services.pbx import handoff
+
+    device = await _device(authorization)
+    card = await handoff.card_for_caller(device.organization_id, number)
+    return {"card": handoff.serialize_card(card) if card else None}
+
+
+@router.post("/handoff/{card_id}/answered", status_code=204)
+async def handoff_answered(
+    card_id: str, authorization: str | None = Header(default=None)
+):
+    """The human took the call: the card is no longer waiting."""
+    from datetime import UTC, datetime
+
+    from api.db import db_client
+
+    device = await _device(authorization)
+    card = await db_client.get_call_handoff(device.organization_id, card_id)
+    if card is None or not (card.queue_slug or "").startswith("pbx:"):
+        raise HTTPException(status_code=404, detail="Fiche introuvable")
+    if card.status == "pending":
+        await db_client.update_call_handoff(
+            device.organization_id,
+            card_id,
+            {"status": "answered", "answered_at": datetime.now(UTC)},
+        )
+    return Response(status_code=204)
+
+
 @router.delete("/device", status_code=204)
 async def sign_out(authorization: str | None = Header(default=None)):
     """Unpair this app (its token stops working at once)."""

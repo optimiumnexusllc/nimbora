@@ -8,7 +8,7 @@ handoffs), which run in a background job, never from a request.
 from datetime import UTC, datetime
 from typing import Any
 
-from sqlalchemy import func, update
+from sqlalchemy import func, or_, update
 from sqlalchemy.future import select
 
 from api.db.base_client import BaseDBClient
@@ -152,6 +152,21 @@ class CallbackClient(BaseDBClient):
             result = await session.execute(query)
             return list(result.scalars().all())
 
+    async def list_callbacks_by_source(
+        self, organization_id: int, source: str, limit: int = 20
+    ) -> list[CallbackRequestModel]:
+        async with self.async_session() as session:
+            result = await session.execute(
+                select(CallbackRequestModel)
+                .where(
+                    CallbackRequestModel.organization_id == organization_id,
+                    CallbackRequestModel.source == source,
+                )
+                .order_by(CallbackRequestModel.created_at.desc())
+                .limit(limit)
+            )
+            return list(result.scalars().all())
+
     async def count_open_callback_requests(self, organization_id: int) -> int:
         async with self.async_session() as session:
             result = await session.execute(
@@ -215,6 +230,13 @@ class CallbackClient(BaseDBClient):
                     & (ContactCenterQueueModel.slug == CallHandoffModel.queue_slug),
                 )
                 .where(CallHandoffModel.status == "pending")
+                # Enterprise PBX cards are closed from the PBX's call logs.
+                .where(
+                    or_(
+                        CallHandoffModel.queue_slug.is_(None),
+                        ~CallHandoffModel.queue_slug.startswith("pbx:"),
+                    )
+                )
                 .order_by(CallHandoffModel.created_at.asc())
                 .limit(limit)
             )

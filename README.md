@@ -50,9 +50,15 @@ occupation.
 
 ### 🤝 Passation IA → humain avec contexte
 
-Quand l'agent IA transfère vers une file, le conseiller qui décroche voit une **fiche de passation**
-générée par l'IA : motif, résumé, prénom et humeur du client, prochaine étape, données collectées et
-transcription. Plus besoin de faire répéter le client.
+Quand l'agent IA transfère vers une file — du centre d'appels intégré **ou du PBX d'entreprise**
+(`pbx-queue:<file>`, `pbx-extension:<poste>`, à choisir dans l'outil de transfert) — le conseiller qui
+décroche voit une **fiche de passation** générée par l'IA : motif, résumé, prénom et humeur du
+client, prochaine étape, données collectées et transcription. Sur le PBX, la fiche s'affiche **dans
+NIMBORA Softphone dès la sonnerie**, en supervision (marque « IA » sur l'appelant en attente), et
+tout téléphone de bureau voit le numéro du client sous le nom « IA · Awa Koné ». Plus besoin de
+faire répéter le client.
+
+<p align="center"><img src="docs/images/screenshots/ai-handoff-pbx.webp" alt="Fiche de passation de l'IA dans NIMBORA Softphone et en supervision" width="88%"></p>
 
 ### 🏢 Mon entreprise : une fiche, tous les agents, 25 métiers
 
@@ -192,6 +198,11 @@ Tout ce que les agents ont fait se retrouve dans la page **Activité**.
 - L'agent IA **planifie un rappel** à l'heure choisie par le client (« demain 10 h »).
 - Un client qui raccroche en file d'attente devient **automatiquement** un rappel pour l'équipe.
 - Rappel par un **agent IA** à l'heure prévue (3 tentatives) ou par un **conseiller en un clic**.
+- **Appels manqués du PBX rappelés par un agent IA** : files seulement ou tous les appels sans
+  réponse, après le délai choisi et aux heures d'ouverture ; annulé si le client a été servi
+  entre-temps ; un transfert de l'IA resté sans réponse est rappelé avec sa fiche.
+
+<p align="center"><img src="docs/images/screenshots/missed-calls-ai.webp" alt="Appels manqués rappelés par l'IA" width="88%"></p>
 
 <p align="center"><img src="docs/images/screenshots/callbacks.webp" alt="Rappels" width="80%"></p>
 
@@ -436,7 +447,10 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | **Temps réel par WebSocket** (`/supervision/stream`) : webhooks du PBX (appels créés, décrochés, terminés ; agents en pause) et appels IA notifient la console par Redis ; seuls les vrais changements sont envoyés (pas les horloges) ; un seul relevé du PBX partagé entre superviseurs ; repli automatique en rafraîchissement toutes les 5 s |
 | ✅ | **Statistiques de files et de conseillers** (aujourd'hui, hier, 7 j, 30 j, fuseau de l'entreprise) : reçus, décrochés, abandonnés, taux de décroché, **niveau de service** au seuil choisi, attente moyenne ; par conseiller, appels, durée moyenne, temps connecté, pause, occupation (statistiques du PBX, recalculées toutes les 6 h) |
 | 🧪 | Écoute et appelants en attente sur un PBX réel (variables d'appel de `POST /calls`, droits `amid`), livraison des événements `call_*` par les webhooks du moteur |
-| 🔜 | Passation IA → file du PBX avec fiche de contexte ; rappel automatique des appels manqués par un agent IA |
+| ✅ | **Passation IA → file ou poste du PBX** (`pbx-queue:`, `pbx-extension:`, sélecteur dans l'outil de transfert ; reprise en main du superviseur vers une file du PBX) : l'appel entre dans le plan de numérotation du PBX (`Local/<numéro>@<contexte>` lus sur le PBX et vérifiés), autorisé seulement si l'appel IA tourne sur l'Asterisk du PBX ; numéro du client présenté (« IA · Awa Koné ») |
+| ✅ | **Fiche de passation chez l'humain** : dans NIMBORA Softphone dès la sonnerie (motif, résumé, humeur, prochaine étape, données, conversation ; version 1.1.0), en supervision sur l'appelant en attente et sous l'appel du conseiller ; numéro reconnu en format national ou international ; fiche close par le journal d'appels du PBX (décrochée / abandonnée) |
+| ✅ | **Appels manqués rappelés par un agent IA** : files seulement ou tous les appels entrants sans réponse, délai, heures d'ouverture et fermetures de « Mon entreprise », un rappel par client, numéros bloqués exclus, **annulé si le client a été servi entre-temps** ; un transfert de l'IA abandonné est rappelé avec le motif et le résumé de sa fiche ; derniers rappels affichés avec leur issue |
+| 🧪 | Passation et fiche sur un PBX réel (entrée par `Local/…` dans le contexte interne du tenant, nom présenté sur les postes, champs `destination_user_uuid` du journal d'appels) |
 | 🔜 | Alertes de supervision (attente au-delà du seuil, file sans conseiller) par notification et e-mail ; mur d'affichage plein écran |
 
 **5.4 Multi-entreprises et exploitation**

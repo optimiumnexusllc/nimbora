@@ -128,6 +128,52 @@ Only the valid rows are created. A failed row never stops the others. You then d
   <img src="/images/screenshots/pbx-queues.webp" alt="Queues table showing members and the AI agent that takes overflow calls" />
 </Frame>
 
+### AI agent → PBX queue or extension, with the handoff card
+
+The opposite way works too: an AI agent hands a caller to your people on the PBX. In a **Transfer call** tool, the destination picker lists **the PBX queues and extensions** (and the built-in contact center's queues). You can also type them:
+
+| Destination | Where the caller goes |
+|---|---|
+| `pbx-queue:<id>` | A queue of the PBX, for example `pbx-queue:1` |
+| `pbx-extension:<number>` | One person's extension, for example `pbx-extension:1001` |
+
+The call enters the PBX's own dialplan (`Local/<number>@<context>` from the queue or extension, read on the PBX), as if a phone of the company had dialled it. Queue strategy, music on hold, agents, overflow and voicemail all apply. The person who answers sees:
+
+- **on any phone**: the customer's number, with the name `IA · <customer>`;
+- **in [NIMBORA Softphone](/integrations/telephony/softphone#calls-handed-over-by-the-ai)**, as soon as it rings: the AI's **handoff card**. It shows the reason, a three-sentence summary, the customer's mood, the suggested next step, the data collected and the conversation;
+- **in [Supervision](/contact-center/supervision)**: an **IA** mark on the caller waiting in the queue, then the reason under the agent's call.
+
+A supervisor can also take over a live AI call and send it to a PBX queue from the supervision console.
+
+The transfer is allowed only when the AI call runs on the PBX's own Asterisk, that is, through the ARI configuration linked to the PBX connection. Dialling a PBX context on another Asterisk would reach nothing, or someone else. The queue number and context read from the PBX are checked before dialling. The card closes from the PBX's call logs: **answered** when a person took the call, **abandoned** otherwise. An abandoned card can be called back by an AI agent (see the next section).
+
+<Frame caption="The AI's handoff card in NIMBORA Softphone while the call rings, and in Supervision">
+  <img src="/images/screenshots/ai-handoff-pbx.webp" alt="Softphone incoming call with the AI handoff card, and the supervision console showing the AI mark on a waiting caller and the reason under an agent's call" />
+</Frame>
+
+### Missed calls called back by an AI agent
+
+**Journal → Appels manqués rappelés par l'IA** (missed calls called back by the AI). A customer hung up before anyone answered? An AI agent calls them back, introduces itself on behalf of the company and picks up their request. You choose:
+
+- the AI agent that calls back. Its context receives `callback_reason` and `customer_name`;
+- which calls: customers who hung up **in a queue**, or **every unanswered inbound call** (extensions, groups, queues);
+- the delay before calling back, and whether to wait for the **next opening** (**Mon entreprise** hours and closures).
+
+Rules:
+
+- Customers already served are left alone. When the PBX logs an answered call with them, in or out, before the callback, the callback is **canceled** ("Le client a été servi entre-temps").
+- Several missed calls from one customer make one callback.
+- Blocked numbers are never called.
+- When the AI had handed the caller over and nobody answered, the callback carries the AI's card: its reason, its summary and the customer's name.
+
+The callbacks are the platform's usual ones: the scheduler has the agent dial at the planned time, retries every 15 minutes (3 attempts), and records the outcome. The latest ones are listed under the setting.
+
+<Frame caption="Missed calls called back by the AI">
+  <img src="/images/screenshots/missed-calls-ai.webp" alt="Missed-call settings (AI agent, which calls, delay, opening hours) and the latest automatic callbacks" />
+</Frame>
+
+This needs the PBX events (**Recevoir les événements**): each finished call reaches NIMBORA as a call log.
+
 ### Opening hours
 
 **Numéros → Horaires** applies the opening hours and exceptional closures of **Mon entreprise** to the numbers you pick. Outside those hours, calls go to an AI agent (recommended), to a voicemail, or are hung up.

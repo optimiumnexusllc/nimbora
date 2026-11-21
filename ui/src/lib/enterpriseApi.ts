@@ -129,7 +129,7 @@ export type Callback = {
     phone: string;
     customer_name: string | null;
     reason: string | null;
-    source: "ai_agent" | "queue_timeout" | "manual";
+    source: "ai_agent" | "queue_timeout" | "manual" | "pbx_missed";
     assign_to: "human" | "ai";
     queue_slug: string | null;
     workflow_id: number | null;

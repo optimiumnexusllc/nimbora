@@ -353,6 +353,7 @@ async def live(
         if call.get("user_uuid")
     ]
     calls.sort(key=lambda c: -c["seconds"])
+    await _attach_handoff_cards(organization_id, queues, agents, calls)
     state = {
         "queues": queues,
         "agents": agents,
@@ -380,6 +381,44 @@ async def live(
     }
     _live_cache[organization_id] = (read_at, state)
     return state
+
+
+async def _attach_handoff_cards(organization_id, queues, agents, calls) -> None:
+    """Callers the AI handed over carry its card (reason, summary, mood)."""
+    from api.services.pbx import handoff
+
+    try:
+        cards = await handoff.recent_cards(organization_id)
+    except Exception:  # noqa: BLE001 - the live view never fails on cards
+        logger.opt(exception=True).debug("Handoff cards not attached")
+        return
+    by_number: dict[str, dict[str, Any]] = {}
+    for card in cards:  # newest first: keep the latest card per caller
+        key = handoff.caller_key(card.caller_number)
+        if key and key not in by_number and card.status in ("pending", "answered"):
+            by_number[key] = {
+                "id": card.id,
+                "reason": card.reason,
+                "summary": card.summary,
+                "sentiment": card.sentiment,
+                "next_step": card.next_step,
+                "customer_name": card.customer_name,
+            }
+    if not by_number:
+        return
+
+    def card_for(number: Any) -> dict[str, Any] | None:
+        key = handoff.caller_key(number)
+        return by_number.get(key) if key else None
+
+    for queue in queues:
+        for caller in queue["callers"]:
+            caller["handoff"] = card_for(caller["number"])
+    for call in calls:
+        call["handoff"] = card_for(call["with_number"])
+    for agent in agents:
+        if agent["call"]:
+            agent["call"]["handoff"] = card_for(agent["call"]["with_number"])
 
 
 def invalidate(organization_id: int) -> None:

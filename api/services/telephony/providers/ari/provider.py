@@ -542,7 +542,9 @@ class ARIProvider(TelephonyProvider):
         try:
             dial_string = await resolve_transfer_dial_string(
                 destination
-                if str(destination).startswith("queue:")
+                if str(destination).startswith(
+                    ("queue:", "pbx-queue:", "pbx-extension:")
+                )
                 else format_dialled_number(
                     destination,
                     self.dial_number_format,
@@ -551,6 +553,7 @@ class ARIProvider(TelephonyProvider):
                 ),
                 organization_id=self.organization_id,
                 dial_string_template=self.dial_string_template,
+                ari_endpoint=self.ari_endpoint,
             )
         except ContactCenterDestinationError:
             await call_transfer_manager.remove_transfer_context(transfer_id)
@@ -567,6 +570,9 @@ class ARIProvider(TelephonyProvider):
                 "appArgs": app_args,
                 "timeout": timeout,  # Keep timeout for transfer calls
             }
+            # Humans see the customer's number (and that the AI sends it).
+            if kwargs.get("caller_id"):
+                params["callerId"] = kwargs["caller_id"]
 
             # A queue handoff travels with the call: inheritable variable on
             # the Local channel, turned into a SIP header for the agent's

@@ -37,6 +37,13 @@ const mocks = vi.hoisted(() => ({
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ loading: false, user: { id: "u" } }) }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
 vi.mock("@/client/sdk.gen", () => ({
+    readMissedCallsApiV1PbxMissedCallsGet: async () => ({
+        data: {
+            policy: { enabled: false, workflow_id: null, delay_minutes: 5, scope: "queues", within_hours: true },
+            recent: [],
+        },
+    }),
+    saveMissedCallsApiV1PbxMissedCallsPut: async () => ({ data: {} }),
     readConnectionApiV1PbxConnectionGet: mocks.read,
     saveConnectionApiV1PbxConnectionPut: mocks.save,
     testConnectionApiV1PbxConnectionTestPost: mocks.test,

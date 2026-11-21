@@ -1,5 +1,15 @@
 export type SpyMode = "listen" | "whisper" | "barge";
 
+/** What the AI agent knew when it handed the caller to a human. */
+export type HandoffCard = {
+    id: string;
+    reason: string | null;
+    summary: string | null;
+    sentiment: "positive" | "neutral" | "frustrated" | "angry" | null;
+    next_step: string | null;
+    customer_name: string | null;
+};
+
 export type PbxCall = {
     call_id: string;
     user_uuid: string | null;
@@ -13,6 +23,7 @@ export type PbxCall = {
     on_hold: boolean;
     recording: boolean;
     spyable: boolean;
+    handoff?: HandoffCard | null;
 };
 
 export type PbxWaitingCaller = {
@@ -20,6 +31,7 @@ export type PbxWaitingCaller = {
     number: string | null;
     name: string | null;
     wait_seconds: number;
+    handoff?: HandoffCard | null;
 };
 
 export type PbxLiveQueue = {
@@ -77,6 +89,13 @@ export type ListeningSettings = {
     notice_acknowledged: boolean;
     sla_seconds: number;
     my_extension?: string | null;
+};
+
+export const SENTIMENT_LABELS: Record<NonNullable<HandoffCard["sentiment"]>, { label: string; className: string }> = {
+    positive: { label: "satisfait", className: "text-emerald-300" },
+    neutral: { label: "neutre", className: "text-muted-foreground" },
+    frustrated: { label: "agacé", className: "text-amber-300" },
+    angry: { label: "en colère", className: "text-red-300" },
 };
 
 export const SPY_LABELS: Record<SpyMode, string> = {

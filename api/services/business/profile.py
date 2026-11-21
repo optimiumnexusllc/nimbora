@@ -10,7 +10,7 @@ variables. Stored in the organization configuration, never sent anywhere.
 from __future__ import annotations
 
 import re
-from datetime import date, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 from typing import Literal
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -275,6 +275,40 @@ def opening_status(profile: BusinessProfile, now: datetime | None = None) -> str
                 continue
             return f"{prefix}. Réouverture {_date_label(day, today)} à {slot.open}."
     return f"{prefix}."
+
+
+def next_opening(profile: BusinessProfile, now: datetime | None = None) -> datetime:
+    """``now`` if the business is open, else the start of its next opening.
+
+    Without opening hours the business counts as always open. Looks two
+    weeks ahead (closures included); past that, ``now``.
+    """
+    now = now or datetime.now(UTC)
+    if not profile.opening_hours:
+        return now
+    tz = ZoneInfo(profile.timezone)
+    local = now.astimezone(tz)
+    closed_days = {c.date for c in profile.closures}
+    today = local.date()
+    minute = local.hour * 60 + local.minute
+    for offset in range(0, 15):
+        day = today + timedelta(days=offset)
+        if day in closed_days:
+            continue
+        for slot in sorted(
+            profile.opening_hours.get(DAYS[day.weekday()], []),
+            key=lambda r: _minutes(r.open),
+        ):
+            start, end = _minutes(slot.open), _minutes(slot.close)
+            if offset == 0 and start <= minute < end:
+                return now
+            if offset == 0 and start <= minute:
+                continue
+            opening = datetime(
+                day.year, day.month, day.day, start // 60, start % 60, tzinfo=tz
+            )
+            return opening.astimezone(UTC)
+    return now
 
 
 def _hours_lines(profile: BusinessProfile) -> list[str]:

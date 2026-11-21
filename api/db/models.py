@@ -2294,6 +2294,8 @@ class PbxConnectionModel(Base):
     # Listening/whispering/barging on human calls and queue service levels.
     # See services/pbx/supervision.
     supervision_settings = Column(JSONB, nullable=False, default=dict)
+    # Missed calls called back by an AI agent. See services/pbx/missed_calls.
+    missed_call_policy = Column(JSONB, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime(timezone=True),

@@ -207,6 +207,47 @@ async def _changed(organization_id: int) -> None:
     await notify(organization_id, "pbx")
 
 
+class MissedCallPolicy(BaseModel):
+    enabled: bool = False
+    workflow_id: int | None = None
+    delay_minutes: int = Field(default=5, ge=0, le=1440)
+    scope: Literal["queues", "all"] = "queues"
+    within_hours: bool = True
+
+
+@router.get("/missed-calls")
+async def read_missed_calls(user: UserModel = Depends(get_user)) -> dict[str, Any]:
+    """How missed calls are called back by an AI agent, and the latest ones."""
+    from api.services.pbx import missed_calls
+
+    connection = await _call(pbx._connection(_org(user)))
+    return {
+        "policy": missed_calls.read_policy(connection),
+        "recent": await missed_calls.recent_callbacks(_org(user)),
+    }
+
+
+@router.put("/missed-calls")
+async def save_missed_calls(
+    request: MissedCallPolicy, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    from api.services.pbx import missed_calls
+
+    return {
+        "policy": await _call(
+            missed_calls.save_policy(_org(user), request.model_dump())
+        )
+    }
+
+
+@router.get("/transfer-targets")
+async def transfer_targets(user: UserModel = Depends(get_user)) -> list[dict[str, Any]]:
+    """PBX queues and extensions an AI agent can hand a caller to."""
+    from api.services.pbx import handoff
+
+    return await _call(handoff.transfer_targets(_org(user)))
+
+
 @router.get("/inventory")
 async def read_inventory(user: UserModel = Depends(get_user)) -> dict[str, Any]:
     """Users, queues, agents (with status), numbers and live calls."""

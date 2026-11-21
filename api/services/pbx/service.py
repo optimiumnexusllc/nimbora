@@ -685,14 +685,27 @@ async def handle_event(connection, event_name: str | None, payload: Any) -> str:
 
     if data.get("recordings"):
         await _schedule_recording_import(connection, data)
+    routed = _routed_numbers(await _ai_phone_rows(connection))
+    ai_routed = any(
+        number and (normalize_phone(number) or number) in routed
+        for number in (
+            data.get("requested_extension"),
+            data.get("destination_extension"),
+        )
+    )
+    # AI handoff cards, customers served, missed calls to call back.
+    try:
+        from api.services.pbx.missed_calls import on_call_log
+
+        await on_call_log(connection, data, ai_routed=ai_routed)
+    except Exception:  # noqa: BLE001 - never lose the call log itself
+        logger.opt(exception=True).warning("Missed-call handling failed")
     phone, fields = _human_call_interaction(data)
     if not phone:
         return "no_customer"
     # Calls NIMBORA's own agents took are recorded by the agent run itself.
-    routed = _routed_numbers(await _ai_phone_rows(connection))
-    for number in (data.get("requested_extension"), data.get("destination_extension")):
-        if number and (normalize_phone(number) or number) in routed:
-            return "ai_call"
+    if ai_routed:
+        return "ai_call"
     if not await is_memory_enabled(connection.organization_id):
         return "memory_off"
     profile = await db_client.get_or_create_customer_profile(

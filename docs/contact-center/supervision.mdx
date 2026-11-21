@@ -34,7 +34,7 @@ Open a card to follow the conversation **word by word**, with tool calls. You ca
 
 - **Souffler à l'IA** (whisper to the AI): add an instruction the caller does not hear. For example, "offer a 10% discount" or "suggest a callback tomorrow". It applies from the AI's next reply and stays in force for the rest of the call, across steps.
 - **Faire dire** (make it say): the agent says your sentence right away.
-- **Transférer à un conseiller** (transfer to an agent): hand the caller to a queue. This works like the agent's own transfer tool, so the handoff card is included.
+- **Transférer à un conseiller** (transfer to an agent): hand the caller to a queue, built-in or **of the enterprise PBX**. This works like the agent's own transfer tool, so the handoff card is included.
 - **Raccrocher** (hang up): end the call, optionally after a last sentence.
 
 Every action is written into the call's feed.
@@ -64,6 +64,7 @@ When an [enterprise PBX](/integrations/telephony/enterprise-pbx) is connected, t
 - **PBX queues**: callers waiting, by name or number, with their wait time. The longest wait turns red past the service-level threshold. Each queue also shows its agents available, on a call and paused.
 - **PBX agents**: each agent's state, the call in progress (who, which direction, how long, on hold), and pause and resume buttons.
 - **Other conversations**: calls of extensions that are not queue agents (reception, management, sales…).
+- **Callers sent by the AI** carry an **IA** mark in the queue (hover it for the reason and the summary). Once someone answers, the reason and the customer's mood appear under the agent's call. See [AI agent → PBX queue](/integrations/telephony/enterprise-pbx).
 
 ### Listen, whisper, barge on the PBX
 

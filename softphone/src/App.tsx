@@ -6,7 +6,7 @@ import { CallScreen } from "./components/CallScreen";
 import { Dialpad } from "./components/Dialpad";
 import { Contacts, Recents } from "./components/Lists";
 import { Settings } from "./components/Settings";
-import { ApiError, type Directory, forget, loadSaved, type RecentCall, save, SoftphoneApi, type SoftphoneConfig, type Status } from "./lib/api";
+import { ApiError, type Directory, forget, type HandoffCard, loadSaved, type RecentCall, save, SoftphoneApi, type SoftphoneConfig, type Status } from "./lib/api";
 import { parsePairingLink, type PairingLink } from "./lib/format";
 import { notify, onPairingLink, Ringtone } from "./lib/native";
 import { Phone, type Snapshot } from "./lib/phone";
@@ -37,6 +37,7 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
     const [loadingRecents, setLoadingRecents] = useState(false);
     const [directory, setDirectory] = useState<Directory | null>(null);
     const [status, setStatus] = useState<Status | null>(null);
+    const [handoff, setHandoff] = useState<HandoffCard | null>(null);
     const phoneRef = useRef<Phone | null>(null);
     const ringtone = useMemo(() => new Ringtone(), []);
 
@@ -117,6 +118,22 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
         void loadRecents();
     }, [session, loadRecents]);
 
+    // A caller handed over by the AI comes with its card: fetch it as it rings.
+    const incomingId = snapshot.call?.direction === "incoming" ? snapshot.call.id : null;
+    const incomingNumber = snapshot.call?.number ?? "";
+    useEffect(() => {
+        setHandoff(null);
+        if (!incomingId || !session || !incomingNumber) return;
+        let current = true;
+        session.api
+            .handoff(incomingNumber)
+            .then((card) => current && setHandoff(card))
+            .catch(() => undefined);
+        return () => {
+            current = false;
+        };
+    }, [incomingId, incomingNumber, session]);
+
     // Refresh the call list after each call.
     const lastStatus = useRef<string | undefined>(undefined);
     useEffect(() => {
@@ -176,6 +193,11 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
     const { config } = session;
     const registered = snapshot.registration === "registered";
     const contactName = snapshot.call ? directory?.people.find((p) => p.extension === snapshot.call?.number)?.name : null;
+
+    const answer = () => {
+        phoneRef.current?.answer();
+        if (handoff && session) void session.api.handoffAnswered(handoff.id).catch(() => undefined);
+    };
 
     return (
         <div className="app">
@@ -239,7 +261,8 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
                     call={snapshot.call}
                     contactName={contactName}
                     canTransfer={config.features.transfer}
-                    onAnswer={() => phoneRef.current?.answer()}
+                    handoff={handoff}
+                    onAnswer={answer}
                     onDecline={() => phoneRef.current?.decline()}
                     onHangup={() => phoneRef.current?.hangup()}
                     onMute={() => phoneRef.current?.toggleMute()}

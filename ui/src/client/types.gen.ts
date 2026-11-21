@@ -5100,6 +5100,32 @@ export type MenuSpec = {
 };
 
 /**
+ * MissedCallPolicy
+ */
+export type MissedCallPolicy = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Workflow Id
+     */
+    workflow_id?: number | null;
+    /**
+     * Delay Minutes
+     */
+    delay_minutes?: number;
+    /**
+     * Scope
+     */
+    scope?: 'queues' | 'all';
+    /**
+     * Within Hours
+     */
+    within_hours?: boolean;
+};
+
+/**
  * ModelConfigurationOverride
  */
 export type ModelConfigurationOverride = {
@@ -22938,6 +22964,135 @@ export type TestConnectionApiV1PbxConnectionTestPostResponses = {
 
 export type TestConnectionApiV1PbxConnectionTestPostResponse = TestConnectionApiV1PbxConnectionTestPostResponses[keyof TestConnectionApiV1PbxConnectionTestPostResponses];
 
+export type ReadMissedCallsApiV1PbxMissedCallsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/missed-calls';
+};
+
+export type ReadMissedCallsApiV1PbxMissedCallsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadMissedCallsApiV1PbxMissedCallsGetError = ReadMissedCallsApiV1PbxMissedCallsGetErrors[keyof ReadMissedCallsApiV1PbxMissedCallsGetErrors];
+
+export type ReadMissedCallsApiV1PbxMissedCallsGetResponses = {
+    /**
+     * Response Read Missed Calls Api V1 Pbx Missed Calls Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadMissedCallsApiV1PbxMissedCallsGetResponse = ReadMissedCallsApiV1PbxMissedCallsGetResponses[keyof ReadMissedCallsApiV1PbxMissedCallsGetResponses];
+
+export type SaveMissedCallsApiV1PbxMissedCallsPutData = {
+    body: MissedCallPolicy;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/missed-calls';
+};
+
+export type SaveMissedCallsApiV1PbxMissedCallsPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveMissedCallsApiV1PbxMissedCallsPutError = SaveMissedCallsApiV1PbxMissedCallsPutErrors[keyof SaveMissedCallsApiV1PbxMissedCallsPutErrors];
+
+export type SaveMissedCallsApiV1PbxMissedCallsPutResponses = {
+    /**
+     * Response Save Missed Calls Api V1 Pbx Missed Calls Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SaveMissedCallsApiV1PbxMissedCallsPutResponse = SaveMissedCallsApiV1PbxMissedCallsPutResponses[keyof SaveMissedCallsApiV1PbxMissedCallsPutResponses];
+
+export type TransferTargetsApiV1PbxTransferTargetsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/transfer-targets';
+};
+
+export type TransferTargetsApiV1PbxTransferTargetsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type TransferTargetsApiV1PbxTransferTargetsGetError = TransferTargetsApiV1PbxTransferTargetsGetErrors[keyof TransferTargetsApiV1PbxTransferTargetsGetErrors];
+
+export type TransferTargetsApiV1PbxTransferTargetsGetResponses = {
+    /**
+     * Response Transfer Targets Api V1 Pbx Transfer Targets Get
+     *
+     * Successful Response
+     */
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type TransferTargetsApiV1PbxTransferTargetsGetResponse = TransferTargetsApiV1PbxTransferTargetsGetResponses[keyof TransferTargetsApiV1PbxTransferTargetsGetResponses];
+
 export type ReadInventoryApiV1PbxInventoryGetData = {
     body?: never;
     headers?: {
@@ -26199,6 +26354,90 @@ export type SaveStatusApiV1SoftphoneStatusPutResponses = {
 };
 
 export type SaveStatusApiV1SoftphoneStatusPutResponse = SaveStatusApiV1SoftphoneStatusPutResponses[keyof SaveStatusApiV1SoftphoneStatusPutResponses];
+
+export type IncomingHandoffApiV1SoftphoneHandoffGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Number
+         */
+        number?: string;
+    };
+    url: '/api/v1/softphone/handoff';
+};
+
+export type IncomingHandoffApiV1SoftphoneHandoffGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type IncomingHandoffApiV1SoftphoneHandoffGetError = IncomingHandoffApiV1SoftphoneHandoffGetErrors[keyof IncomingHandoffApiV1SoftphoneHandoffGetErrors];
+
+export type IncomingHandoffApiV1SoftphoneHandoffGetResponses = {
+    /**
+     * Response Incoming Handoff Api V1 Softphone Handoff Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type IncomingHandoffApiV1SoftphoneHandoffGetResponse = IncomingHandoffApiV1SoftphoneHandoffGetResponses[keyof IncomingHandoffApiV1SoftphoneHandoffGetResponses];
+
+export type HandoffAnsweredApiV1SoftphoneHandoffCardIdAnsweredPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+    };
+    path: {
+        /**
+         * Card Id
+         */
+        card_id: string;
+    };
+    query?: never;
+    url: '/api/v1/softphone/handoff/{card_id}/answered';
+};
+
+export type HandoffAnsweredApiV1SoftphoneHandoffCardIdAnsweredPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type HandoffAnsweredApiV1SoftphoneHandoffCardIdAnsweredPostError = HandoffAnsweredApiV1SoftphoneHandoffCardIdAnsweredPostErrors[keyof HandoffAnsweredApiV1SoftphoneHandoffCardIdAnsweredPostErrors];
+
+export type HandoffAnsweredApiV1SoftphoneHandoffCardIdAnsweredPostResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type HandoffAnsweredApiV1SoftphoneHandoffCardIdAnsweredPostResponse = HandoffAnsweredApiV1SoftphoneHandoffCardIdAnsweredPostResponses[keyof HandoffAnsweredApiV1SoftphoneHandoffCardIdAnsweredPostResponses];
 
 export type SignOutApiV1SoftphoneDeviceDeleteData = {
     body?: never;

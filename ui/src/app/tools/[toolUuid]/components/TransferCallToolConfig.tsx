@@ -31,6 +31,7 @@ import {
     type EndCallMessageType,
     type TransferDestinationSource,
 } from "../../config";
+import { TransferTargetPicker } from "./TransferTargetPicker";
 
 export interface TransferCallToolConfigProps {
     name: string;
@@ -335,6 +336,11 @@ export function TransferCallToolConfig({
                                         <li>SIP endpoint, e.g. PJSIP/1234</li>
                                         <li>E.164 phone number, e.g. +1234567890</li>
                                         <li>
+                                            Enterprise PBX queue or extension, e.g. pbx-queue:1 or pbx-extension:1001
+                                            (with a handoff card for the person who answers)
+                                        </li>
+                                        <li>Contact-center queue, e.g. queue:support</li>
+                                        <li>
                                             Template variable, e.g. {"{{initial_context.transfer_destination}}"}
                                         </li>
                                     </ul>
@@ -344,6 +350,7 @@ export function TransferCallToolConfig({
                                     onChange={(e) => onDestinationChange(e.target.value)}
                                     placeholder="+1234567890, PJSIP/1234, or {{initial_context.transfer_destination}}"
                                 />
+                                <TransferTargetPicker value={destination} onPick={onDestinationChange} />
                             </div>
                         </TabsContent>
 

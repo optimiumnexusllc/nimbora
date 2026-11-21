@@ -482,7 +482,11 @@ export default function SupervisionPage() {
 
             <LiveCallPanel
                 call={selected}
-                queues={queues.map((q) => ({ slug: q.slug, name: q.name }))}
+                queues={[
+                    ...queues.map((q) => ({ slug: q.slug, name: q.name })),
+                    // The AI call can also be handed to a queue of the company PBX.
+                    ...(live?.queues ?? []).map((q) => ({ slug: `pbx-queue:${q.id}`, name: `${q.name} (PBX)` })),
+                ]}
                 onClose={() => setSelected(null)}
             />
         </PageLayout>

@@ -105,7 +105,13 @@ async def call_action(
             raise HTTPException(
                 status_code=400, detail="Choose the queue to transfer to"
             )
-        if not await db_client.get_contact_center_queue_by_slug(
+        from api.services.pbx import handoff as pbx_handoff
+
+        try:
+            pbx_target = pbx_handoff.parse_destination(request.queue_slug)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+        if pbx_target is None and not await db_client.get_contact_center_queue_by_slug(
             organization_id, request.queue_slug
         ):
             raise HTTPException(status_code=404, detail="Queue not found")
