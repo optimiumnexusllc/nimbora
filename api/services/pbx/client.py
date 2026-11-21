@@ -28,6 +28,7 @@ SERVICES: dict[str, str] = {
     "webhookd": "/api/webhookd/1.0",
     "call_logd": "/api/call-logd/1.0",
     "chatd": "/api/chatd/1.0",
+    "amid": "/api/amid/1.0",
 }
 TENANT_HEADER = "Wazo-Tenant"
 TOKEN_HEADER = "X-Auth-Token"
@@ -738,6 +739,52 @@ class PbxClient:
             json=body or {},
         )
 
+    async def originate(
+        self,
+        user_uuid: str,
+        *,
+        context: str,
+        extension: str,
+        variables: dict[str, str] | None = None,
+        line_id: int | None = None,
+    ) -> dict:
+        """Ring a user's phone; once answered, it continues in the dialplan."""
+        source: dict[str, Any] = {"user": user_uuid}
+        if line_id is not None:
+            source["line_id"] = line_id
+        return await self.request(
+            "calld",
+            "POST",
+            "/calls",
+            json={
+                "source": source,
+                "destination": {
+                    "context": context,
+                    "extension": extension,
+                    "priority": 1,
+                },
+                "variables": variables or {},
+            },
+        )
+
+    async def queue_status(self, queue_name: str) -> list[dict]:
+        """Asterisk's live view of one queue (AMI QueueStatus).
+
+        The answer is the AMI event list: QueueParams, then a QueueMember per
+        member and a QueueEntry per waiting caller. The AMI is not tenant
+        aware, so the queue is always named explicitly.
+        """
+        body = await self.request(
+            "amid", "POST", "/action/QueueStatus", json={"Queue": queue_name}
+        )
+        return [m for m in body or [] if isinstance(m, dict)]
+
+    async def queue_statistics(self, **params) -> list[dict]:
+        return await self._items("call_logd", "/queues/statistics", **params)
+
+    async def agent_statistics(self, **params) -> list[dict]:
+        return await self._items("call_logd", "/agents/statistics", **params)
+
     async def cdr(self, limit: int = 50) -> list[dict]:
         return await self._items(
             "call_logd", "/cdr", limit=limit, order="start", direction="desc"
@@ -784,6 +831,11 @@ REQUIRED_ACL: dict[str, str] = {
     "create_subscription": "webhookd.subscriptions.create",
     "delete_subscription": "webhookd.subscriptions.{subscription_uuid}.delete",
     "cdr": "call-logd.cdr.read",
+    # supervision
+    "originate": "calld.calls.create",
+    "queue_status": "amid.action.QueueStatus.create",
+    "queue_statistics": "call-logd.queues.statistics.read",
+    "agent_statistics": "call-logd.agents.statistics.read",
     # administration
     "sip_templates": "confd.endpoints.sip.templates.read",
     "create_user": "confd.users.create",

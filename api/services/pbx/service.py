@@ -20,7 +20,18 @@ from loguru import logger
 from api.services.branding import brand
 from api.services.pbx.client import PbxClient, PbxError, PbxSettings
 
-WEBHOOK_EVENTS = ["call_log_created", "agent_status_update"]
+WEBHOOK_EVENTS = [
+    "call_log_created",
+    "agent_status_update",
+    # Real-time supervision: each of these refreshes the open consoles.
+    "call_created",
+    "call_answered",
+    "call_updated",
+    "call_ended",
+    "agent_paused",
+    "agent_unpaused",
+]
+REALTIME_EVENTS = frozenset(WEBHOOK_EVENTS) - {"call_log_created"}
 ROUTE_METADATA_KEY = "pbx_route"
 DEDUP_TTL_SECONDS = 7 * 24 * 3600
 _NUMBER = re.compile(r"^\+?[0-9]{2,20}$")
@@ -654,8 +665,16 @@ async def handle_event(connection, event_name: str | None, payload: Any) -> str:
         else payload
     )
     name = event_name or (payload.get("name") if isinstance(payload, dict) else None)
+    if name in REALTIME_EVENTS:
+        from api.services.supervision.stream import notify
+
+        await notify(connection.organization_id, "pbx")
+        return "notified"
     if name != "call_log_created" or not isinstance(data, dict):
         return "ignored"
+    from api.services.supervision.stream import notify
+
+    await notify(connection.organization_id, "pbx")
 
     redis = await get_redis()
     key = f"nimbora:pbx:cdr:{connection.organization_id}:{data.get('id')}"

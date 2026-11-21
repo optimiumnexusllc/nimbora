@@ -3,13 +3,19 @@ title: "Live supervision"
 description: "See every live call, follow AI conversations word by word, steer the AI, take over, and listen to, whisper to or join your agents' calls."
 ---
 
-**Supervision** in the sidebar shows what is happening right now. It refreshes every 3 seconds.
+**Supervision** in the sidebar shows what is happening right now, in one picture: AI calls, the built-in contact center and the enterprise PBX.
+
+The console is **real time**: the server pushes changes over a WebSocket as they happen (a caller joins a queue, an agent answers or pauses, an AI call starts or ends). The header reads **En direct · temps réel**. If WebSockets are blocked on the way (a proxy without WebSocket support), the console falls back to refreshing every 5 seconds and says so.
+
+<Frame>
+  <img src="/images/screenshots/supervision-unified.webp" alt="Supervision console: shared indicators, live AI calls, PBX queues with the callers waiting, PBX agents with listen, whisper and barge buttons" />
+</Frame>
 
 | Indicator | Meaning |
 |---|---|
 | Appels IA | AI calls in progress, on every server |
-| Appels conseillers | Human agents currently on a call |
-| En attente | Callers waiting in a queue, and the longest wait |
+| Appels conseillers | Human agents currently on a call (built-in contact center and PBX) |
+| En attente | Callers waiting in a queue, and the longest wait (both) |
 | Disponibles / Occupés / pause | Agent availability |
 | Rappels | Callbacks still to make |
 
@@ -51,6 +57,64 @@ During the session, keys **4 / 5 / 6** switch between listen, whisper and barge.
 
 Supervision runs `ChanSpy` in a dialplan context that only the API can reach. It is limited to one agent of the same organization.
 
+## Enterprise PBX
+
+When an [enterprise PBX](/integrations/telephony/enterprise-pbx) is connected, the console adds its live state.
+
+- **PBX queues**: callers waiting, by name or number, with their wait time. The longest wait turns red past the service-level threshold. Each queue also shows its agents available, on a call and paused.
+- **PBX agents**: each agent's state, the call in progress (who, which direction, how long, on hold), and pause and resume buttons.
+- **Other conversations**: calls of extensions that are not queue agents (reception, management, sales…).
+
+### Listen, whisper, barge on the PBX
+
+Choose **Votre poste** (your extension) at the top of the PBX block. NIMBORA preselects the extension whose e-mail matches your account. Then click **Écouter**, **Chuchoter** or **Intervenir** on a call. Your phone rings; once you answer, you are in the call.
+
+Listening is **off by default**. **Réglages de l'écoute** (listening settings) turns it on, and only after you confirm that staff have been informed. The settings choose:
+
+- the modes allowed (listen, whisper, barge);
+- the supervisor extensions (none ticked: any extension);
+- the extensions that are **never** listened to, such as management, HR or staff representatives;
+- the service-level threshold in seconds.
+
+Every session is written to the **Journal des écoutes** (listening log): who listened to whom, when and how.
+
+<Warning>
+Listening to calls is regulated. Labour and data-protection laws usually require informing staff beforehand and limiting the purpose to training or quality. Some countries also require informing callers. Check the rules that apply to you before turning it on.
+</Warning>
+
+How it works:
+
+1. The PBX's call API rings the supervisor's phone (`POST /calls`).
+2. Once answered, the call enters the `nimbora-supervision` dialplan context, which the PBX kit installs (`deploy/pbx/templates/nimbora-supervision.conf`). No phone can dial this context.
+3. The context checks the target line and the options again, then runs `ChanSpy` on that one line: `PJSIP/<line>-`, where the trailing dash means a single line only.
+
+Waiting callers come from the AMI `QueueStatus` action through `wazo-amid`, always asked about one named queue of the company. The engine's REST APIs do not list waiting callers.
+
+### Statistics
+
+**Statistiques des files et des conseillers** (queue and agent statistics) shows, for today, yesterday, 7 or 30 days:
+
+- received, answered and abandoned calls;
+- the answered rate and the **service level** (calls answered within the threshold);
+- the average wait;
+- per agent: calls answered, average talk time, time logged in, time paused and occupancy.
+
+Days follow the company's time zone (**Mon entreprise**).
+
+<Frame>
+  <img src="/images/screenshots/supervision-stats-listening.webp" alt="Queue and agent statistics, and the listening settings" />
+</Frame>
+
+<Note>
+The PBX computes these statistics every 6 hours, so the last hours may not be included yet. The live tables above are always current.
+</Note>
+
+### Requirements on the PBX
+
+- The service account needs `calld.calls.create`, `amid.action.QueueStatus.create`, `call-logd.queues.statistics.read` and `call-logd.agents.statistics.read`. They are part of `deploy/pbx/integration-policy.json` (110 ACL). Re-run `scripts/create_service_account.py` after upgrading.
+- The PBX kit installs the supervision dialplan. On a PBX installed another way, copy `nimbora-supervision.conf` to `/etc/asterisk/extensions_extra.d/` and run `asterisk -rx "dialplan reload"`.
+- For real time, the PBX must send call and agent events. On **Téléphonie d'entreprise**, click **Recevoir les événements**; if the PBX was connected before this version, click **Événements reçus** once more to subscribe to the new events. Without them, the console still refreshes the PBX every 10 seconds.
+
 ## API
 
 | Endpoint | |
@@ -60,3 +124,9 @@ Supervision runs `ChanSpy` in a dialplan context that only the API can reach. It
 | `POST /api/v1/supervision/calls/{run_id}/actions` | `instruct`, `say`, `takeover`, `hangup` |
 | `POST /api/v1/supervision/spy` | Listen / whisper / barge on an agent |
 | `PUT /api/v1/contact-center/me/presence` | Available / paused (with reason) / offline |
+| `WS /api/v1/supervision/stream?token=…` | Real time: `{"type": "ai" \| "pbx", "data": …}` when something changes; send `{"type": "refresh"}` to force one |
+| `GET /api/v1/pbx/supervision/live` | PBX queues (waiting callers), agents, conversations |
+| `POST /api/v1/pbx/supervision/spy` | Listen / whisper / barge on a PBX extension (`supervisor_user_uuid`, `target_user_uuid`, `mode`) |
+| `GET/PUT /api/v1/pbx/supervision/settings` | Listening on/off, modes, supervisors, protected extensions, service-level threshold |
+| `GET /api/v1/pbx/supervision/sessions` | Listening log |
+| `GET /api/v1/pbx/supervision/statistics?period=today\|yesterday\|7d\|30d` | Queue and agent statistics |

@@ -13,14 +13,18 @@ import {
     UserCheck,
     Users,
 } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 
-import { snapshotApiV1SupervisionGet, spyApiV1SupervisionSpyPost } from "@/client/sdk.gen";
-import type { SupervisionSnapshot } from "@/client/types.gen";
+import { readSettingsApiV1PbxSupervisionSettingsGet, spyApiV1SupervisionSpyPost } from "@/client/sdk.gen";
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
 import { formatDuration } from "@/components/supervision/format";
+import { ListeningSettingsDialog } from "@/components/supervision/ListeningSettingsDialog";
 import { LiveCallPanel,type LiveCallSummary } from "@/components/supervision/LiveCallPanel";
+import { type Extension,PbxSupervision } from "@/components/supervision/PbxSupervision";
+import { QueueStatistics } from "@/components/supervision/QueueStatistics";
+import type { ListeningSettings } from "@/components/supervision/types";
+import { useSupervisionStream } from "@/components/supervision/useSupervisionStream";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -106,36 +110,65 @@ function Kpi({
     );
 }
 
+const SUPERVISOR_KEY = "nimbora-supervisor-extension";
+
+function readStoredSupervisor(): string | null {
+    try {
+        return window.localStorage.getItem(SUPERVISOR_KEY);
+    } catch {
+        return null;
+    }
+}
+
 export default function SupervisionPage() {
-    const { user, loading: authLoading } = useAuth();
-    const [snapshot, setSnapshot] = useState<SupervisionSnapshot | null>(null);
+    const { user, loading: authLoading, getAccessToken } = useAuth();
     const [selected, setSelected] = useState<LiveCallSummary | null>(null);
     const [tick, setTick] = useState(0);
-    const started = useRef(false);
+    const [pbxTick, setPbxTick] = useState(0);
+    const [settings, setSettings] = useState<(ListeningSettings & { extensions?: Extension[] }) | null>(null);
+    const [settingsOpen, setSettingsOpen] = useState(false);
+    const [supervisor, setSupervisor] = useState<string | null>(null);
+    const settingsLoaded = useRef(false);
+    const { ai: snapshot, pbx, mode, receivedAt, refresh } = useSupervisionStream({
+        enabled: !authLoading && Boolean(user),
+        getAccessToken: async () => (getAccessToken ? await getAccessToken() : null),
+    });
 
-    const load = useCallback(async () => {
-        const response = await snapshotApiV1SupervisionGet();
-        if (response.error || !response.data) return;
-        setSnapshot(response.data);
-        setTick(0);
-    }, []);
-
+    // Clocks keep running between two updates, each from its own side's.
     useEffect(() => {
-        if (authLoading || !user || started.current) return;
-        started.current = true;
-        void load();
-    }, [authLoading, user, load]);
-
-    const ready = snapshot !== null;
-    useEffect(() => {
-        if (!ready) return;
-        const poll = window.setInterval(() => void load(), 3000);
-        const clock = window.setInterval(() => setTick((t) => t + 1), 1000);
-        return () => {
-            window.clearInterval(poll);
-            window.clearInterval(clock);
+        const since = (at: number) => (at ? Math.floor((Date.now() - at) / 1000) : 0);
+        const update = () => {
+            setTick(since(receivedAt.ai));
+            setPbxTick(since(receivedAt.pbx));
         };
-    }, [load, ready]);
+        update();
+        const clock = window.setInterval(update, 1000);
+        return () => window.clearInterval(clock);
+    }, [receivedAt]);
+
+    const pbxReady = Boolean(pbx && !pbx.unavailable);
+    useEffect(() => {
+        if (!pbxReady || settingsLoaded.current) return;
+        settingsLoaded.current = true;
+        void (async () => {
+            const response = await readSettingsApiV1PbxSupervisionSettingsGet();
+            if (response.error || !response.data) return;
+            const loaded = response.data as unknown as ListeningSettings & { extensions?: Extension[] };
+            setSettings(loaded);
+            const stored = readStoredSupervisor();
+            const known = (loaded.extensions ?? []).some((e) => e.uuid === stored);
+            setSupervisor(known ? stored : (loaded.my_extension ?? null));
+        })();
+    }, [pbxReady]);
+
+    const chooseSupervisor = (uuid: string) => {
+        setSupervisor(uuid);
+        try {
+            window.localStorage.setItem(SUPERVISOR_KEY, uuid);
+        } catch {
+            // private mode: the choice lasts for this visit
+        }
+    };
 
     const spy = async (agentId: number, mode: "listen" | "whisper" | "barge") => {
         const response = await spyApiV1SupervisionSpyPost({ body: { agent_id: agentId, mode } });
@@ -163,16 +196,33 @@ export default function SupervisionPage() {
     const agents = snapshot.agents as AgentRow[];
     const queues = snapshot.queues as QueueRow[];
     const canSpy = Boolean(snapshot.my_seat?.is_supervisor);
-    const longest = k.longest_wait_seconds ?? 0;
+    const live = pbx && !pbx.unavailable ? pbx : null;
+    const p = live?.kpis;
+    // One picture: the built-in contact center and the enterprise PBX together.
+    const waiting = (k.waiting ?? 0) + (p?.waiting ?? 0);
+    const longest = Math.max(
+        k.waiting ? (k.longest_wait_seconds ?? 0) + tick : 0,
+        p?.waiting ? p.longest_wait_seconds + pbxTick : 0,
+    );
+    const humanCalls = (k.human_calls ?? 0) + (p?.calls ?? 0);
+    const available = (k.agents_available ?? 0) + (p?.agents_available ?? 0);
+    const onCall = (k.agents_on_call ?? 0) + (p?.agents_on_call ?? 0);
+    const paused = (k.agents_paused ?? 0) + (p?.agents_paused ?? 0);
 
     return (
         <PageLayout
             title="Supervision"
             description="Tout ce qui se passe maintenant : appels IA, files d'attente et conseillers. Intervenez en un clic."
             actions={
-                <span className="flex items-center gap-2 text-xs text-muted-foreground">
-                    <Radio className="h-4 w-4 animate-pulse text-emerald-400" />
-                    En direct · actualisé toutes les 3 s
+                <span className="flex items-center gap-2 text-xs text-muted-foreground" data-testid="stream-mode">
+                    <Radio
+                        className={`h-4 w-4 ${mode === "live" ? "animate-pulse text-emerald-400" : "text-amber-400"}`}
+                    />
+                    {mode === "live"
+                        ? "En direct · temps réel"
+                        : mode === "polling"
+                          ? "Actualisé toutes les 5 s"
+                          : "Connexion au direct…"}
                 </span>
             }
         >
@@ -187,19 +237,19 @@ export default function SupervisionPage() {
 
             <div className="mb-8 grid gap-4 sm:grid-cols-3 lg:grid-cols-6">
                 <Kpi icon={Bot} label="Appels IA" value={k.ai_calls ?? 0} hint="en cours" />
-                <Kpi icon={Headset} label="Appels conseillers" value={k.human_calls ?? 0} hint="en cours" />
+                <Kpi icon={Headset} label="Appels conseillers" value={humanCalls} hint="en cours" />
                 <Kpi
                     icon={Hourglass}
                     label="En attente"
-                    value={k.waiting ?? 0}
-                    hint={longest ? `plus longue : ${formatDuration(longest + tick)}` : "personne n'attend"}
-                    alert={(k.waiting ?? 0) > 0 && longest > 60}
+                    value={waiting}
+                    hint={waiting && longest ? `plus longue : ${formatDuration(longest)}` : "personne n'attend"}
+                    alert={waiting > 0 && longest > 60}
                 />
-                <Kpi icon={UserCheck} label="Disponibles" value={k.agents_available ?? 0} hint="conseillers" />
+                <Kpi icon={UserCheck} label="Disponibles" value={available} hint="conseillers" />
                 <Kpi
                     icon={Users}
                     label="Occupés / pause"
-                    value={`${k.agents_on_call ?? 0} / ${k.agents_paused ?? 0}`}
+                    value={`${onCall} / ${paused}`}
                     hint="en appel / en pause"
                 />
                 <Kpi icon={CalendarClock} label="Rappels" value={k.callbacks_pending ?? 0} hint="à faire" />
@@ -263,6 +313,25 @@ export default function SupervisionPage() {
                     </div>
                 )}
             </PageSection>
+
+            {pbx?.unavailable && (
+                <div className="mb-6 flex items-center gap-2 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm">
+                    <AlertTriangle className="h-4 w-4 text-amber-400" />
+                    Le PBX de l&apos;entreprise ne répond pas : {pbx.unavailable}
+                </div>
+            )}
+
+            {live && (
+                <PbxSupervision
+                    live={live}
+                    tick={pbxTick}
+                    extensions={settings?.extensions ?? []}
+                    supervisor={supervisor}
+                    onSupervisorChange={chooseSupervisor}
+                    onOpenSettings={() => setSettingsOpen(true)}
+                    onChanged={refresh}
+                />
+            )}
 
             {snapshot.contact_center_enabled && (
                 <>
@@ -392,6 +461,22 @@ export default function SupervisionPage() {
                             </Table>
                         )}
                     </PageSection>
+                </>
+            )}
+
+            {live && (
+                <>
+                    <QueueStatistics ready={Boolean(live)} />
+                    <ListeningSettingsDialog
+                        open={settingsOpen}
+                        onOpenChange={setSettingsOpen}
+                        settings={settings}
+                        extensions={settings?.extensions ?? []}
+                        onSaved={(saved) => {
+                            setSettings((current) => ({ ...(current ?? {}), ...saved }));
+                            refresh();
+                        }}
+                    />
                 </>
             )}
 

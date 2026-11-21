@@ -8029,20 +8029,6 @@ export type SoftphoneSettingsRequest = {
 };
 
 /**
- * SpyRequest
- */
-export type SpyRequest = {
-    /**
-     * Agent Id
-     */
-    agent_id: number;
-    /**
-     * Mode
-     */
-    mode?: 'listen' | 'whisper' | 'barge';
-};
-
-/**
  * StatusRequest
  */
 export type StatusRequest = {
@@ -8254,6 +8240,36 @@ export type SuperuserWorkflowRunsListResponse = {
      * Total Pages
      */
     total_pages: number;
+};
+
+/**
+ * SupervisionSettings
+ */
+export type SupervisionSettings = {
+    /**
+     * Enabled
+     */
+    enabled?: boolean;
+    /**
+     * Modes
+     */
+    modes?: Array<'listen' | 'whisper' | 'barge'>;
+    /**
+     * Supervisors
+     */
+    supervisors?: Array<string>;
+    /**
+     * Protected
+     */
+    protected?: Array<string>;
+    /**
+     * Notice Acknowledged
+     */
+    notice_acknowledged?: boolean;
+    /**
+     * Sla Seconds
+     */
+    sla_seconds?: number;
 };
 
 /**
@@ -11621,6 +11637,38 @@ export type ApiRoutesPbxPromptPreviewRequest = {
      * Voice Workflow Id
      */
     voice_workflow_id?: number | null;
+};
+
+/**
+ * SpyRequest
+ */
+export type ApiRoutesPbxSupervisionSpyRequest = {
+    /**
+     * Supervisor User Uuid
+     */
+    supervisor_user_uuid: string;
+    /**
+     * Target User Uuid
+     */
+    target_user_uuid: string;
+    /**
+     * Mode
+     */
+    mode?: 'listen' | 'whisper' | 'barge';
+};
+
+/**
+ * SpyRequest
+ */
+export type ApiRoutesSupervisionSpyRequest = {
+    /**
+     * Agent Id
+     */
+    agent_id: number;
+    /**
+     * Mode
+     */
+    mode?: 'listen' | 'whisper' | 'barge';
 };
 
 /**
@@ -22011,7 +22059,7 @@ export type CallActionApiV1SupervisionCallsRunIdActionsPostResponses = {
 export type CallActionApiV1SupervisionCallsRunIdActionsPostResponse = CallActionApiV1SupervisionCallsRunIdActionsPostResponses[keyof CallActionApiV1SupervisionCallsRunIdActionsPostResponses];
 
 export type SpyApiV1SupervisionSpyPostData = {
-    body: SpyRequest;
+    body: ApiRoutesSupervisionSpyRequest;
     headers?: {
         /**
          * Authorization
@@ -26186,6 +26234,269 @@ export type SignOutApiV1SoftphoneDeviceDeleteResponses = {
 };
 
 export type SignOutApiV1SoftphoneDeviceDeleteResponse = SignOutApiV1SoftphoneDeviceDeleteResponses[keyof SignOutApiV1SoftphoneDeviceDeleteResponses];
+
+export type ReadLiveApiV1PbxSupervisionLiveGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/supervision/live';
+};
+
+export type ReadLiveApiV1PbxSupervisionLiveGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadLiveApiV1PbxSupervisionLiveGetError = ReadLiveApiV1PbxSupervisionLiveGetErrors[keyof ReadLiveApiV1PbxSupervisionLiveGetErrors];
+
+export type ReadLiveApiV1PbxSupervisionLiveGetResponses = {
+    /**
+     * Response Read Live Api V1 Pbx Supervision Live Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadLiveApiV1PbxSupervisionLiveGetResponse = ReadLiveApiV1PbxSupervisionLiveGetResponses[keyof ReadLiveApiV1PbxSupervisionLiveGetResponses];
+
+export type SpyApiV1PbxSupervisionSpyPostData = {
+    body: ApiRoutesPbxSupervisionSpyRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/supervision/spy';
+};
+
+export type SpyApiV1PbxSupervisionSpyPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SpyApiV1PbxSupervisionSpyPostError = SpyApiV1PbxSupervisionSpyPostErrors[keyof SpyApiV1PbxSupervisionSpyPostErrors];
+
+export type SpyApiV1PbxSupervisionSpyPostResponses = {
+    /**
+     * Response Spy Api V1 Pbx Supervision Spy Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SpyApiV1PbxSupervisionSpyPostResponse = SpyApiV1PbxSupervisionSpyPostResponses[keyof SpyApiV1PbxSupervisionSpyPostResponses];
+
+export type ListSessionsApiV1PbxSupervisionSessionsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/supervision/sessions';
+};
+
+export type ListSessionsApiV1PbxSupervisionSessionsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListSessionsApiV1PbxSupervisionSessionsGetError = ListSessionsApiV1PbxSupervisionSessionsGetErrors[keyof ListSessionsApiV1PbxSupervisionSessionsGetErrors];
+
+export type ListSessionsApiV1PbxSupervisionSessionsGetResponses = {
+    /**
+     * Response List Sessions Api V1 Pbx Supervision Sessions Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ListSessionsApiV1PbxSupervisionSessionsGetResponse = ListSessionsApiV1PbxSupervisionSessionsGetResponses[keyof ListSessionsApiV1PbxSupervisionSessionsGetResponses];
+
+export type ReadSettingsApiV1PbxSupervisionSettingsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/supervision/settings';
+};
+
+export type ReadSettingsApiV1PbxSupervisionSettingsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadSettingsApiV1PbxSupervisionSettingsGetError = ReadSettingsApiV1PbxSupervisionSettingsGetErrors[keyof ReadSettingsApiV1PbxSupervisionSettingsGetErrors];
+
+export type ReadSettingsApiV1PbxSupervisionSettingsGetResponses = {
+    /**
+     * Response Read Settings Api V1 Pbx Supervision Settings Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadSettingsApiV1PbxSupervisionSettingsGetResponse = ReadSettingsApiV1PbxSupervisionSettingsGetResponses[keyof ReadSettingsApiV1PbxSupervisionSettingsGetResponses];
+
+export type SaveSettingsApiV1PbxSupervisionSettingsPutData = {
+    body: SupervisionSettings;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/supervision/settings';
+};
+
+export type SaveSettingsApiV1PbxSupervisionSettingsPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveSettingsApiV1PbxSupervisionSettingsPutError = SaveSettingsApiV1PbxSupervisionSettingsPutErrors[keyof SaveSettingsApiV1PbxSupervisionSettingsPutErrors];
+
+export type SaveSettingsApiV1PbxSupervisionSettingsPutResponses = {
+    /**
+     * Response Save Settings Api V1 Pbx Supervision Settings Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SaveSettingsApiV1PbxSupervisionSettingsPutResponse = SaveSettingsApiV1PbxSupervisionSettingsPutResponses[keyof SaveSettingsApiV1PbxSupervisionSettingsPutResponses];
+
+export type ReadStatisticsApiV1PbxSupervisionStatisticsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Period
+         */
+        period?: 'today' | 'yesterday' | '7d' | '30d';
+    };
+    url: '/api/v1/pbx/supervision/statistics';
+};
+
+export type ReadStatisticsApiV1PbxSupervisionStatisticsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadStatisticsApiV1PbxSupervisionStatisticsGetError = ReadStatisticsApiV1PbxSupervisionStatisticsGetErrors[keyof ReadStatisticsApiV1PbxSupervisionStatisticsGetErrors];
+
+export type ReadStatisticsApiV1PbxSupervisionStatisticsGetResponses = {
+    /**
+     * Response Read Statistics Api V1 Pbx Supervision Statistics Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadStatisticsApiV1PbxSupervisionStatisticsGetResponse = ReadStatisticsApiV1PbxSupervisionStatisticsGetResponses[keyof ReadStatisticsApiV1PbxSupervisionStatisticsGetResponses];
 
 export type ListQueuesApiV1ContactCenterQueuesGetData = {
     body?: never;

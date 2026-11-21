@@ -121,6 +121,7 @@ class LiveCallPublisher:
             asyncio.create_task(self._heartbeat(), name="live-heartbeat")
         )
         self._tasks.append(asyncio.create_task(self._listen(), name="live-commands"))
+        await self._notify_consoles()
 
     async def stop(self) -> None:
         if self._closed:
@@ -134,6 +135,12 @@ class LiveCallPublisher:
             await redis.hdel(ORG_KEY.format(org=self.organization_id), str(self.run_id))
         except Exception:
             logger.opt(exception=True).debug("Live call cleanup failed")
+        await self._notify_consoles()
+
+    async def _notify_consoles(self) -> None:
+        from api.services.supervision.stream import notify
+
+        await notify(self.organization_id, "ai")
 
     def on_command(self, name: str, handler: Callable[[dict], Awaitable[dict]]) -> None:
         self._handlers[name] = handler

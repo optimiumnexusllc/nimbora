@@ -33,12 +33,19 @@ tout suivre et intervenir en direct.
 
 ### 🎧 Supervision en direct
 
-Tous les appels en cours sur un seul écran, sur tous les serveurs : appels IA, files d'attente,
-conseillers. Suivez une conversation IA **mot à mot**, **soufflez une consigne** à l'IA sans que le
+Tous les appels en cours sur un seul écran, **en temps réel** (WebSocket) et sur tous les serveurs :
+appels IA, files d'attente, conseillers — ceux du centre d'appels intégré **et ceux du PBX
+d'entreprise**. Suivez une conversation IA **mot à mot**, **soufflez une consigne** à l'IA sans que le
 client l'entende, faites-lui dire une phrase, **reprenez la main** en transférant à un conseiller.
-Côté humains : **écoute, chuchotement et intervention** dans l'appel d'un conseiller, en un clic.
+Côté humains : appelants en attente file par file (en rouge au-delà du seuil de qualité de service),
+état de chaque conseiller, et **écoute, chuchotement et intervention** dans un appel en un clic —
+votre téléphone sonne, vous décrochez. L'écoute s'active entreprise par entreprise, après
+confirmation que les salariés sont informés, avec postes protégés et **journal des écoutes**.
+Statistiques des files et des conseillers : taux de décroché, niveau de service, attente moyenne,
+occupation.
 
-<p align="center"><img src="docs/images/screenshots/supervision.webp" alt="Console de supervision" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/supervision-unified.webp" alt="Supervision unifiée : appels IA, files et conseillers du PBX, écoute en un clic" width="88%"></p>
+<p align="center"><img src="docs/images/screenshots/supervision-stats-listening.webp" alt="Statistiques des files et des conseillers, réglages de l'écoute" width="88%"></p>
 <p align="center"><img src="docs/images/screenshots/supervision-live-call.webp" alt="Suivi d'un appel IA en direct" width="88%"></p>
 
 ### 🤝 Passation IA → humain avec contexte
@@ -223,7 +230,7 @@ swahili, haoussa, yoruba, lingala…
 | **Outils de l'agent** | Prise de rendez-vous (NIMBORA, CalDAV, Google Agenda), SMS / WhatsApp / e-mail, tickets (NIMBORA, Zendesk, Freshdesk), transfert vers un humain ou un autre agent, rappel, fin d'appel, calculatrice, appels d'API, serveurs MCP |
 | **Activité** | Rendez-vous, messages envoyés et tickets ouverts par les agents, avec annulation, statut et résolution |
 | **Centre d'appels humain** | Files d'attente Asterisk, postes avec softphone WebRTC dans le navigateur, pauses avec motif, fiches de passation, rappels en un clic |
-| **Supervision** | Indicateurs en direct, suivi mot à mot des appels IA, consignes soufflées à l'IA, reprise en main, écoute / chuchotement / intervention |
+| **Supervision** | Temps réel par WebSocket (repli automatique en rafraîchissement), suivi mot à mot des appels IA, consignes soufflées à l'IA, reprise en main ; files et conseillers du centre intégré et du PBX ; écoute / chuchotement / intervention (activation encadrée, postes protégés, journal) ; statistiques de files et de conseillers (décroché, niveau de service, occupation) |
 | **WhatsApp** | Appels entrants, conversations texte et messages vocaux avec l'agent IA, suivi en direct, clôture automatique après 30 min d'inactivité |
 | **Mémoire et clients** | Reconnaissance des clients sur téléphone, WhatsApp et chat web (identité signée), historique par canal, résumé et humeur de chaque échange, langue préférée |
 | **Langues** | Détection automatique, voix par langue, packs de langues locaux |
@@ -232,7 +239,7 @@ swahili, haoussa, yoruba, lingala…
 | **Confidentialité** | Masquage des données personnelles, mode PCI, journaux masqués, durées de conservation, export et effacement RGPD |
 | **SaaS multi-entreprises** | Offres et abonnements, essai gratuit, quotas de minutes, limites par client, paiement Stripe optionnel, console opérateur |
 | **Téléphonie** | Asterisk (SIP), Twilio, Vonage, Telnyx, Plivo, WhatsApp… |
-| **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; création de postes en une action et import CSV ; files avec débordement vers un agent IA ; horaires de l'entreprise appliqués aux numéros ; **serveurs vocaux en éditeur visuel**, messages dits par la voix de l'entreprise, touche « parler à l'agent IA » ; numéros vers IA, menu, file, poste ou messagerie ; **lignes opérateurs SIP** et routes sortantes avec relais et numéro présenté ; **appels sortants des agents IA par les lignes du PBX** ; restrictions d'appel par poste ; **groupes d'appel**, renvois, ne-pas-déranger et agent IA quand un poste ne répond pas ; **salles de conférence** avec participants en direct ; **enregistrement des appels humains** copiés, transcrits et masqués ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 106 ACL) |
+| **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; création de postes en une action et import CSV ; files avec débordement vers un agent IA ; horaires de l'entreprise appliqués aux numéros ; **serveurs vocaux en éditeur visuel**, messages dits par la voix de l'entreprise, touche « parler à l'agent IA » ; numéros vers IA, menu, file, poste ou messagerie ; **lignes opérateurs SIP** et routes sortantes avec relais et numéro présenté ; **appels sortants des agents IA par les lignes du PBX** ; restrictions d'appel par poste ; **groupes d'appel**, renvois, ne-pas-déranger et agent IA quand un poste ne répond pas ; **salles de conférence** avec participants en direct ; **enregistrement des appels humains** copiés, transcrits et masqués ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 110 ACL) |
 | **NIMBORA Softphone** | Application Windows, macOS, Linux, Android, iOS et web (Tauri 2 + WebRTC) : appels, attente, transfert, DTMF, messagerie, récents, annuaire, ne pas déranger, renvoi ; jumelage par QR code, jeton d'appareil révocable, secret SIP jamais stocké |
 | **Marque blanche** | Nom de la plateforme et du PBX centralisés (`BRAND_*`), e-mails et page de réinitialisation à la marque, en-têtes SIP |
 | **Sécurité** | Isolation stricte entre entreprises, protection SSRF, secrets générés à l'installation, télémétrie désactivée |
@@ -261,14 +268,14 @@ flowchart LR
 | Dossier | Contenu |
 |---|---|
 | `api/` | Backend FastAPI (Python 3.13), PostgreSQL + pgvector, Redis / ARQ, MinIO |
-| `api/services/supervision/` | Appels en direct (Redis), actions du superviseur, état Asterisk |
+| `api/services/supervision/` | Appels en direct (Redis), actions du superviseur, état Asterisk, flux temps réel (WebSocket) |
 | `api/services/contact_center/` | Files, postes, passations, rappels, configuration Asterisk générée |
 | `api/services/customer_memory/` | Mémoire client |
 | `api/services/language/` | Détection de langue, voix par langue |
 | `api/services/privacy/` | Masquage, conservation, export et effacement RGPD |
 | `api/services/actions/` | Actions des agents : agenda (créneaux, CalDAV, Google), messages, tickets |
 | `api/services/business/` | Fiche entreprise, compétences communes, 25 modèles métier (un module par secteur) |
-| `api/services/pbx/` | PBX d'entreprise : client des API du moteur, inventaire, routage IA, événements, marque |
+| `api/services/pbx/` | PBX d'entreprise : client des API du moteur, inventaire, routage IA, événements, marque, supervision (files en direct, écoute, statistiques) |
 | `api/services/branding.py` | Nom de la plateforme et du PBX (marque blanche) |
 | `ui/` | Interface Next.js 15 / React 19, charte NIMBORA (`ui/scripts/brand/`) |
 | `pipecat/` | Moteur de pipeline vocal (STT → LLM → TTS) |
@@ -383,7 +390,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Routage d'un numéro du PBX vers un agent IA (`Stasis(app,inbound,called=…)`), sans jamais écraser une destination existante ; retrait propre des deux côtés |
 | ✅ | Console : appels en cours (raccrocher), agents (pause, reprise, déconnexion), files, postes, numéros, journal des appels ; pannes partielles affichées par section |
 | ✅ | Événements du PBX : chaque appel humain rejoint l'historique client multicanal (appels manqués compris), dédoublonné, sans doublonner les appels IA |
-| ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **106 ACL** (testé contre le code) |
+| ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **110 ACL** (testé contre le code) |
 | ✅ | Marque blanche : e-mails d'authentification en français à votre nom (fini `noreply@wazo.community` et le lien vers `app.wazo.io`), page `/pbx-password` à la marque (sans SSRF), en-têtes SIP `User-Agent`/`Server`, page d'accueil, bannière |
 | ✅ | Conformité : moteur GPL-3.0 non modifié, licences conservées sur le serveur, `NOTICE.md` ; NIMBORA (BSD-2) reste un programme distinct |
 | 🧪 | Validation sur un PBX réel : modules `chan_websocket` / `res_websocket_client` de l'Asterisk du moteur, appel IA de bout en bout, livraison des webhooks |
@@ -424,10 +431,13 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | 🧪 | Appels réels sur un PBX du moteur (WebSocket `/api/asterisk/ws`, certificats), builds Windows/macOS/Android/iOS sur la CI |
 | 🔜 | Appels entrants application fermée sur mobile (notifications push VoIP PushKit / FCM relayées par la plateforme), signature des builds (Apple, Windows, Play Store) |
 | 🔜 | Présence des collègues ; annuaire unifié (contacts du PBX + mémoire client) ; transfert avec consultation, conférence à trois |
-| 🔜 | Supervision unifiée IA + humains : files en temps réel, écoute, chuchotement et intervention via le PBX |
+| ✅ | **Supervision unifiée IA + humains** : un seul écran pour les appels IA, le centre d'appels intégré et le PBX ; files du PBX en direct avec les **appelants en attente** (action AMI `QueueStatus` par `wazo-amid`, toujours sur une file nommée de l'entreprise), conseillers (en appel, sonne, en pause, déconnecté ; pause et reprise), conversations de tous les postes |
+| ✅ | **Écoute, chuchotement, intervention via le PBX** : le PBX fait sonner le poste du superviseur (`POST /calls`) puis `ChanSpy` sur la seule ligne visée, dans un contexte `nimbora-supervision` installé par le kit et joignable par l'API uniquement (dialplan exécuté sur Asterisk 20 : cibles ou options piégées raccrochées avant `ChanSpy`) ; désactivée par défaut, activation après confirmation de l'information des salariés, modes autorisés, postes superviseurs, **postes jamais écoutés**, **journal des écoutes** |
+| ✅ | **Temps réel par WebSocket** (`/supervision/stream`) : webhooks du PBX (appels créés, décrochés, terminés ; agents en pause) et appels IA notifient la console par Redis ; seuls les vrais changements sont envoyés (pas les horloges) ; un seul relevé du PBX partagé entre superviseurs ; repli automatique en rafraîchissement toutes les 5 s |
+| ✅ | **Statistiques de files et de conseillers** (aujourd'hui, hier, 7 j, 30 j, fuseau de l'entreprise) : reçus, décrochés, abandonnés, taux de décroché, **niveau de service** au seuil choisi, attente moyenne ; par conseiller, appels, durée moyenne, temps connecté, pause, occupation (statistiques du PBX, recalculées toutes les 6 h) |
+| 🧪 | Écoute et appelants en attente sur un PBX réel (variables d'appel de `POST /calls`, droits `amid`), livraison des événements `call_*` par les webhooks du moteur |
 | 🔜 | Passation IA → file du PBX avec fiche de contexte ; rappel automatique des appels manqués par un agent IA |
-| 🔜 | Événements en temps réel par WebSocket au lieu du rafraîchissement toutes les 10 s |
-| 🔜 | Statistiques de files et de conseillers (taux de décroché, temps d'attente, SLA) dans le tableau de bord |
+| 🔜 | Alertes de supervision (attente au-delà du seuil, file sans conseiller) par notification et e-mail ; mur d'affichage plein écran |
 
 **5.4 Multi-entreprises et exploitation**
 

@@ -105,6 +105,16 @@
         <<: *delims
       notify: Reload websocket client
 
+    # ------------------------------------- supervision (listen / whisper)
+    - name: Supervision dialplan (ChanSpy on one extension, reached by API only)
+      ansible.builtin.copy:
+        src: templates/nimbora-supervision.conf
+        dest: /etc/asterisk/extensions_extra.d/nimbora-supervision.conf
+        owner: asterisk
+        group: www-data
+        mode: "0644"
+      notify: Reload dialplan
+
     # --------------------------------------------- SIP User-Agent / Server
     - name: Token for the engine API
       ansible.builtin.uri:
@@ -145,6 +155,10 @@
       ansible.builtin.systemd:
         name: wazo-auth
         state: restarted
+
+    - name: Reload dialplan
+      ansible.builtin.command: asterisk -rx "dialplan reload"
+      changed_when: true
 
     - name: Reload websocket client
       ansible.builtin.command: asterisk -rx "module reload res_websocket_client.so"

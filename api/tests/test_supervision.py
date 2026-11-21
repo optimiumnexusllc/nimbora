@@ -435,8 +435,10 @@ async def test_supervision_routes(
     from api.routes import contact_center as cc_routes
     from api.routes import supervision as sup_routes
     from api.services.contact_center import asterisk_config
+    from api.services.supervision import overview
 
     monkeypatch.setattr(sup_routes, "CONTACT_CENTER_ENABLED", True)
+    monkeypatch.setattr(overview, "CONTACT_CENTER_ENABLED", True)
     monkeypatch.setattr(cc_routes, "CONTACT_CENTER_ENABLED", True)
     monkeypatch.setattr(asterisk_config, "ASTERISK_GENERATED_CONFIG_DIR", str(tmp_path))
     monkeypatch.setattr(asterisk_config, "ASTERISK_ARI_PASSWORD", None)

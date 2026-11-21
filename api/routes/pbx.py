@@ -198,6 +198,15 @@ async def _call(coro):
         raise _pbx_http_error(error) from error
 
 
+async def _changed(organization_id: int) -> None:
+    """Refresh the open supervision consoles after an action from NIMBORA."""
+    from api.services.pbx import supervision
+    from api.services.supervision.stream import notify
+
+    supervision.invalidate(organization_id)
+    await notify(organization_id, "pbx")
+
+
 @router.get("/inventory")
 async def read_inventory(user: UserModel = Depends(get_user)) -> dict[str, Any]:
     """Users, queues, agents (with status), numbers and live calls."""
@@ -244,6 +253,7 @@ async def hangup_call(call_id: str, user: UserModel = Depends(get_user)):
             await client.hangup(call_id)
 
     await _call(run())
+    await _changed(_org(user))
     return Response(status_code=204)
 
 
@@ -272,6 +282,7 @@ async def agent_action(
             await client.agent_action(agent_number, action, body)
 
     await _call(run())
+    await _changed(_org(user))
     return Response(status_code=204)
 
 

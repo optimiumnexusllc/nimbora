@@ -1,6 +1,6 @@
 {
   "name": "nimbora-integration",
-  "description": "Platform integration: PBX management and administration, voice menus, operator lines, call restrictions, groups, forwards, conferences, call recordings, NIMBORA Softphone, AI routing, events",
+  "description": "Platform integration: PBX management and administration, voice menus, operator lines, call restrictions, groups, forwards, conferences, call recordings, NIMBORA Softphone, supervision (live queues, listening, statistics), AI routing, events",
   "acl": [
     "auth.tenants.*.read",
     "confd.infos.read",
@@ -107,6 +107,10 @@
     "confd.users.*.update",
     "call-logd.cdr.*.recordings.*.media.read",
     "call-logd.cdr.*.recordings.*.media.delete",
-    "confd.endpoints.sip.*.read"
+    "confd.endpoints.sip.*.read",
+    "calld.calls.create",
+    "amid.action.QueueStatus.create",
+    "call-logd.queues.statistics.read",
+    "call-logd.agents.statistics.read"
   ]
 }

@@ -2291,6 +2291,9 @@ class PbxConnectionModel(Base):
     recordings_synced_at = Column(DateTime(timezone=True), nullable=True)
     # NIMBORA Softphone: WebSocket URL and SIP domain overrides.
     softphone_settings = Column(JSONB, nullable=False, default=dict)
+    # Listening/whispering/barging on human calls and queue service levels.
+    # See services/pbx/supervision.
+    supervision_settings = Column(JSONB, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime(timezone=True),
@@ -2423,6 +2426,37 @@ class SoftphoneActivationModel(Base):
         Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
     )
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
+class PbxSupervisionSessionModel(Base):
+    """One listening, whispering or barging session started from NIMBORA.
+
+    Kept as an audit trail: who listened to whom, when, and how.
+    """
+
+    __tablename__ = "pbx_supervision_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer,
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    requested_by_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    mode = Column(String(16), nullable=False)  # listen | whisper | barge
+    supervisor_user_uuid = Column(String(64), nullable=False)
+    supervisor_name = Column(String(128), nullable=True)
+    target_user_uuid = Column(String(64), nullable=False)
+    target_name = Column(String(128), nullable=True)
+    target_extension = Column(String(32), nullable=True)
+    call_id = Column(String(64), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+    __table_args__ = (
+        Index("ix_pbx_supervision_sessions_org_created", "organization_id", "created_at"),
+    )
 
 
 class SoftphoneDeviceModel(Base):

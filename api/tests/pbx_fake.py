@@ -98,9 +98,59 @@ class FakePbx:
                 "status": "Up",
                 "direction": "inbound",
                 "answer_time": "2026-11-21T09:00:00+00:00",
+                "creation_time": "2026-11-21T08:59:50+00:00",
                 "on_hold": False,
+                "user_uuid": "u-1",
+                "line_id": 1,
+                "talking_to": {"1700000000.2": "+2250700112233"},
             },
         ]
+        # AMI view of queues (wazo-amid QueueStatus): waiting callers.
+        self.queue_entries: dict[str, list[dict]] = {
+            "ventes": [
+                {
+                    "Position": "1",
+                    "CallerIDNum": "+2250102030405",
+                    "CallerIDName": "Ibrahim Touré",
+                    "Wait": "42",
+                    "Channel": "PJSIP/operateur-00000012",
+                }
+            ]
+        }
+        self.queue_params: dict[str, dict] = {
+            "ventes": {"Completed": "14", "Abandoned": "2", "ServiceLevel": "20"}
+        }
+        self.originated: list[dict] = []
+        self.queue_stats: list[dict] = [
+            {
+                "queue_id": 1,
+                "queue_name": "ventes",
+                "tenant_uuid": TENANT,
+                "received": 40,
+                "answered": 34,
+                "abandoned": 4,
+                "closed": 1,
+                "not_answered": 1,
+                "saturated": 0,
+                "blocked": 0,
+                "average_waiting_time": 27,
+                "answered_rate": 87.18,
+                "quality_of_service": 76.47,
+            }
+        ]
+        self.agent_stats: list[dict] = [
+            {
+                "agent_id": 7,
+                "agent_number": "1001",
+                "tenant_uuid": TENANT,
+                "answered": 21,
+                "conversation_time": 4380,
+                "login_time": 25200,
+                "pause_time": 1800,
+                "wrapup_time": 630,
+            }
+        ]
+        self.stat_requests: list[dict] = []
         self.cdr = [
             {
                 "id": 900,
@@ -1099,6 +1149,21 @@ class FakePbx:
             ]
             return httpx.Response(200, json={"items": items, "total": len(items)})
 
+        if path == "/api/calld/1.0/calls" and method == "POST":
+            source_user = (body.get("source") or {}).get("user")
+            destination = body.get("destination") or {}
+            if not any(u["uuid"] == source_user for u in self.users):
+                return httpx.Response(
+                    400, json={"message": "No such user", "error_id": "invalid-user"}
+                )
+            if not {"context", "extension", "priority"} <= destination.keys():
+                return httpx.Response(400, json={"message": "Invalid destination"})
+            call = {
+                "call_id": f"orig-{len(self.originated) + 1}",
+                "user_uuid": source_user,
+            }
+            self.originated.append(body)
+            return httpx.Response(201, json=call)
         if path == "/api/calld/1.0/calls":
             return httpx.Response(200, json={"items": self.calls})
         if path.startswith("/api/calld/1.0/calls/") and method == "DELETE":
@@ -1115,6 +1180,73 @@ class FakePbx:
             parts = path.split("/")
             self.agent_actions.append((parts[-2], parts[-1], body or {}))
             return httpx.Response(204)
+        if path == "/api/amid/1.0/action/QueueStatus" and method == "POST":
+            name = (body or {}).get("Queue")
+            known = {q["name"] for q in self.queues}
+            messages: list[dict] = [
+                {
+                    "Response": "Success",
+                    "EventList": "start",
+                    "Message": "Queue status will follow",
+                }
+            ]
+            if name in known:
+                entries = self.queue_entries.get(name, [])
+                messages.append(
+                    {
+                        "Event": "QueueParams",
+                        "Queue": name,
+                        "Max": "0",
+                        "Strategy": "ringall",
+                        "Calls": str(len(entries)),
+                        "Holdtime": "18",
+                        "TalkTime": "160",
+                        **self.queue_params.get(name, {}),
+                    }
+                )
+                queue = next(q for q in self.queues if q["name"] == name)
+                for member in queue["members"]["agents"]:
+                    agent = next(
+                        (a for a in self.agents if a["id"] == member["id"]), None
+                    )
+                    if agent is None:
+                        continue
+                    status = next(
+                        (s for s in self.statuses if s["id"] == agent["id"]), {}
+                    )
+                    messages.append(
+                        {
+                            "Event": "QueueMember",
+                            "Queue": name,
+                            "Name": f"Agent/{agent['number']}",
+                            "StateInterface": f"Local/id-{agent['id']}@agentcallback",
+                            "CallsTaken": "5",
+                            "InCall": "1"
+                            if any(c.get("user_uuid") == "u-1" for c in self.calls)
+                            else "0",
+                            "Status": "2",
+                            "Paused": "1" if status.get("paused") else "0",
+                            "PausedReason": status.get("paused_reason") or "",
+                        }
+                    )
+                for entry in entries:
+                    messages.append({"Event": "QueueEntry", "Queue": name, **entry})
+            messages.append({"Event": "QueueStatusComplete", "EventList": "Complete"})
+            return httpx.Response(200, json=messages)
+        if path in (
+            "/api/call-logd/1.0/queues/statistics",
+            "/api/call-logd/1.0/agents/statistics",
+        ):
+            if request.headers.get("wazo-tenant") != TENANT:
+                return httpx.Response(401, json={"message": "Unauthorized tenant"})
+            self.stat_requests.append(dict(request.url.params))
+            items = self.queue_stats if "queues" in path else self.agent_stats
+            period = {
+                "from": request.url.params.get("from"),
+                "until": request.url.params.get("until"),
+            }
+            items = [{**period, **i} for i in items]
+            return httpx.Response(200, json={"items": items, "total": len(items)})
         if path == "/api/call-logd/1.0/cdr":
             items = self.cdr
             if request.url.params.get("recorded") == "true":

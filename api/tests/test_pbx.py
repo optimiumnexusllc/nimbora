@@ -253,7 +253,8 @@ async def test_white_label_and_event_subscription(db_session, monkeypatch):
     first = await pbx.ensure_webhook(org.id, "https://app.nimbora.io")
     connection = await db_session.get_pbx_connection(org.id)
     sub = fake.subscriptions[first]
-    assert sub["events"] == ["call_log_created", "agent_status_update"]
+    assert sub["events"] == pbx.WEBHOOK_EVENTS
+    assert {"call_log_created", "call_created", "call_ended"} <= set(sub["events"])
     assert (
         sub["config"]["url"]
         == f"https://app.nimbora.io/api/v1/pbx/events/{connection.webhook_token}?event={{{{ event_name }}}}"
@@ -314,8 +315,9 @@ async def test_human_calls_feed_customer_history(db_session, monkeypatch):
     )
     assert (
         await pbx.handle_event(connection, "agent_status_update", {"agent_id": 7})
-        == "ignored"
+        == "notified"
     )
+    assert await pbx.handle_event(connection, "user_created", {}) == "ignored"
     # Calls to a number routed to an AI agent are recorded by the agent run.
     await pbx.route_number_to_agent(org.id, "+22527000099", workflow.id)
     ai = {

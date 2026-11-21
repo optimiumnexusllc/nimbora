@@ -29,6 +29,7 @@ _UPDATABLE = {
     "recording_policy",
     "recordings_synced_at",
     "softphone_settings",
+    "supervision_settings",
 }
 
 
