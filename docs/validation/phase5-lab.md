@@ -202,6 +202,73 @@ curl --http1.1 -i -H "Connection: Upgrade" -H "Upgrade: websocket" -H "Sec-WebSo
 
 **Arrêt pour rapport** avant la liaison PBX ↔ NIMBORA.
 
+## Rapport d'étape 5 — compte administrateur, fail2ban, liaison PBX ↔ NIMBORA (21 novembre 2026)
+
+**Compte administrateur** créé en premier par l'API publique d'inscription (`contact@…`,
+organisation 1), mot de passe initial dans un fichier local en lecture root seulement, jamais
+dans le dépôt. Puis **inscription publique fermée** : `ENABLE_SIGNUP=false` dans le `.env` de
+la pile, conteneur API recréé, `POST /api/v1/auth/signup` → 403, `/api/v1/health` →
+`signup_enabled: false`. Le kit lab ne le fait pas encore automatiquement : amélioration
+prioritaire notée (option `--admin-email` qui crée le compte puis ferme l'inscription).
+Remarque : le nom passé à l'inscription n'est pas renvoyé par `/auth/me` (`name: null`), à
+vérifier.
+
+**fail2ban pour wazo-auth** dans le kit `deploy/pbx/` (commit `26fdd14`) : prison
+`nimbora-pbx-auth` sur `/var/log/wazo-auth.log`, 5 échecs en 10 min → 1 h de bannissement
+(443, 5060, 5061), à côté des prisons du moteur (`asterisk-wazo`, `wazo-provd`, `sshd`).
+Vérifié sur le PBX : `fail2ban-regex` reconnaît les 2 échecs réels du journal, 5 prisons
+actives, 18 services en marche. Point d'attention derrière un reverse proxy : wazo-auth voit
+l'adresse du proxy (ici `10.250.0.1`, qui est aussi celle de la plateforme) ; les adresses de
+NIMBORA (privée et publique, résolue depuis `--nimbora-url`) sont donc exclues du bannissement,
+et `--trusted-proxy` fait journaliser l'adresse réelle du client par nginx. Un bannissement
+d'adresse réelle n'a d'effet que sur les connexions directes : derrière Traefik, le blocage
+devrait se faire côté proxy (amélioration).
+
+**Liaison** (API de la plateforme, compte administrateur) :
+
+| Étape | Résultat |
+|---|---|
+| Configuration téléphonie « Asterisk ARI » : `http://10.250.0.10:5039`, utilisateur `xivo`, client WebSocket `nimbora` | ✅ id 1 |
+| Connexion Téléphonie d'entreprise : `https://10.250.0.10`, `nimbora-integration`, tenant « Entreprise test », certificat non vérifié, ARI n° 1 | ✅ `status: ok`, `engine_version: 26.11` |
+| Test de connexion | ✅ |
+| Appliquer la marque | ❌ 502 « accès refusé » → 🐛 n° 6 |
+| Recevoir les événements (abonnement webhookd vers `https://app…/api/v1/pbx/events/<jeton>`) | ✅ `subscription_uuid` créé |
+| Réglage softphones : `wss://pbx.optimiumnexus.com/api/asterisk/ws`, domaine SIP `pbx.optimiumnexus.com` | ✅ |
+| Inventaire | ✅ vide au départ |
+| Création des postes 1001 (WebRTC, agent) et 1002 (SIP) | ❌ 409 « Aucun contexte interne sur le PBX » → 🐛 n° 7, puis ✅ (agent n° 1 pour 1001) |
+| File « Support test » 3000, stratégie `leastrecent`, membre : agent 1001 | ✅ |
+| Supervision : écoute, chuchotement, intervention activés, superviseur = poste 1002, information des salariés confirmée | ✅ |
+
+Identifiants des postes et procédure de test humain : fichier local `nimbora-lab-postes.txt`
+(root seulement). Linphone mobile exige l'ouverture temporaire de 5060/udp chez l'hébergeur
+et `--sip-public` sur l'hôte (le PBX n'a pas de transport TLS 5061 par défaut) ; sinon, deux
+navigateurs avec le softphone web.
+
+### 🐛 n° 6 — « Appliquer la marque » échoue en 502 avec le compte de service
+
+**Symptôme** : `POST /api/v1/pbx/branding/apply` → 502 « PBX : accès refusé ». Journal
+confd : `GET /asterisk/pjsip/global` → 401 pour le jeton du compte de service, alors que la
+politique contient bien `confd.asterisk.pjsip.global.read/update`.
+**Cause** : les réglages globaux d'Asterisk du moteur ne sont accessibles qu'avec un jeton du
+tenant maître ; un compte de service d'entreprise (celui du kit, à droits minimaux) obtient
+401 quelle que soit sa politique. Le kit pose déjà l'en-tête SIP à l'installation
+(`whitelabel.yml`, vérifié : `User-Agent: NIMBORA-Voice`).
+**Correction** (`api/services/pbx/service.py`) : l'erreur d'autorisation devient un compte
+rendu `applied_by: kit` avec explication, sans 502 ; la console affiche ce message au lieu de
+« Marque appliquée ». Tests : `test_branding_is_reported_as_the_kits_when_the_engine_refuses`
+(faux PBX en mode « réglages globaux réservés au maître »).
+
+### 🐛 n° 7 — le tenant n'a aucun contexte, impossible de créer un poste
+
+**Symptôme** : `POST /api/v1/pbx/extensions` → 409 « Aucun contexte interne sur le PBX ».
+`GET /confd/1.1/contexts` sur le tenant : aucun (le moteur en crée un, interne seulement, au
+premier accès au tenant ; jamais d'entrant ni de sortant).
+**Correction** (`deploy/pbx/scripts/ensure_tenant_contexts.py`, appelé par `install.sh`) :
+création idempotente d'un contexte interne (postes 1000-1999, groupes 2000-2999, files
+3000-3999, conférences 4000-4999), d'un contexte entrant (plages par longueur de numéro, 4 à
+15 chiffres : le moteur exige début et fin de même longueur) et d'un contexte sortant inclus
+par l'interne. Commit `4478631`, test `test_tenant_contexts_cover_what_the_platform_reads_by_type`.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**

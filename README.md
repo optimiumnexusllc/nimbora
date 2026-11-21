@@ -342,6 +342,21 @@ sudo ./install.sh --brand "NIMBORA" --nimbora-url https://callcenter.mondomaine.
 
 Guide : [`deploy/pbx/README.md`](deploy/pbx/README.md).
 
+### Laboratoire sur un seul serveur
+
+Pour valider ou démontrer la phase 5 sans serveur dédié, le kit [`deploy/lab/`](deploy/lab/README.md)
+installe le PBX dans un **conteneur système Incus** (Debian 12) et la plateforme en Docker
+Compose **derrière le Traefik déjà présent** (Coolify), sur un VPS qui héberge déjà d'autres
+services : règles `DOCKER-USER` pour la cohabitation Docker/Incus, redirection RTP vers le
+conteneur, ARI jamais exposé, un seul fichier déposé chez Traefik, liste des ports à ouvrir
+chez l'hébergeur. Journal de validation : [`docs/validation/phase5-lab.md`](docs/validation/phase5-lab.md).
+
+```bash
+cd /opt/nimbora/deploy/lab
+sudo ./install.sh --app-domain app.mondomaine.com --pbx-domain pbx.mondomaine.com \
+  --brand "NIMBORA" --company "Mon entreprise"
+```
+
 Principaux réglages de la plateforme :
 
 | Variable | Rôle |
@@ -430,7 +445,8 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **110 ACL** (testé contre le code) |
 | ✅ | Marque blanche : e-mails d'authentification en français à votre nom (fini `noreply@wazo.community` et le lien vers `app.wazo.io`), page `/pbx-password` à la marque (sans SSRF), en-têtes SIP `User-Agent`/`Server`, page d'accueil, bannière |
 | ✅ | Conformité : moteur GPL-3.0 non modifié, licences conservées sur le serveur, `NOTICE.md` ; NIMBORA (BSD-2) reste un programme distinct |
-| 🧪 | Validation sur un PBX réel : modules `chan_websocket` / `res_websocket_client` de l'Asterisk du moteur, appel IA de bout en bout, livraison des webhooks |
+| ✅ | Validation sur un PBX réel (moteur 26.11, Asterisk 22.12) : modules `chan_websocket` / `res_websocket_client` chargés, kit d'installation rejoué dans un conteneur Debian 12, connexion et abonnement aux événements depuis la plateforme ([journal](docs/validation/phase5-lab.md#rapport-détape-2--incus-pare-feu-pbx-pile-nimbora-21-novembre-2026)) |
+| 🧪 | Appel IA de bout en bout et livraison des webhooks d'appel sur le PBX réel : clés de fournisseur IA non disponibles pour la validation ([journal](docs/validation/phase5-lab.md)) |
 
 **5.2 Administration complète du PBX depuis NIMBORA**
 
