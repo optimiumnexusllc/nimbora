@@ -855,6 +855,19 @@ l'API (jetons des comptes du laboratoire) et par la console pilotée en Chromium
 | (5) Outils d'agent `search_catalog` et `qualify_lead` en appel réel | 🧪 clés fournisseur IA non disponibles |
 | (6) Remise en état | ✅ 5 articles et 2 prospects supprimés (0 restant), aucun enregistrement d'essai |
 
+### 16 bis — version en service, écart du hub, n° 28 (`25b4aee`) (22 novembre 2026)
+
+Déployé par l'opérateur avec le kit (construction marquée du commit). Session sans `sudo` ni
+`docker` : API et console seulement.
+
+| Étape | Résultat |
+|---|---|
+| (0) `GET /api/v1/health` | ✅ `build_commit: "25b4aee"` (après un court redémarrage de l'API pendant lequel la route n'a pas répondu) |
+| (1) Écart du hub (34 appels humains contre 35 appels externes décrochés dans le journal du PBX) | ✅ **confirmé : l'appel absent est le n° 5** (21 novembre 23:03, entrant, décroché, 18 s, destination « Test 1003 (SIP, répondeur automatique) »). Le fichier fourni par l'auteur (`id|début|durée|sens`, 34 lignes, 17,6 min) contient tous les autres identifiants du journal et aucun en trop. Sa source est l'identité brute **« operator »**, sans aucun chiffre : elle a été prise pour un poste et l'appel n'a pas été compté comme appel humain. Cohérent avec l'hypothèse de l'auteur et le correctif de `25b4aee` (identité sans chiffre = client au numéro masqué) ; les appels déjà passés ne sont pas recomptés |
+| (2) n° 28 — appel entrant client → 1003 (28 s, journal n° 90) passé par l'opérateur, politique d'enregistrement activée avant, « Synchroniser » | ✅ enregistrement 13 : destination (conseiller) **« 1003 »** avec son nom **« Test 1003 (SIP, répondeur automatique) »** |
+| (2) Hub après cet appel | ✅ appels humains **34 → 35** (conversations 35), minutes 18 : le nouvel appel est compté |
+| (3) Remise en état | ✅ enregistrement 13 supprimé depuis la console (« ici et sur le PBX »), synchronisation sans retour (`seen 7, imported 0`), politique d'enregistrement remise à son état initial (4 postes modifiés), 0 enregistrement |
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
