@@ -9,6 +9,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { authErrorMessage } from "@/lib/auth/messages";
 
 export function LoginForm({ signupEnabled }: { signupEnabled: boolean }) {
   const [email, setEmail] = useState("");
@@ -25,8 +26,7 @@ export function LoginForm({ signupEnabled }: { signupEnabled: boolean }) {
       });
 
       if (res.error || !res.data) {
-        const detail = (res.error as { detail?: string })?.detail;
-        toast.error(detail || "Login failed");
+        toast.error(authErrorMessage(res.error, "Connexion impossible."));
         return;
       }
 
@@ -39,7 +39,7 @@ export function LoginForm({ signupEnabled }: { signupEnabled: boolean }) {
 
       window.location.href = "/after-sign-in";
     } catch {
-      toast.error("An error occurred. Please try again.");
+      toast.error("Une erreur est survenue. Réessayez.");
     } finally {
       setLoading(false);
     }
@@ -48,45 +48,47 @@ export function LoginForm({ signupEnabled }: { signupEnabled: boolean }) {
   return (
     <AuthShell>
       <div className="space-y-1.5 text-center">
-        <h1 className="text-2xl font-semibold tracking-tight">Sign in</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Connexion</h1>
         <p className="text-sm text-muted-foreground">
-          Enter your email and password to continue
+          Saisissez votre e-mail et votre mot de passe
         </p>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-2">
-          <Label htmlFor="email">Email</Label>
+          <Label htmlFor="email">E-mail</Label>
           <Input
             id="email"
             type="email"
-            placeholder="you@example.com"
+            placeholder="vous@entreprise.com"
+            autoComplete="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             required
           />
         </div>
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
+          <Label htmlFor="password">Mot de passe</Label>
           <Input
             id="password"
             type="password"
-            placeholder="Enter your password"
+            placeholder="Votre mot de passe"
+            autoComplete="current-password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             required
           />
         </div>
         <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? "Signing in..." : "Sign in"}
+          {loading ? "Connexion…" : "Se connecter"}
         </Button>
       </form>
 
       {signupEnabled && (
         <p className="text-center text-sm text-muted-foreground">
-          Don&apos;t have an account?{" "}
+          Pas encore de compte ?{" "}
           <Link href="/auth/signup" className="text-primary underline-offset-4 hover:underline">
-            Sign up
+            Créer un compte
           </Link>
         </p>
       )}
