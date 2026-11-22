@@ -3683,6 +3683,8 @@ export const recordingAudioApiV1PbxRecordingsRecordingIdAudioGet = <ThrowOnError
 
 /**
  * Delete Recording
+ *
+ * Delete it here and on the PBX: it never comes back with a sync.
  */
 export const deleteRecordingApiV1PbxRecordingsRecordingIdDelete = <ThrowOnError extends boolean = false>(options: Options<DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteData, ThrowOnError>): RequestResult<DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteResponses, DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteErrors, ThrowOnError> => (options.client ?? client).delete<DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteResponses, DeleteRecordingApiV1PbxRecordingsRecordingIdDeleteErrors, ThrowOnError>({ url: '/api/v1/pbx/recordings/{recording_id}', ...options });
 

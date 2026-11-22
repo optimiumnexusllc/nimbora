@@ -2453,6 +2453,26 @@ class PbxCallRecordingModel(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
+class PbxRecordingTombstoneModel(Base):
+    """A recording deleted in NIMBORA (by hand, by retention or by a GDPR
+    erasure): only its PBX identifier is kept, so that a sync never imports it
+    again while the PBX still has a copy (lab step 17)."""
+
+    __tablename__ = "pbx_recording_tombstones"
+    __table_args__ = (
+        UniqueConstraint(
+            "organization_id", "recording_uuid", name="uq_pbx_recording_tombstones"
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    recording_uuid = Column(String(64), nullable=False)
+    deleted_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
 class CallQualitySettingsModel(Base):
     """The quality grid of a company for its human calls, and how calls are
     picked for evaluation."""

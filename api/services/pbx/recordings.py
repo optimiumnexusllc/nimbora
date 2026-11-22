@@ -397,7 +397,15 @@ async def audio_url(organization_id: int, recording_id: int) -> str:
     return url
 
 
-async def delete_recording(organization_id: int, recording_id: int) -> bool:
+async def delete_recording(
+    organization_id: int, recording_id: int, *, on_pbx: bool = False, **client_kwargs
+) -> bool:
+    """Delete a recording kept by NIMBORA; it is never imported again.
+
+    ``on_pbx``: also delete the copy the PBX still has (a deletion asked by a
+    person, a GDPR erasure). Best effort: NIMBORA's copy goes regardless.
+    A retention purge leaves the PBX alone (its own retention applies there).
+    """
     from api.db import db_client
 
     row = await db_client.get_pbx_recording(organization_id, recording_id)
@@ -407,6 +415,15 @@ async def delete_recording(organization_id: int, recording_id: int) -> bool:
         await _storage_for(row.storage_backend).adelete_file(row.storage_key)
     except Exception:
         logger.opt(exception=True).warning("Recording file not deleted")
+    if on_pbx and not row.removed_from_pbx:
+        try:
+            connection = await _connection(organization_id)
+            async with client_for(connection, **client_kwargs) as client:
+                await client.delete_recording_media(row.cdr_id, row.recording_uuid)
+        except Exception:  # noqa: BLE001 - the PBX copy may already be gone
+            logger.opt(exception=True).warning(
+                f"[PBX org={organization_id}] recording kept on the PBX"
+            )
     return await db_client.delete_pbx_recording(organization_id, recording_id)
 
 
@@ -441,6 +458,6 @@ async def erase_for_phone(organization_id: int, phone: str) -> int:
     for row in await db_client.list_pbx_recordings_for_phone(
         organization_id, spellings
     ):
-        if await delete_recording(organization_id, row.id):
+        if await delete_recording(organization_id, row.id, on_pbx=True):
             removed += 1
     return removed

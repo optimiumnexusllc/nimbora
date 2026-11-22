@@ -323,3 +323,36 @@ def test_the_advisor_is_the_internal_extension_not_the_public_number():
     assert parties["destination"] == "1003"
     assert parties["destination_name"] == "Koffi Yao"  # a real name is kept
     assert parties["source"] == "+2250700112233" and parties["source_name"] == "Awa"
+
+
+async def test_a_deleted_recording_never_comes_back(
+    db_session, monkeypatch, storage, test_client_factory
+):
+    """Lab step 17: deleted in NIMBORA but still on the PBX, the recording came
+    back with the next sync."""
+    fake = FakePbx()
+    user, org = await _setup(
+        db_session, monkeypatch, fake, policy={"import_enabled": True}
+    )
+    fake.cdr = [_cdr(940, "rec-x"), _cdr(941, "rec-y")]
+    fake.recording_media.update({"rec-x": WAV, "rec-y": WAV})
+    assert (await recordings.sync_recordings(org.id))["imported"] == 2
+    rows, _ = await db_session.list_pbx_recordings(org.id)
+    by_uuid = {r.recording_uuid: r for r in rows}
+
+    # Deleted by a person: here and on the PBX.
+    async with test_client_factory(user) as client:
+        gone = await client.delete(f"/api/v1/pbx/recordings/{by_uuid['rec-x'].id}")
+    assert gone.status_code == 204 and fake.deleted_media == ["rec-x"]
+
+    # Retention: NIMBORA's copy only, the PBX keeps its own.
+    assert await recordings.delete_recording(org.id, by_uuid["rec-y"].id)
+    assert fake.deleted_media == ["rec-x"]
+
+    # Even with both still listed by the PBX, nothing is imported again.
+    assert (await recordings.sync_recordings(org.id))["imported"] == 0
+    assert (await db_session.list_pbx_recordings(org.id))[1] == 0
+    # Another company is not concerned by these identifiers.
+    assert (
+        await db_session.known_pbx_recording_uuids(org.id + 10_000, ["rec-x"]) == set()
+    )

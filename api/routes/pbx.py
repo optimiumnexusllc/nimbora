@@ -1343,7 +1343,8 @@ async def recording_audio(
 
 @router.delete("/recordings/{recording_id}", status_code=204)
 async def delete_recording(recording_id: int, user: UserModel = Depends(get_user)):
-    if not await recordings.delete_recording(_org(user), recording_id):
+    """Delete it here and on the PBX: it never comes back with a sync."""
+    if not await recordings.delete_recording(_org(user), recording_id, on_pbx=True):
         raise HTTPException(status_code=404, detail="Enregistrement introuvable")
     return Response(status_code=204)
 

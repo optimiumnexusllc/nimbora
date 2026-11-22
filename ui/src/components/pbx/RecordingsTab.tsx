@@ -316,7 +316,7 @@ export function RecordingsTab({ users }: { users: PbxUser[] }) {
                                         className="text-destructive"
                                         aria-label={`Supprimer l'enregistrement ${r.id}`}
                                         onClick={async () => {
-                                            if (!window.confirm("Supprimer définitivement cet enregistrement ?")) return;
+                                            if (!window.confirm("Supprimer définitivement cet enregistrement, ici et sur le PBX ?")) return;
                                             const response = await deleteRecordingApiV1PbxRecordingsRecordingIdDelete({ path: { recording_id: r.id } });
                                             if (response.error) {
                                                 toast.error(detailFromError(response.error, "Suppression impossible"));
