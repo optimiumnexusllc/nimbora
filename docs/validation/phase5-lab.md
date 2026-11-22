@@ -604,27 +604,75 @@ les services hébergés (`MPS_ENABLED` faux).
 
 ### 3. Rotation des mots de passe SIP de 1001 et 1004
 
-❌ **Non réalisée.** Trois obstacles, par ordre :
+✅ **Faite par l'opérateur, via script** (`/home/messie/nimbora-lab-rotate-sip.sh`, hors dépôt), après
+trois constats :
 
 - La console n'offre pas de régénération du mot de passe SIP : le bouton « Mot de passe » d'un
-  poste envoie un lien de réinitialisation du **mot de passe de connexion** (`POST
-  /pbx/extensions/password-reset`), et le secret SIP n'est montré qu'à la création
-  (`CredentialsDialog`).
-- Le compte de service NIMBORA ne peut pas le faire non plus : sa politique contient
-  `confd.endpoints.sip.*.read`, `create` et `delete`, mais **ni `confd.endpoints.sip.read`
-  (liste) ni `confd.endpoints.sip.*.update`** (vérifié sur le jeton, 174 ACL ; `GET
-  /endpoints/sip?name=…` → 401).
-- La rotation avec le compte d'administration du moteur (depuis l'intérieur du conteneur, via
-  `wazo-auth-cli`, puis `PUT /confd/1.1/endpoints/sip/{uuid}`) a été **refusée par le garde-fou
-  de la session** (action classée « accès non autorisé ») : à faire par l'opérateur, ou à
-  autoriser explicitement.
+  poste envoie un lien de réinitialisation du **mot de passe de connexion**
+  (`POST /pbx/extensions/password-reset`), et le secret SIP n'est montré qu'à la création.
+- Le compte de service NIMBORA ne peut pas le faire : sa politique contient
+  `confd.endpoints.sip.*.read`, `create` et `delete`, mais ni `confd.endpoints.sip.read` (liste)
+  ni `confd.endpoints.sip.*.update` (jeton à 174 ACL ; `GET /endpoints/sip?name=…` → 401).
+- La session d'assistance n'a pas été autorisée à utiliser le compte d'administration du moteur.
 
-Proposition : ajouter à la PR une action « Régénérer le mot de passe SIP » (route API +
-bouton dans Postes), avec `confd.endpoints.sip.*.update` dans les politiques de service et
-d'approvisionnement. Le Softphone appairé relit le secret en direct (`/softphone/config`) :
-aucun rejumelage ne serait nécessaire pour les postes navigateur, seuls les clients SIP
-configurés à la main (Linphone) seraient à mettre à jour. Le rejumelage de 1004 est reporté
-avec la rotation.
+Le script, lancé par l'opérateur sur l'hôte, entre dans le conteneur du PBX, prend un jeton
+d'administration (`wazo-auth-cli`), remplace le mot de passe de l'endpoint de chaque poste
+(`PUT /confd/1.1/endpoints/sip/{uuid}`), relit pour vérifier, et écrit les nouvelles valeurs
+dans le fichier local des postes (mode 600). Empreintes SHA-256 (12 premiers caractères) :
+1001 `db853d7ad1e1`, 1004 `b892615173ed` ; moteur et fichier **identiques** à la vérification.
+Aucun client SIP de test n'utilisait 1001 (les clients `baresip` du laboratoire sont 1002, 1003
+et les lignes opérateurs) : rien à reconfigurer. Le Softphone web 1004 est revérifié à l'étape 12.
+
+Une action « Régénérer le mot de passe SIP » dans la console est annoncée pour une prochaine PR.
+
+## Rapport d'étape 12 — redéploiement depuis `main`, puis PR #9 « Régénérer le mot de passe SIP » (22 novembre 2026)
+
+### A. Laboratoire redéployé depuis `main`
+
+Déployé : `main` à `61932c8` (PR #1 à #7 et #2 fusionnées, CI verte), même procédure que pour
+la PR #7 : images `nimbora-main` (API, UI) construites depuis le dépôt, kit lab
+`deploy/lab/install.sh --only nimbora --no-build`, migrations à jour (tête `d7e8f9a0b1c2`,
+aucune nouvelle). Softphone web 1.2.0 construit depuis `main`. Les anciennes branches ne sont
+plus touchées ; ce rapport est consigné sur la branche de la PR #9.
+
+#### 1. Vérifications après redéploiement
+
+| Vérification | Résultat |
+|---|---|
+| `GET /api/v1/health` derrière Traefik | ✅ 200, `status: ok`, version 1.51.0 |
+| Conteneurs `nimbora_api` et `nimbora_ui` (images `nimbora-main/…`) | ✅ `healthy` |
+| Console → PBX → **Routage** (Chromium, administrateur) | ✅ onglet présent, politique et simulateur rendus |
+| Console → PBX → **Postes** (présence) | ✅ 1001 « Hors ligne » (poste navigateur sans application ouverte), 1002 et 1003 « Disponible » (SIP enregistrés), 1004 « Hors ligne » |
+| Softphone web 1004 (build `main`) avec le **secret SIP régénéré** par l'opérateur | ✅ « Disponible » sans rejumelage (la configuration est relue en direct), contact de l'endpoint présent sur le moteur, aucun nouvel échec d'authentification Asterisk pour ce poste (compteur inchangé) ; Réglages → Hors ligne → Disponible à nouveau OK |
+| Journaux de l'API sur 10 minutes d'usage (12:41 → 12:52 UTC, API redémarrée à 12:40:10) : boucle de requêtes toutes les 25 s sur les trois organisations + sessions Chromium console et Softphone | ✅ 87 requêtes de la boucle (toutes 200), 558 requêtes HTTP journalisées sur 12 min ; **0** « Name or service not known », **0** « Failed to bootstrap organization » (0 aussi depuis le démarrage) |
+
+#### 2. Contrôle de non-régression
+
+| Contrôle | Résultat |
+|---|---|
+| Simulation de routage « Facturation » avec le numéro de la cliente de test | ✅ `pbx-extension:1003`, motif `usual_advisor` ; ligne `[Routing org=1 simulation] usual_advisor → pbx-extension:1003 \| …` journalisée, sans le numéro |
+| `GET /saas/admin/usage?month=2026-11` | ✅ 200 : une ligne par organisation facturable (plan `starter`, minutes IA 0, minutes humaines 1,87 incluses dans 1000, devise `eur`) |
+| Liste anonyme du bucket : `GET https://app.optimiumnexus.com/voice-audio/?list-type=2` | ✅ **403** |
+| Sauvegarde du PBX : `scripts/backup.sh` (chiffrée, phrase secrète dans `/etc/nimbora-pbx/backup-passphrase`, 600) puis `restore.sh --check` sur `/var/backups/nimbora-pbx/20261122-123316` | ✅ 15 Mo, `SHA256SUMS`, `manifest.json` (moteur 26.11), « archives readable: 422 files », « check only: nothing restored ». Le répertoire de sauvegarde était vide avant (les essais de l'étape 8 n'avaient pas été conservés) : **aucune sauvegarde planifiée** sur le laboratoire, à ajouter (minuteur systemd) |
+
+### B. PR #9 — « Régénérer le mot de passe SIP » (`feat/pbx-sip-password-rotation`, base `docs/readme-after-merges`)
+
+Déployé : `fd41032`, images `nimbora-pr9` (API, UI), kit lab `--only nimbora --no-build`,
+Softphone web **1.2.1** construit depuis la branche (23 tests Vitest). Tests API de la branche
+dans le conteneur : 60 passés (`test_pbx_admin.py`, softphone, approvisionnement, PBX). Sans fusion.
+
+| Étape demandée | Résultat |
+|---|---|
+| (2) `create_service_account.py --provisioner` relancé dans `nimbora-pbx` (politiques de la PR poussées avant) | ✅ compte opérateur **126 ACL** (125 + `confd.endpoints.sip.*.update`) |
+| (2) compte dédié d'org1 (« Entreprise test ») relancé | ✅ politique `nimbora-integration` **113 ACL**, `confd.endpoints.sip.*.update` présent |
+| (2) `POST /pbx/provision` org2 | ✅ 200, même tenant ; sa politique relue sur le moteur : 113 ACL, `confd.endpoints.sip.*.update` et `chatd.users.presences.read` présents |
+| (3) Softphone web 1004 ouvert avant la rotation | ✅ « Disponible » à 12:53:42, contact présent sur le moteur |
+| (3) Console → PBX → Postes → **SIP** sur 1004 (confirmation acceptée) | ✅ dialogue « Nouveau mot de passe SIP · Poste 1004 (…) » avec extension `1004`, identité SIP `v0sleb29`, utilisateur `poste2760`, secret de 20 caractères — **SHA-256 `e69216e167c5…`** (12 premiers caractères). Fermé par « J'ai noté le mot de passe » : zone disparue ; après rechargement de la page, le secret n'apparaît nulle part (affiché une seule fois) |
+| (4) Moteur, avant/après (sans le secret) | ✅ **identiques** : endpoint `v0sleb29`, modèles confd `webrtc` + `global`, transport (vue Asterisk `transport-udp`, `webrtc: yes`), `identify_by username,ip`, AOR, auth, contexte, utilisateur `poste2760` ; seule l'empreinte du secret change (`b892615173ed` → `e69216e167c5`) |
+| (4) `GET /softphone/config` (jeton du poste 1004) | ✅ même identité et même utilisateur, empreinte `e69216e167c5` : l'API sert le nouveau secret sans rien stocker |
+| (5) Ré-inscription spontanée du Softphone (page non rechargée, secret changé à 12:54:17) | ✅ à **13:02:17**, soit **8 min 00 s** après la rotation, au renouvellement périodique de l'enregistrement (expiration 600 s) : le moteur refuse le REGISTER porté par l'ancien secret (une seule notice), l'application relit `/softphone/config` (HTTP 200 à 13:02:17.79) et repart avec le nouveau ; dans le journal Asterisk l'ancien contact WebSocket est retiré et le nouveau ajouté 250 ms plus tard. L'indicateur est resté « Disponible » d'un bout à l'autre (observation toutes les secondes) |
+| (5) Aucun rejumelage demandé, pas de boucle d'échecs | ✅ appairage conservé (aucun appel à `/softphone/activate`, jeton inchangé) ; compteur « Failed to authenticate » de ce poste inchangé dans `messages`, une notice unique dans `full` ; fail2ban `asterisk-wazo` : 0 banni |
+| (6) `nimbora-lab-postes.txt`, bloc 1004 | ✅ ligne « SIP password » remplacée par le script Chromium (sans affichage), fichier en 600, empreinte `e69216e167c5` identique à celle du moteur |
 
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
