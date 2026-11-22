@@ -513,3 +513,66 @@ async def test_logins_on_the_shared_pbx_carry_the_tenant_slug(db_session, monkey
         await admin.create_extension(
             org.id, admin.NewExtension(firstname="Dup", lastname="L", extension="1053")
         )
+
+
+class _EngineDefaults(_Accept):
+    """Like the 26.11 engine: a new tenant comes with its own default contexts,
+    without numbering ranges (incall_ranges [])."""
+
+    def handle(self, request):
+        response = super().handle(request)
+        if request.url.path == "/api/auth/0.1/tenants" and request.method == "POST":
+            tenant = response.json()["uuid"]
+            for kind, extra in (
+                ("internal", {"user_ranges": [{"start": "1000", "end": "1099"}]}),
+                ("incall", {"incall_ranges": []}),
+                ("outcall", {}),
+            ):
+                self.contexts.append(
+                    {
+                        "id": self._id(),
+                        "name": f"ctx-default-{kind}-{tenant[:8]}",
+                        "label": f"Default {kind}",
+                        "type": kind,
+                        "enabled": True,
+                        "tenant_uuid": tenant,
+                        **extra,
+                    }
+                )
+        return response
+
+
+async def test_engine_default_contexts_get_their_missing_ranges(db_session, monkeypatch):
+    monkeypatch.setattr(constants, "SAAS_MODE", False)
+    fake = _EngineDefaults(username="nimbora-provisioning", password="operator-secret")
+    fake.auth_users.append(
+        {
+            "username": "nimbora-provisioning",
+            "password": "operator-secret",
+            "uuid": "op",
+            "tenant_uuid": None,
+            "policies": [],
+        }
+    )
+    install(monkeypatch, fake)
+    _, org = await _org(db_session)
+
+    await provisioning.provision_organization(org.id, transport=fake.transport)
+
+    tenant = fake.auth_tenants[0]["uuid"]
+    mine = {c["type"]: c for c in fake.contexts if c.get("tenant_uuid") == tenant}
+    assert len([c for c in fake.contexts if c.get("tenant_uuid") == tenant]) == 3
+    # Inbound numbers of 4 to 15 digits can now be routed.
+    assert [r["did_length"] for r in mine["incall"]["incall_ranges"]] == list(range(4, 16))
+    # A range already set on the engine is kept; the empty ones are filled.
+    assert mine["internal"]["user_ranges"] == [{"start": "1000", "end": "1099"}]
+    assert mine["internal"]["queue_ranges"]
+    assert mine["outcall"]["id"] in [c["id"] for c in mine["internal"]["contexts"]]
+
+
+def test_missing_ranges_never_overwrites_existing_ones():
+    desired = provisioning.desired_contexts("org9", "Entreprise 9")["internal"]
+    existing = {"user_ranges": [{"start": "5000", "end": "5999"}], "group_ranges": []}
+    missing = provisioning.missing_ranges(existing, desired)
+    assert "user_ranges" not in missing
+    assert set(missing) == {"group_ranges", "queue_ranges", "conference_room_ranges"}

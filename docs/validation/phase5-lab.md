@@ -305,6 +305,10 @@ README du kit, page PBX de la console), images API et UI construites depuis la b
   test humain.
 - Les contextes entrants créés par le moteur pour `org2`/`org3` n'ont **aucune plage**
   (`incall_ranges: []`) : la création de numéros fonctionne quand même sur 26.11, à surveiller.
+  → **Corrigé** (branche `feat/lot-a-object-storage`) : le moteur crée ces contextes avec le
+  tenant ; le provisionnement (et `ensure_tenant_contexts.py`) complète désormais les plages
+  vides (entrants 4 à 15 chiffres, postes, groupes, files, conférences) sans toucher aux plages
+  déjà définies. À revérifier : `POST /pbx/provision` sur `org2` puis `confd/contexts` du tenant.
 
 
 ### 🐛 n° 8 — `PBX_PROVISIONING_*` (et `BRAND_*`) n'atteignaient pas le conteneur API

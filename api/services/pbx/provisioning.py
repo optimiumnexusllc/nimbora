@@ -254,6 +254,15 @@ def desired_contexts(slug: str, name: str) -> dict[str, dict]:
     }
 
 
+def missing_ranges(context: dict, desired: dict) -> dict[str, list]:
+    """Numbering ranges the desired context has and the existing one lacks."""
+    return {
+        key: value
+        for key, value in desired.items()
+        if key.endswith("_ranges") and value and not context.get(key)
+    }
+
+
 async def _ensure_contexts(client: PbxClient, slug: str, name: str) -> dict[str, dict]:
     existing: dict[str, dict] = {}
     for context in await client.contexts():
@@ -261,6 +270,24 @@ async def _ensure_contexts(client: PbxClient, slug: str, name: str) -> dict[str,
     for kind, body in desired_contexts(slug, name).items():
         if kind not in existing:
             existing[kind] = await client.create_context(body)
+            continue
+        # The engine creates default contexts with the tenant, without numbering
+        # ranges (seen on 26.11: incall_ranges []). Fill the empty ones only:
+        # ranges an operator set by hand are kept.
+        missing = missing_ranges(existing[kind], body)
+        if missing:
+            context = existing[kind]
+            await client.update_context(
+                context["id"],
+                {
+                    "name": context.get("name"),
+                    "label": context.get("label") or body["label"],
+                    "type": context.get("type"),
+                    "enabled": context.get("enabled", True),
+                    **missing,
+                },
+            )
+            existing[kind] = {**context, **missing}
     # Extensions may dial out: internal includes outcall (keeping other includes).
     internal, outcall = existing["internal"], existing["outcall"]
     includes = [c["id"] for c in internal.get("contexts") or []]

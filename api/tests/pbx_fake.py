@@ -432,6 +432,13 @@ class FakePbx:
             }
             self.contexts.append(context)
             return httpx.Response(200, json=context)
+        m = re.fullmatch(rf"{prefix}/contexts/(\d+)", path)
+        if m and method == "PUT":
+            for context in self.contexts:
+                if context["id"] == int(m.group(1)):
+                    context.update(body)
+                    return httpx.Response(204)
+            return httpx.Response(404, json=["Context not found"])
         m = re.fullmatch(rf"{prefix}/contexts/(\d+)/contexts", path)
         if m and method == "PUT":
             for context in self.contexts:

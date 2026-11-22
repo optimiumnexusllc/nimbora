@@ -123,8 +123,23 @@ def main() -> None:
     created = {}
     for wanted in desired_contexts(slugify(tenant.get("slug") or tenant["name"])):
         if wanted["type"] in by_type:
-            created[wanted["type"]] = by_type[wanted["type"]]
-            print(f"{wanted['type']}: « {by_type[wanted['type']]['name']} » déjà présent")
+            context = by_type[wanted["type"]]
+            created[wanted["type"]] = context
+            # The engine creates default contexts without numbering ranges:
+            # fill the empty ones (ranges set by hand are kept).
+            missing = {
+                k: v for k, v in wanted.items()
+                if k.endswith("_ranges") and v and not context.get(k)
+            }
+            if missing:
+                api.call("PUT", CONFD + f"/contexts/{context['id']}", {
+                    "name": context["name"], "label": context.get("label") or wanted["label"],
+                    "type": context["type"], "enabled": context.get("enabled", True), **missing,
+                })
+                context.update(missing)
+                print(f"{wanted['type']}: « {context['name']} » complété ({', '.join(missing)})")
+            else:
+                print(f"{wanted['type']}: « {context['name']} » déjà présent")
             continue
         context = api.call("POST", CONFD + "/contexts", wanted)
         created[wanted["type"]] = context
