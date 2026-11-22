@@ -23,9 +23,17 @@ from typing import Any
 
 from loguru import logger
 
-from api.services.supervision.live_calls import get_redis
+from api.services.supervision import live_calls
 
 CHANNEL = "nimbora:supervision:org:{org}"
+
+
+async def get_redis():
+    # Looked up at call time: the shared client can be swapped (reconnection,
+    # tests) after this module was imported.
+    return await live_calls.get_redis()
+
+
 AI_REFRESH_SECONDS = 3.0
 PBX_REFRESH_SECONDS = 10.0
 PING_SECONDS = 25.0

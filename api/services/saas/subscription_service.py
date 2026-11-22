@@ -57,6 +57,12 @@ class UsageSummary:
     remaining_minutes: float | None
     overage_minutes: float
     estimated_overage_cents: int
+    # Human calls on the enterprise PBX (services/pbx/billing).
+    human_used_minutes: float = 0.0
+    human_included_minutes: int | None = None
+    human_remaining_minutes: float | None = None
+    human_overage_minutes: float = 0.0
+    estimated_human_overage_cents: int = 0
     limits: dict[str, Any] = field(default_factory=dict)
     features: dict[str, bool] = field(default_factory=dict)
     usable: bool = True
@@ -234,6 +240,17 @@ async def get_usage_summary(
     remaining = None if included is None else max(0.0, included - used_minutes)
     overage = 0.0 if included is None else max(0.0, used_minutes - included)
     overage_cents = int(round(overage * (plan.overage_price_cents_per_minute or 0)))
+    human_seconds = await db_client.get_organization_human_seconds(
+        organization_id, start, end
+    )
+    human_used = round(human_seconds / 60.0, 2)
+    human_included = limits.get("included_human_minutes")
+    human_remaining = (
+        None if human_included is None else max(0.0, human_included - human_used)
+    )
+    human_overage = (
+        0.0 if human_included is None else max(0.0, human_used - human_included)
+    )
     blocked = _blocked_reason(subscription, now)
     return UsageSummary(
         organization_id=organization_id,
@@ -248,6 +265,13 @@ async def get_usage_summary(
         remaining_minutes=remaining,
         overage_minutes=round(overage, 2),
         estimated_overage_cents=overage_cents,
+        human_used_minutes=human_used,
+        human_included_minutes=human_included,
+        human_remaining_minutes=human_remaining,
+        human_overage_minutes=round(human_overage, 2),
+        estimated_human_overage_cents=int(
+            round(human_overage * (plan.human_overage_price_cents_per_minute or 0))
+        ),
         limits=limits,
         features=effective_features(plan, subscription.limit_overrides),
         usable=blocked is None,

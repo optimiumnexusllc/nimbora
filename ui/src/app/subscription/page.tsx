@@ -6,6 +6,7 @@ import { Suspense, useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
+import { HumanMinutes } from "@/components/subscription/HumanMinutes";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -152,7 +153,7 @@ function SubscriptionContent() {
             >
                 <div className="space-y-2">
                     <div className="flex justify-between text-sm">
-                        <span>Minutes d&apos;appel utilisées</span>
+                        <span>Minutes des agents IA</span>
                         <span className="font-medium">
                             {subscription.used_minutes.toLocaleString("fr-FR")} / {formatLimit(subscription.included_minutes)}
                         </span>
@@ -165,6 +166,7 @@ function SubscriptionContent() {
                         </p>
                     )}
                 </div>
+                <HumanMinutes subscription={subscription} />
                 <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
                     {LIMIT_ROWS.map((row) => (
                         <div key={row.key} className="rounded-md border p-3">
@@ -200,6 +202,14 @@ function SubscriptionContent() {
                                             puis {formatPrice(plan.overage_price_cents_per_minute, plan.currency)} / min
                                         </div>
                                     ) : null}
+                                    {plan.included_human_minutes !== undefined && (
+                                        <div>
+                                            {formatLimit(plan.included_human_minutes, " minutes")} d&apos;appels humains (PBX)
+                                            {plan.human_overage_price_cents_per_minute
+                                                ? `, puis ${formatPrice(plan.human_overage_price_cents_per_minute, plan.currency)} / min`
+                                                : ""}
+                                        </div>
+                                    )}
                                     <div>{formatLimit(plan.max_concurrent_calls)} appels simultanés</div>
                                     <div>{formatLimit(plan.max_agents)} agents IA</div>
                                     <div>{formatLimit(plan.max_human_seats)} postes humains</div>

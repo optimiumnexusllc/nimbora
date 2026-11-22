@@ -1,0 +1,62 @@
+---
+title: "Run NIMBORA as a SaaS"
+description: "Plans, quotas, AI and human minutes, shared PBX and monthly usage for an operator hosting many companies."
+---
+
+With `SAAS_MODE=true`, one NIMBORA installation hosts many client companies. Each company gets a subscription on a plan; the operator manages companies, plans and invoicing from the super-admin console (**Clients et abonnements**).
+
+## Settings
+
+| Variable | Role |
+| --- | --- |
+| `SAAS_MODE` | `true` to enable plans, quotas and the operator console |
+| `SAAS_DEFAULT_PLAN` | plan of a new company (default `starter`) |
+| `SAAS_TRIAL_DAYS` | free trial length (default 14) |
+| `SAAS_GRACE_DAYS` | days of calls after a failed payment (default 3) |
+| `SAAS_PLATFORM_NAME` | name shown to companies |
+| `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | online payment (optional) |
+| `ENABLE_SIGNUP` | `false` to create accounts only by invitation (the sign-up page then shows "Inscriptions fermées") |
+| `PBX_PROVISIONING_*` | the operator's shared PBX, see [Enterprise PBX](/integrations/telephony/enterprise-pbx#shared-pbx-of-the-platform-one-tenant-per-company) |
+
+## What a plan contains
+
+| Field | Meaning |
+| --- | --- |
+| Monthly price | excluding tax |
+| AI minutes included, then price per minute | calls answered or placed by AI agents. A trial that has used its minutes stops calling; an active subscription is billed for the overage |
+| **Human minutes included, then price per minute** | answered calls between a customer and an employee on the enterprise PBX. Counted apart from AI minutes, never blocked, billed for the overage |
+| Concurrent calls, AI agents, campaigns | limits |
+| Human seats | agents of the built-in contact center **plus** extensions of the PBX |
+| Options | local AI, contact center, campaigns, API, white label, custom voices, **platform PBX** (`pbx_shared`), **own PBX** (`pbx_dedicated`) |
+
+An empty value means unlimited. Each company can get its own limits (overrides) from its **Gérer** dialog.
+
+Default plans (editable, never overwritten on restart):
+
+| Plan | Price | AI minutes | Human minutes |
+| --- | --- | --- | --- |
+| Starter | 99 € | 1 000, then 0.12 € | 1 000, then 0.03 € |
+| Business | 399 € | 5 000, then 0.09 € | 10 000, then 0.02 € |
+| Enterprise | 1 499 € | 25 000, then 0.06 € | 50 000, then 0.01 € |
+
+## How human minutes are counted
+
+A human call is billed when it was **answered**, has a **customer** on the other end (an inbound or outbound call, not an internal one between two extensions) and was **not taken by an AI agent** (those are AI minutes). The billed time is the duration in the PBX call log, from answer to hang-up.
+
+Calls are counted as they end, from the PBX's call-log event, and an **hourly catch-up** reads the PBX call logs since the last one seen, so a call whose event was lost during an outage is still counted. Each call log is counted only once.
+
+Companies see their human minutes on their **Abonnement** page, next to their AI minutes.
+
+<Frame caption="Abonnement — AI minutes and human minutes of the period, with the overage">
+  <img src="/images/screenshots/subscription-human-minutes.webp" alt="Subscription page with human minutes" />
+</Frame>
+
+## Monthly usage and invoicing
+
+**Clients et abonnements → Consommation du mois** lists, for a calendar month, every company's AI minutes and human minutes against its plan (with its overrides) and the overage amount. **Exporter (CSV)** downloads the same table (semicolon-separated, opens in Excel) to prepare invoices. 
+
+<Frame caption="Consommation du mois — every company, AI and human minutes, overage to invoice">
+  <img src="/images/screenshots/superadmin-monthly-usage.webp" alt="Monthly usage report of the operator" />
+</Frame>
+
+The same data is available from the API: `GET /api/v1/saas/admin/usage?month=2026-11` (`&format=csv` for the file).

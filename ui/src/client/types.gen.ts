@@ -6007,6 +6007,14 @@ export type PlanResponse = {
      */
     overage_price_cents_per_minute: number | null;
     /**
+     * Included Human Minutes
+     */
+    included_human_minutes?: number | null;
+    /**
+     * Human Overage Price Cents Per Minute
+     */
+    human_overage_price_cents_per_minute?: number | null;
+    /**
      * Max Concurrent Calls
      */
     max_concurrent_calls: number | null;
@@ -6071,6 +6079,14 @@ export type PlanUpdateRequest = {
      */
     overage_price_cents_per_minute?: number | null;
     /**
+     * Included Human Minutes
+     */
+    included_human_minutes?: number | null;
+    /**
+     * Human Overage Price Cents Per Minute
+     */
+    human_overage_price_cents_per_minute?: number | null;
+    /**
      * Max Concurrent Calls
      */
     max_concurrent_calls?: number | null;
@@ -6111,7 +6127,7 @@ export type PlanUpdateRequest = {
     /**
      * Unlimited
      */
-    unlimited?: Array<'included_minutes' | 'max_concurrent_calls' | 'max_agents' | 'max_human_seats' | 'max_campaigns'>;
+    unlimited?: Array<'included_minutes' | 'included_human_minutes' | 'max_concurrent_calls' | 'max_agents' | 'max_human_seats' | 'max_campaigns'>;
 };
 
 /**
@@ -8222,6 +8238,26 @@ export type SubscriptionResponse = {
      * Estimated Overage Cents
      */
     estimated_overage_cents: number;
+    /**
+     * Human Used Minutes
+     */
+    human_used_minutes?: number;
+    /**
+     * Human Included Minutes
+     */
+    human_included_minutes?: number | null;
+    /**
+     * Human Remaining Minutes
+     */
+    human_remaining_minutes?: number | null;
+    /**
+     * Human Overage Minutes
+     */
+    human_overage_minutes?: number;
+    /**
+     * Estimated Human Overage Cents
+     */
+    estimated_human_overage_cents?: number;
     /**
      * Limits
      */
@@ -21325,6 +21361,54 @@ export type AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses
 };
 
 export type AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponse = AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses[keyof AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses];
+
+export type AdminMonthlyUsageApiV1SaasAdminUsageGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query: {
+        /**
+         * Month
+         *
+         * AAAA-MM
+         */
+        month: string;
+        /**
+         * Format
+         */
+        format?: 'json' | 'csv';
+    };
+    url: '/api/v1/saas/admin/usage';
+};
+
+export type AdminMonthlyUsageApiV1SaasAdminUsageGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminMonthlyUsageApiV1SaasAdminUsageGetError = AdminMonthlyUsageApiV1SaasAdminUsageGetErrors[keyof AdminMonthlyUsageApiV1SaasAdminUsageGetErrors];
+
+export type AdminMonthlyUsageApiV1SaasAdminUsageGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostData = {
     body?: never;

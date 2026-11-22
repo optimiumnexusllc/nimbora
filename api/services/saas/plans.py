@@ -30,6 +30,7 @@ ALL_FEATURES = (
 # Limit columns, shared by plans and per-tenant overrides.
 LIMIT_FIELDS = (
     "included_minutes",
+    "included_human_minutes",
     "max_concurrent_calls",
     "max_agents",
     "max_human_seats",
@@ -44,6 +45,9 @@ DEFAULT_PLANS: dict[str, dict] = {
         "monthly_price_cents": 9900,
         "included_minutes": 1000,
         "overage_price_cents_per_minute": 12,
+        # Human calls on the enterprise PBX: telephony only, much cheaper.
+        "included_human_minutes": 1000,
+        "human_overage_price_cents_per_minute": 3,
         "max_concurrent_calls": 3,
         "max_agents": 3,
         "max_human_seats": 2,
@@ -67,6 +71,8 @@ DEFAULT_PLANS: dict[str, dict] = {
         "monthly_price_cents": 39900,
         "included_minutes": 5000,
         "overage_price_cents_per_minute": 9,
+        "included_human_minutes": 10000,
+        "human_overage_price_cents_per_minute": 2,
         "max_concurrent_calls": 15,
         "max_agents": 15,
         "max_human_seats": 15,
@@ -90,6 +96,8 @@ DEFAULT_PLANS: dict[str, dict] = {
         "monthly_price_cents": 149900,
         "included_minutes": 25000,
         "overage_price_cents_per_minute": 6,
+        "included_human_minutes": 50000,
+        "human_overage_price_cents_per_minute": 1,
         "max_concurrent_calls": 60,
         "max_agents": None,
         "max_human_seats": 100,

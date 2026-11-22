@@ -724,6 +724,13 @@ async def handle_event(connection, event_name: str | None, payload: Any) -> str:
             data.get("destination_extension"),
         )
     )
+    # Human minutes, billed with the AI minutes (services/pbx/billing).
+    try:
+        from api.services.pbx.billing import record_call
+
+        await record_call(connection, data, ai_routed=ai_routed)
+    except Exception:  # noqa: BLE001 - the hourly catch-up counts it later
+        logger.opt(exception=True).warning("Human minutes not recorded")
     # AI handoff cards, customers served, missed calls to call back.
     try:
         from api.services.pbx.missed_calls import on_call_log
