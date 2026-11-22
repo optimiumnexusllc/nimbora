@@ -105,6 +105,25 @@ def test_brand_comes_from_environment(monkeypatch):
     assert b.noreply_email == "noreply@sahelconnect.africa"
 
 
+def test_brand_treats_empty_variables_as_unset(monkeypatch):
+    """Compose passes `${BRAND_PBX_NAME:-}` as "" when .env has no value: that must
+    not produce an empty PBX name or SIP User-Agent."""
+    for name in (
+        "BRAND_NAME",
+        "BRAND_PBX_NAME",
+        "BRAND_DOMAIN",
+        "BRAND_SIP_USER_AGENT",
+    ):
+        monkeypatch.setenv(name, "")
+    b = brand()
+    assert (b.name, b.pbx_name, b.sip_user_agent) == (
+        "NIMBORA",
+        "NIMBORA Voice",
+        "NIMBORA-Voice",
+    )
+    assert b.noreply_email == "noreply@nimbora.io"
+
+
 # ---------------------------------------------------------- with the DB
 
 
@@ -158,7 +177,9 @@ async def test_route_a_pbx_number_to_an_ai_agent(db_session, monkeypatch):
         "type": "custom",
         "command": "Stasis(nimbora_ab12cd34ef56,inbound,called=+22527000099)",
     }
-    assert incall["extensions"][0]["exten"] == "+22527000099"
+    # The engine refuses "+" in an extension: the DID is written without it,
+    # while NIMBORA's record and the Stasis argument keep the +E.164 form.
+    assert incall["extensions"][0]["exten"] == "22527000099"
     assert (
         incall["extensions"][0]["context"] == "from-extern"
     )  # the PBX's incall context
@@ -181,14 +202,14 @@ async def test_route_a_pbx_number_to_an_ai_agent(db_session, monkeypatch):
     assert len([i for i in fake.incalls if i["id"] == 5]) == 1
 
     inventory = await pbx.inventory(org.id)
-    numbers = {n["number"]: n for n in inventory["numbers"]}
-    assert numbers["+22527000099"]["destination"] == "Agent IA"
-    assert numbers["+22527000099"]["ai_workflow_name"] == "Accueil Ivoire Immo"
-    assert numbers["+22527000000"]["destination"] == "File d'attente"
+    numbers = {n["number"]: n for n in inventory["numbers"]}  # as the engine holds them
+    assert numbers["22527000099"]["destination"] == "Agent IA"
+    assert numbers["22527000099"]["ai_workflow_name"] == "Accueil Ivoire Immo"
+    assert numbers["22527000000"]["destination"] == "File d'attente"
 
     assert await pbx.unroute_number(org.id, "+22527000099") is True
     assert not any(i["id"] == route["incall_id"] for i in fake.incalls)
-    assert not any(e["exten"] == "+22527000099" for e in fake.extensions)
+    assert not any(e["exten"] == "22527000099" for e in fake.extensions)
     assert (
         await db_session.find_active_phone_number_for_inbound(
             org.id, "+22527000099", "ari"
@@ -268,7 +289,9 @@ async def test_white_label_and_event_subscription(db_session, monkeypatch):
     assert connection.branding_applied_at is not None
 
 
-async def test_branding_is_reported_as_the_kits_when_the_engine_refuses(db_session, monkeypatch):
+async def test_branding_is_reported_as_the_kits_when_the_engine_refuses(
+    db_session, monkeypatch
+):
     """Seen on a real engine (26.11): /asterisk/pjsip/global needs a master-tenant
     token, so the company's least-privilege service account gets 401. The kit
     brands the SIP headers at install time: the platform reports that instead of
@@ -584,3 +607,27 @@ def test_service_account_policy_grants_exactly_what_the_client_needs():
             matches(pattern, re.sub(r"\{[a-z_]+\}", "42", r))
             for r in REQUIRED_ACL.values()
         ), pattern
+
+
+async def test_an_unreachable_pbx_names_the_service_and_dns_failures():
+    import httpx
+
+    from api.services.pbx.client import PbxClient, PbxSettings, PbxUnavailable
+
+    def no_dns(request):
+        raise httpx.ConnectError(
+            "[Errno -2] Name or service not known", request=request
+        )
+
+    client = PbxClient(
+        PbxSettings(
+            base_url="https://pbx.introuvable.example", username="u", password="p"
+        ),
+        transport=httpx.MockTransport(no_dns),
+    )
+    with pytest.raises(PbxUnavailable) as error:
+        await client.agents()
+    await client.close()
+    assert "(auth)" in str(error.value) and "nom d'hôte du PBX non résolu" in str(
+        error.value
+    )

@@ -1,5 +1,6 @@
 import os
 from pathlib import Path
+from urllib.parse import urlparse
 
 from api.enums import Environment
 
@@ -81,6 +82,22 @@ STACK_AUTH_PROJECT_ID = os.getenv("STACK_AUTH_PROJECT_ID")
 STACK_PUBLISHABLE_CLIENT_KEY = os.getenv("STACK_PUBLISHABLE_CLIENT_KEY")
 NIMBORA_MPS_SECRET_KEY = os.getenv("NIMBORA_MPS_SECRET_KEY", None)
 MPS_API_URL = os.getenv("MPS_API_URL", "https://services.nimbora.example")
+# NIMBORA's hosted services (managed AI keys, hosted billing, managed SIP).
+# The default address is a placeholder (.example never resolves): a white-label
+# platform that has no such service sets nothing, or MPS_API_URL=off, and
+# companies bring their own AI keys. Without this, every request of a company
+# with no model configuration tried to reach the placeholder (lab step 10).
+MPS_ENABLED = (
+    bool(MPS_API_URL)
+    and MPS_API_URL.strip().lower()
+    not in {
+        "off",
+        "none",
+        "disabled",
+        "false",
+    }
+    and not (urlparse(MPS_API_URL).hostname or "").endswith(".example")
+)
 NIMBORA_DEPLOYMENT_ID = os.getenv(
     "NIMBORA_DEPLOYMENT_ID", "oss" if DEPLOYMENT_MODE == "oss" else "us"
 )
@@ -119,6 +136,10 @@ S3_REGION = os.environ.get("S3_REGION", "us-east-1")
 S3_ENDPOINT_URL = os.environ.get("S3_ENDPOINT_URL")
 S3_SIGNATURE_VERSION = os.environ.get("S3_SIGNATURE_VERSION")
 S3_ADDRESSING_STYLE = os.environ.get("S3_ADDRESSING_STYLE")
+# S3_PUBLIC_ENDPOINT_URL: the address browsers use when the S3 endpoint above is
+#   internal (e.g. http://seaweedfs:8333 behind https://app.example.com). Signed
+#   download and upload links are computed for this address.
+S3_PUBLIC_ENDPOINT_URL = os.environ.get("S3_PUBLIC_ENDPOINT_URL") or None
 
 # Sentry configuration
 SENTRY_DSN = os.getenv("SENTRY_DSN")
@@ -347,6 +368,32 @@ SERVICE_URL_ALLOWED_HOSTS = _env_csv(
 # Enterprise PBX hosts tenants may use even though they resolve to private
 # addresses (the operator's own white-label PBX on the internal network).
 PBX_ALLOWED_HOSTS = _env_csv("PBX_ALLOWED_HOSTS", "")
+
+# Shared PBX of the operator (multi-tenant): one tenant per company, created by
+# NIMBORA with the operator's provisioning account (deploy/pbx --operator).
+# Empty = no shared PBX; companies connect their own (dedicated) PBX.
+PBX_PROVISIONING_URL = (os.getenv("PBX_PROVISIONING_URL") or "").rstrip("/")
+PBX_PROVISIONING_USERNAME = os.getenv(
+    "PBX_PROVISIONING_USERNAME", "nimbora-provisioning"
+)
+PBX_PROVISIONING_PASSWORD = os.getenv("PBX_PROVISIONING_PASSWORD", "")
+PBX_PROVISIONING_VERIFY_TLS = (
+    os.getenv("PBX_PROVISIONING_VERIFY_TLS", "true").lower() != "false"
+)
+# Create the tenant as soon as a company signs up (its plan must allow it).
+PBX_PROVISIONING_ON_SIGNUP = _env_bool("PBX_PROVISIONING_ON_SIGNUP")
+# Internal numbering of each company's tenant (users, groups, queues, rooms).
+PBX_PROVISIONING_USER_RANGE = os.getenv("PBX_PROVISIONING_USER_RANGE", "1000-1999")
+PBX_PROVISIONING_GROUP_RANGE = os.getenv("PBX_PROVISIONING_GROUP_RANGE", "2000-2999")
+PBX_PROVISIONING_QUEUE_RANGE = os.getenv("PBX_PROVISIONING_QUEUE_RANGE", "3000-3999")
+PBX_PROVISIONING_CONFERENCE_RANGE = os.getenv(
+    "PBX_PROVISIONING_CONFERENCE_RANGE", "4000-4999"
+)
+# AI agents on the shared PBX: its ARI, one Stasis application per company.
+PBX_PROVISIONING_ARI_ENDPOINT = os.getenv("PBX_PROVISIONING_ARI_ENDPOINT", "")
+PBX_PROVISIONING_ARI_USER = os.getenv("PBX_PROVISIONING_ARI_USER", "")
+PBX_PROVISIONING_ARI_PASSWORD = os.getenv("PBX_PROVISIONING_ARI_PASSWORD", "")
+PBX_PROVISIONING_ARI_WS_CLIENT = os.getenv("PBX_PROVISIONING_ARI_WS_CLIENT", "")
 
 # Human contact center on the platform's Asterisk.
 CONTACT_CENTER_ENABLED = _env_bool("CONTACT_CENTER_ENABLED")

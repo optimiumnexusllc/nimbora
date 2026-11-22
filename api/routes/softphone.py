@@ -85,9 +85,27 @@ async def config(
 
 
 @router.get("/directory")
-async def directory(authorization: str | None = Header(default=None)) -> dict[str, Any]:
+async def directory(
+    q: str = "", authorization: str | None = Header(default=None)
+) -> dict[str, Any]:
+    """Colleagues (with presence), services and customers; ``q`` searches
+    the customers by name or number."""
     device = await _device(authorization)
-    return await _call(softphone.directory(device))
+    return await _call(softphone.directory(device, query=q))
+
+
+class SoftphonePresenceRequest(BaseModel):
+    state: Literal["available", "away", "offline"]
+    status: str = Field(default="", max_length=128)
+
+
+@router.put("/presence")
+async def save_presence(
+    request: SoftphonePresenceRequest, authorization: str | None = Header(default=None)
+) -> dict[str, str]:
+    """The employee's own presence, seen by their colleagues."""
+    device = await _device(authorization)
+    return await _call(softphone.save_presence(device, request.state, request.status))
 
 
 @router.get("/history")

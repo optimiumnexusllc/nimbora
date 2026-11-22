@@ -147,7 +147,8 @@ export class Phone {
         const socket = new JsSIP.WebSocketInterface(account.wss_url);
         const ua = new JsSIP.UA({
             sockets: [socket],
-            uri: `sip:${account.username}@${account.sip_domain}`,
+            uri: `sip:${account.sip_identity || account.username}@${account.sip_domain}`,
+            authorization_user: account.username,
             password: account.password,
             display_name: account.display_name,
             register: true,

@@ -1,0 +1,59 @@
+---
+title: "Smart routing"
+description: "Send each AI hand-off to the right human: VIP customers, their usual advisor, the skill asked, the caller's language — based on who is free right now on your PBX."
+---
+
+When an AI agent hands a call over to a human, **smart routing** chooses *who* at that very moment, from your routing policy and the **live state of your enterprise PBX** (who is logged in, free, on a call or paused).
+
+It needs the [enterprise PBX](/integrations/telephony/enterprise-pbx) connected. Customer-based rules (VIP, usual advisor) also need **customer memory** enabled.
+
+<Frame>
+  <img src="/images/screenshots/pbx-routing.webp" alt="Routage tab of the PBX page: decision order, default and VIP destinations, usual advisor, skills, languages, skills and languages of each extension, and the simulator showing where a customer would go" />
+</Frame>
+
+## Decision order
+
+| Order | Rule | Goes to |
+|---|---|---|
+| 1 | The customer has the **`vip`** tag in customer memory | The VIP destination |
+| 2 | The customer has a **usual advisor** who is free right now | That advisor's extension |
+| 3 | The AI agent asked for a **skill** (« facturation », « support technique »…) | The skill's queue if someone in it is free, otherwise a free extension that has the skill (and speaks the caller's language) |
+| 4 | The call's **language** has a destination | That queue or extension |
+| 5 | — | The **default destination** |
+
+A destination counts as free when at least one member of the queue is logged in, not paused and not on a call — or, for an extension, when that person is not on a call.
+
+The skill asked by the AI is matched loosely: accents and case are ignored, and « facture » finds « Facturation ».
+
+### The usual advisor is learned automatically
+
+Each answered PBX call of **30 seconds or more** with a known customer records the employee who handled it (the extension that answered an inbound call, or the one that placed an outbound call) in that customer's profile. Nothing to enter by hand. The policy sets after how many days an advisor is forgotten (180 by default).
+
+## When nobody is free
+
+| Setting | What happens |
+|---|---|
+| **Attente dans la file** | The call goes to the skill, language or default queue anyway; the caller waits for the next free agent. |
+| **Rappel par un conseiller** | The call stays with the AI agent, which tells the caller a human will call back. A callback is scheduled after the configured delay and appears in **Rappels** and supervision. |
+| **L'agent IA continue** | The call stays with the AI agent, which tells the caller nobody is available and keeps helping. |
+
+## Set it up
+
+1. **PBX → Routage**: choose the default destination, the VIP destination, the usual-advisor rule, then add your **skills** (name + queue) and **languages** (code such as `en` + queue or extension).
+2. In the table below, tick the **skills** of each extension and type its **languages** (`fr, en`). This lets a call reach a skilled person directly when the skill's queue is busy.
+3. **Save the policy.**
+4. In the agent's **transfer tool**, choose the **Routage intelligent** tab. The AI then gets an optional `skill` argument: describe your skills in the tool description so it knows when to use them (« Utilise skill=facturation pour les questions de facture »).
+
+## Simulator
+
+The **simulator** at the bottom of the tab answers « where would this customer go right now? ». Type the caller's number, the language and the skill; it shows the destination, the reason, and each rule that was skipped (« Client non VIP », « Conseiller habituel (Koffi Yao) indisponible »…). The same reason is written to the call logs at each real hand-off.
+
+## API
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/v1/pbx/routing` | Read the policy |
+| `PUT` | `/api/v1/pbx/routing` | Save the policy (values are cleaned: unknown destinations dropped, delays bounded) |
+| `POST` | `/api/v1/pbx/routing/simulate` | `{caller_number, language, skill}` → `{destination, reason, explanation, steps}` |
+
+Destinations are written `pbx-queue:<id>` or `pbx-extension:<number>`.

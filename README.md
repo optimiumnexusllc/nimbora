@@ -131,6 +131,25 @@ en-têtes SIP, page d'accueil. Depuis NIMBORA, vous suivez les appels en cours, 
 files, vous **routez un numéro du PBX vers un agent IA** en un clic, et chaque appel humain
 rejoint l'historique client, à côté des appels IA, de WhatsApp et du chat web.
 
+**Deux façons de l'obtenir, selon l'offre** : un **espace sur le PBX partagé de la plateforme**,
+créé en un clic (« Activer la téléphonie ») ou dès l'inscription — tenant isolé, compte de
+service aux droits minimaux, agents IA reliés, rien à installer — ou **son propre PBX** sur un
+serveur dédié. Les **postes humains** (conseillers et postes du PBX) sont plafonnés par l'offre.
+
+<p align="center"><img src="docs/images/screenshots/pbx-activation.webp" alt="Activer la téléphonie sur le PBX de la plateforme" width="88%"></p>
+
+Les **minutes des appels humains** du PBX sont comptées à part des minutes IA (appels décrochés
+avec un client, hors appels pris par l'IA), avec leur forfait et leur prix de dépassement par
+offre ; l'opérateur exporte chaque mois la consommation de toutes les entreprises pour facturer.
+
+<p align="center"><img src="docs/images/screenshots/superadmin-monthly-usage.webp" alt="Consommation du mois : minutes IA et minutes humaines par entreprise" width="88%"></p>
+
+**Exploitation** : sauvegarde **chiffrée** du PBX et de la plateforme chaque nuit (bases,
+configuration, messageries, enregistrements), copie hors serveur, restauration vérifiée qui
+refuse une sauvegarde altérée ; métriques **Prometheus** (PBX de chaque entreprise, alertes de
+supervision, minutes du mois, fraîcheur des sauvegardes), 13 règles d'alerte et un tableau de
+bord **Grafana** prêts à l'emploi ([sauvegarde et supervision](docs/deployment/backup-monitoring.mdx)).
+
 L'administration se fait aussi depuis NIMBORA :
 
 - **postes** en une action (ligne navigateur ou SIP, messagerie, accès, agent), à l'unité ou par
@@ -174,7 +193,7 @@ Aucun client ne reste sans réponse.
 
 Une seule application, à votre marque, sur **Windows, macOS, Linux, Android, iPhone/iPad** et dans
 **le navigateur** : appels entrants et sortants sur le PBX, attente, transfert, clavier, messagerie,
-appels récents, annuaire des collègues, ne pas déranger et renvoi. Le jumelage se fait par **QR code**
+appels récents, annuaire des collègues (avec leur présence) et des clients, ne pas déranger et renvoi. Le jumelage se fait par **QR code**
 ou code à usage unique depuis la console ; le mot de passe SIP n'est jamais stocké, ni sur l'appareil
 ni dans la plateforme, et chaque appareil se révoque en un clic.
 
@@ -247,6 +266,8 @@ swahili, haoussa, yoruba, lingala…
   e-mails (même dictés), téléphones et adresses IP dans tout ce qui est conservé.
 - **Mode PCI** : l'agent IA n'entend jamais un numéro de carte, ni la supervision, ni les journaux.
 - **Durées de conservation** des enregistrements, transcriptions et de la mémoire client, purge quotidienne.
+- **Stockage privé** : enregistrements et documents dans un bucket fermé, chaque lien d'écoute ou
+  d'envoi est **signé et expire** ; sortie de MinIO vers un S3 maintenu en trois commandes.
 - **Droit d'accès et droit à l'effacement** à partir d'un numéro, avec registre des demandes,
   appels humains enregistrés sur le PBX compris.
 - **Numéros bloqués et opposition** : un client qui dit « ne m'appelez plus » n'est plus jamais
@@ -276,8 +297,8 @@ swahili, haoussa, yoruba, lingala…
 | **Confidentialité** | Masquage des données personnelles, mode PCI, journaux masqués, durées de conservation, export et effacement RGPD |
 | **SaaS multi-entreprises** | Offres et abonnements, essai gratuit, quotas de minutes, limites par client, paiement Stripe optionnel, console opérateur |
 | **Téléphonie** | Asterisk (SIP), Twilio, Vonage, Telnyx, Plivo, WhatsApp… |
-| **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; création de postes en une action et import CSV ; files avec débordement vers un agent IA ; horaires de l'entreprise appliqués aux numéros ; **serveurs vocaux en éditeur visuel**, messages dits par la voix de l'entreprise, touche « parler à l'agent IA » ; numéros vers IA, menu, file, poste ou messagerie ; **lignes opérateurs SIP** et routes sortantes avec relais et numéro présenté ; **appels sortants des agents IA par les lignes du PBX** ; restrictions d'appel par poste ; **groupes d'appel**, renvois, ne-pas-déranger et agent IA quand un poste ne répond pas ; **salles de conférence** avec participants en direct ; **enregistrement des appels humains** copiés, transcrits et masqués ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 110 ACL) |
-| **NIMBORA Softphone** | Application Windows, macOS, Linux, Android, iOS et web (Tauri 2 + WebRTC) : appels, attente, transfert, DTMF, messagerie, récents, annuaire, ne pas déranger, renvoi ; jumelage par QR code, jeton d'appareil révocable, secret SIP jamais stocké |
+| **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; création de postes en une action et import CSV ; files avec débordement vers un agent IA ; horaires de l'entreprise appliqués aux numéros ; **serveurs vocaux en éditeur visuel**, messages dits par la voix de l'entreprise, touche « parler à l'agent IA » ; numéros vers IA, menu, file, poste ou messagerie ; **lignes opérateurs SIP** et routes sortantes avec relais et numéro présenté ; **appels sortants des agents IA par les lignes du PBX** ; restrictions d'appel par poste ; **groupes d'appel**, renvois, ne-pas-déranger et agent IA quand un poste ne répond pas ; **salles de conférence** avec participants en direct ; **enregistrement des appels humains** copiés, transcrits et masqués ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 112 ACL) |
+| **NIMBORA Softphone** | Application Windows, macOS, Linux, Android, iOS et web (Tauri 2 + WebRTC) : appels, attente, transfert, DTMF, messagerie, récents, **annuaire unifié avec présence des collègues et clients**, ne pas déranger, renvoi ; jumelage par QR code, jeton d'appareil révocable, secret SIP jamais stocké |
 | **Marque blanche** | Nom de la plateforme et du PBX centralisés (`BRAND_*`), e-mails et page de réinitialisation à la marque, en-têtes SIP |
 | **Sécurité** | Isolation stricte entre entreprises, protection SSRF, secrets générés à l'installation, télémétrie désactivée |
 
@@ -418,7 +439,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Rappels automatiques, passation IA → humain avec fiche de contexte |
 | 🔜 | Catalogue : produits, biens, chambres… avec prix, stock et recherche par l'agent |
 | 🔜 | Prospects : qualification (besoin, budget), pipeline |
-| 🔜 | Routage intelligent (compétences, langue, client VIP, conseiller habituel) |
+| ✅ | **Routage intelligent** des passations IA → humain : client VIP, **conseiller habituel** (appris des appels du PBX), compétence demandée par l'IA, langue, destination par défaut — selon qui est libre **à l'instant** ; si personne n'est libre : file, rappel planifié ou l'IA continue ; **simulateur** qui explique chaque décision |
 
 ### Phase 4 — SaaS commercial
 
@@ -442,7 +463,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Routage d'un numéro du PBX vers un agent IA (`Stasis(app,inbound,called=…)`), sans jamais écraser une destination existante ; retrait propre des deux côtés |
 | ✅ | Console : appels en cours (raccrocher), agents (pause, reprise, déconnexion), files, postes, numéros, journal des appels ; pannes partielles affichées par section |
 | ✅ | Événements du PBX : chaque appel humain rejoint l'historique client multicanal (appels manqués compris), dédoublonné, sans doublonner les appels IA |
-| ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **110 ACL** (testé contre le code) |
+| ✅ | Kit d'installation Debian 12 : dernière version stable épinglée, **tous les secrets générés** (les mots de passe publics par défaut de l'installateur ne servent jamais), interface du moteur non installée, pare-feu ARI/AMI en IPv4 et IPv6, compte de service limité à **112 ACL** (testé contre le code) |
 | ✅ | Marque blanche : e-mails d'authentification en français à votre nom (fini `noreply@wazo.community` et le lien vers `app.wazo.io`), page `/pbx-password` à la marque (sans SSRF), en-têtes SIP `User-Agent`/`Server`, page d'accueil, bannière |
 | ✅ | Conformité : moteur GPL-3.0 non modifié, licences conservées sur le serveur, `NOTICE.md` ; NIMBORA (BSD-2) reste un programme distinct |
 | ✅ | Validation sur un PBX réel (moteur 26.11, Asterisk 22.12) : modules `chan_websocket` / `res_websocket_client` chargés, kit d'installation rejoué dans un conteneur Debian 12, connexion et abonnement aux événements depuis la plateforme ([journal](docs/validation/phase5-lab.md#rapport-détape-2--incus-pare-feu-pbx-pile-nimbora-21-novembre-2026)) |
@@ -471,7 +492,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Par poste : **renvois** (toujours, si occupé, si pas de réponse), **ne pas déranger**, et destination quand personne ne décroche — dont un **agent IA qui répond à la place du collaborateur** |
 | ✅ | **Salles de conférence** : code participants et code organisateur (jamais renvoyés), places, annonces, enregistrement ; **en direct** : participants, durée, organisateurs, micro coupé ou rendu, exclusion ; numéro public vers une salle |
 | 🔜 | Horaires des routes sortantes, interception d'appel, parcage, interphone |
-| 🔜 | Compétences des agents et routage par compétence entre IA et conseillers |
+| ✅ | **Compétences et langues par poste**, routage par compétence entre IA et conseillers (file de la compétence, sinon un poste libre qui l'a et parle la langue) — 🧪 à valider sur le PBX réel |
 | ✅ | **Enregistrements des appels humains** : appels reçus, émis ou internes, sur tous les postes ou certains ; copie dans le stockage de la plateforme (webhook + rattrapage toutes les 10 min), retrait du PBX optionnel (copie unique), **transcription masquée** (cartes, CVV, IBAN, n° de sécurité sociale toujours masqués), recherche par mot prononcé, écoute par lien temporaire, conservation, accès et effacement RGPD |
 
 **5.3 Centre d'appels humain unifié**
@@ -484,7 +505,9 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | **Builds vérifiés sur la CI** pour les six cibles : PWA, Windows (`.msi`/`.exe`), macOS universel (`.dmg`, non signé sans certificat), Linux (`.deb`/`.rpm`/`.AppImage`), Android (`.apk`), iOS (simulateur) |
 | 🧪 | Appels réels sur un PBX du moteur (WebSocket `/api/asterisk/ws`, certificats) ; installation des paquets sur chaque système |
 | 🔜 | Appels entrants application fermée sur mobile (notifications push VoIP PushKit / FCM relayées par la plateforme), signature des builds (Apple, Windows, Play Store) |
-| 🔜 | Présence des collègues ; annuaire unifié (contacts du PBX + mémoire client) ; transfert avec consultation, conférence à trois |
+| ✅ | **Présence des collègues** (disponible, en appel, sonne, ne pas déranger, absent, hors ligne, avec message) dans le Softphone et l'onglet Postes de la console ; « Ma présence » réglable depuis l'application ; repli sur les appels en cours si le compte de service n'a pas encore le droit de présence — 🧪 à valider sur le moteur réel |
+| ✅ | **Annuaire unifié** du Softphone : collègues, groupes, files et clients de la mémoire client (récents, recherche serveur par nom ou numéro, VIP, conseiller habituel) ; nom du client affiché à l'appel entrant |
+| 🔜 | Transfert avec consultation, conférence à trois |
 | ✅ | **Supervision unifiée IA + humains** : un seul écran pour les appels IA, le centre d'appels intégré et le PBX ; files du PBX en direct avec les **appelants en attente** (action AMI `QueueStatus` par `wazo-amid`, toujours sur une file nommée de l'entreprise), conseillers (en appel, sonne, en pause, déconnecté ; pause et reprise), conversations de tous les postes |
 | ✅ | **Écoute, chuchotement, intervention via le PBX** : le PBX fait sonner le poste du superviseur (`POST /calls`) puis `ChanSpy` sur la seule ligne visée, dans un contexte `nimbora-supervision` installé par le kit et joignable par l'API uniquement (dialplan exécuté sur Asterisk 20 : cibles ou options piégées raccrochées avant `ChanSpy`) ; désactivée par défaut, activation après confirmation de l'information des salariés, modes autorisés, postes superviseurs, **postes jamais écoutés**, **journal des écoutes** |
 | ✅ | **Temps réel par WebSocket** (`/supervision/stream`) : webhooks du PBX (appels créés, décrochés, terminés ; agents en pause) et appels IA notifient la console par Redis ; seuls les vrais changements sont envoyés (pas les horloges) ; un seul relevé du PBX partagé entre superviseurs ; repli automatique en rafraîchissement toutes les 5 s |
@@ -501,11 +524,18 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 
 | Statut | Fonctionnalité |
 |---|---|
-| 🔜 | Tenant PBX créé automatiquement à l'inscription d'une entreprise ; postes plafonnés par l'offre |
-| 🔜 | PBX partagé de l'opérateur (multi-tenant) ou PBX dédié par client, selon l'offre |
-| 🔜 | Facturation des minutes humaines (journal des appels) avec les minutes IA |
-| 🔜 | Haute disponibilité, sauvegarde et restauration du PBX, métriques Prometheus |
-| 🔜 | **Stockage objet durable** : MinIO a retiré ses images publiques (quay.io et Docker Hub répondent 401 / accès refusé, constaté le 21 novembre 2026) ; la plateforme utilise le build Bitnami de la dernière version libre (`bitnamilegacy/minio:2025.4.22`, dépôt figé, plus mis à jour, épinglé par digest). À remplacer par une image MinIO construite par nos soins depuis les sources (AGPL-3.0) ou par Garage / SeaweedFS |
+| ✅ | Tenant PBX créé automatiquement (à l'inscription ou en un clic « Activer la téléphonie ») sur le PBX partagé : tenant, contextes interne/entrant/sortant, compte de service limité au tenant, configuration ARI des agents IA (application Stasis propre), webhook d'événements ; idempotent (une reprise complète sans doublon) ; connexion gérée par la plateforme, invisible et non modifiable par l'entreprise ; retrait par l'opérateur |
+| ✅ | PBX partagé de l'opérateur (`install.sh --operator`, compte d'approvisionnement aux droits minimaux) ou PBX dédié par client, selon l'offre (`pbx_shared`, `pbx_dedicated`) ; postes humains plafonnés par l'offre (conseillers du centre intégré + postes du PBX, import CSV limité aux postes restants, « Postes 4 / 15 » dans la console) |
+| ✅ | Multi-tenant validé sur le moteur réel (26.11, laboratoire) : tenants, contextes, comptes de service et configuration ARI créés par l'API en ~1,3 s, reprise sans doublon, isolation (le compte d'une entreprise est refusé sur le tenant d'une autre), postes 1001 dans deux entreprises, ACL du compte d'approvisionnement ([journal](docs/validation/phase5-lab.md)) ; les contextes créés d'office par le moteur reçoivent leurs plages de numéros manquantes |
+| 🧪 | Agents IA de plusieurs entreprises sur le même Asterisk (une application Stasis chacune) et appel entre postes de deux tenants (doit échouer) : clés de fournisseur IA non disponibles |
+| ✅ | Facturation des minutes humaines avec les minutes IA : appels décrochés avec un client sur le PBX (hors appels internes et hors appels pris par l'IA), comptés à la fin de chaque appel et rattrapés toutes les heures depuis le journal des appels (jamais deux fois) ; minutes humaines incluses et prix du dépassement par offre ; consommation sur la page Abonnement ; rapport mensuel par entreprise (minutes IA, minutes humaines, dépassements) et export CSV pour la facturation |
+| ✅ | Sauvegarde et restauration du PBX et de la plateforme : chaque nuit, bases du moteur, configuration, secrets du kit, messageries, sons et enregistrements ; chiffrement AES-256, copie hors serveur, empreintes SHA-256, restauration vérifiée (`--check`) qui refuse une sauvegarde altérée |
+| ✅ | Métriques Prometheus d'exploitation : PBX de chaque entreprise (joignable, événements, alertes de supervision, rattrapage des minutes), abonnements, minutes IA et humaines du mois, fraîcheur des sauvegardes ; 13 règles d'alerte et tableau de bord Grafana « NIMBORA operations » |
+| ✅ | Sauvegarde et restauration du PBX validées sur le moteur réel (laboratoire) : sauvegarde chiffrée, `restore.sh --check`, restauration complète en 58 s (tenants, postes et files identiques) ; la sauvegarde couvre aussi l'état du moteur (clés des services, DTLS, `astdb`, sons) ; métrique de fraîcheur dans Prometheus, 5 cibles sur 5, tableau Grafana provisionné |
+| 🔜 | Haute disponibilité du PBX (serveur de secours, bascule) |
+| ✅ | **Sécurité du stockage** : le bucket des enregistrements est désormais **privé** (la politique anonyme lecture/écriture/liste des versions précédentes, joignable par `/voice-audio/`, est retirée au démarrage) ; tous les liens de téléchargement et d'envoi sont **signés et expirent**, calculés pour l'adresse publique |
+| ✅ | **Sortie de MinIO vers un stockage S3 maintenu** (Scaleway, OVHcloud, Cloudflare R2, Wasabi, AWS, SeaweedFS, Garage) : outil `scripts/migrate_object_store.py` copy / verify / switch (reprise sans doublon, vérification des tailles, bascule de la base), liens signés pour l'adresse publique (`S3_PUBLIC_ENDPOINT_URL`) |
+| 🔜 | **Stockage objet auto-hébergé maintenu par défaut** : MinIO a retiré ses images publiques (constaté le 21 novembre 2026) ; la plateforme utilise encore le build Bitnami figé `bitnamilegacy/minio:2025.4.22` (épinglé par empreinte, plus mis à jour). Remplacement par SeaweedFS intégré au compose, à valider sur le laboratoire (recette dans [la documentation](docs/deployment/object-storage.mdx)) |
 
 **5.5 Marque blanche totale du PBX**
 

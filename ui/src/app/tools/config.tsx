@@ -50,7 +50,7 @@ export type ToolCategory =
 
 
 export type EndCallMessageType = "none" | "custom" | "audio";
-export type TransferDestinationSource = "static" | "dynamic" | "context_mapping";
+export type TransferDestinationSource = "static" | "dynamic" | "context_mapping" | "smart";
 
 export interface ContextDestinationRouteRow extends ContextDestinationRoute {
     id: string;

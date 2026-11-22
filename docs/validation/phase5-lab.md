@@ -269,6 +269,363 @@ création idempotente d'un contexte interne (postes 1000-1999, groupes 2000-2999
 15 chiffres : le moteur exige début et fin de même longueur) et d'un contexte sortant inclus
 par l'interne. Commit `4478631`, test `test_tenant_contexts_cover_what_the_platform_reads_by_type`.
 
+## Rapport d'étape 6 — PBX partagé de l'opérateur, PR #1 `feat/lot-a-saas-tenants` (21 novembre 2026)
+
+Branche récupérée, fusionnée avec `main` (trois conflits résolus : options du kit,
+README du kit, page PBX de la console), images API et UI construites depuis la branche
+(`REGISTRY=nimbora-lot-a` dans le `.env` du laboratoire pour les distinguer de celles de
+`main`), migration `b5c6d7e8f9a0` appliquée au démarrage.
+
+| Étape | Résultat |
+|---|---|
+| `create_service_account.py --provisioner` dans le conteneur : compte `nimbora-provisioning` dans le tenant principal, politique = intégration (110) + approvisionnement (11) = **121 ACL** | ✅ |
+| `PBX_PROVISIONING_*` côté NIMBORA : URL privée `https://10.250.0.10` (certificat non vérifié), ARI `http://10.250.0.10:5039`, `ON_SIGNUP=false` | ✅ après 🐛 n° 8 (variables non transmises par compose) |
+| Deux entreprises de test créées (inscription ouverte quelques minutes puis refermée), administrateur passé super-admin pour l'API opérateur | ✅ organisations 2 et 3 |
+| `GET /pbx/plan` : `shared: true`, `shared_available: true` (hors SaaS, tout est permis) | ✅ |
+| `POST /pbx/provision` entreprise A : tenant `org2` (« Entreprise 2 (#org2) »), contextes interne/entrant/sortant, compte `nimbora-org2`, configuration ARI n° 2 « PBX de la plateforme (agents IA) », abonnement webhook, connexion `managed: true`, `status: ok`, moteur 26.11 | ✅ en 1,3 s |
+| `POST /pbx/provision` entreprise B : tenant `org3`, même chose, ARI n° 3 | ✅ en 1,2 s |
+| Second `POST /pbx/provision` sur chacune : même tenant, même ARI, rien de doublé (idempotence) | ✅ |
+| L'entreprise modifie sa connexion gérée (`PUT /pbx/connection`) | ✅ refusé 409 « géré par la plateforme » |
+| Isolation côté moteur : jeton du compte de service d'« Entreprise test » sur le tenant `org2` → **401**, sur son propre tenant → 200 (ses 2 postes seulement) ; le compte d'approvisionnement voit les 4 tenants | ✅ |
+| Création du poste 1001 dans A puis dans B | ❌ 502 « 409 Conflict … /auth/0.1/users » → 🐛 n° 9 |
+| Création d'un numéro public `+2250700000002` dans A | ❌ 502 « exten: String does not match expected pattern » → 🐛 n° 10 (bogue de `main`, pas de la PR) ; sans `+` : ✅ |
+| Après correctifs (image API reconstruite depuis la branche fusionnée) : poste 1001 dans A **et** dans B, identifiants `org2-poste1001` / `org3-poste1001` ; « Entreprise test » garde `poste1001` et `poste1002` ; chaque tenant ne contient que ses postes (`confd/users` par tenant) | ✅ |
+| Inventaire de A : son seul poste 1001 et son numéro ; inventaire de B : idem ; aucun ne voit l'autre | ✅ |
+| Numéro public `+2250700000003` dans B après le correctif n° 10 : créé (`2250700000003` sur le moteur), visible seulement dans B | ✅ |
+| Kit lab : `--shared-pbx` (moteur `--operator`, compte d'approvisionnement, `PBX_PROVISIONING_*` dans le `.env`) rejoué sur le laboratoire avec `--only nimbora` | ✅ |
+| Tests : branche 91 tests PBX/provisioning/SaaS, `main` 89 + kits 22 et 24 ; `test_stream_pushes_changes_on_pbx_events` échoue dans la suite complète et passe seul (connu, antérieur à la PR) | ✅ |
+
+### Reste à valider pour la PR (🧪)
+
+- ACL exactes du compte d'approvisionnement : vérifiées par l'usage réel (tenants, contextes,
+  politiques, comptes, inclusion de contextes) ; `auth.users.*.policies.*.create` a fonctionné.
+- Agents IA de deux entreprises sur le même Asterisk (deux applications Stasis) : non
+  vérifiable sans clé de fournisseur IA.
+- Appel humain réel entre deux postes de tenants différents (doit échouer) : à faire lors du
+  test humain.
+- Les contextes entrants créés par le moteur pour `org2`/`org3` n'ont **aucune plage**
+  (`incall_ranges: []`) : la création de numéros fonctionne quand même sur 26.11, à surveiller.
+  → **Corrigé** (branche `feat/lot-a-object-storage`) : le moteur crée ces contextes avec le
+  tenant ; le provisionnement (et `ensure_tenant_contexts.py`) complète désormais les plages
+  vides (entrants 4 à 15 chiffres, postes, groupes, files, conférences) sans toucher aux plages
+  déjà définies. À revérifier : `POST /pbx/provision` sur `org2` puis `confd/contexts` du tenant.
+
+
+### 🐛 n° 8 — `PBX_PROVISIONING_*` (et `BRAND_*`) n'atteignaient pas le conteneur API
+
+Le service `api` de `docker-compose.yaml` liste ses variables une à une : celles du `.env`
+qui n'y figurent pas sont ignorées. Aucun `PBX_PROVISIONING_*` n'était transmis, la
+plateforme ne « voyait » donc pas de PBX partagé ; les `BRAND_*` de la marque blanche non
+plus. Correction : les deux fichiers compose transmettent chaque variable lue par
+`api/constants.py` (test qui compare les deux listes), et `branding.py` traite une variable
+vide comme absente (compose transmet `${VAR:-}` vide). Commits `32e1456` (main) et
+`edc0466` (branche).
+
+### 🐛 n° 9 — identifiants `poste1001` non uniques entre tenants
+
+Les identifiants de connexion (wazo-auth) sont uniques sur **tout le moteur**, pas par
+tenant : le `poste1001` d'« Entreprise test » bloque celui de l'entreprise A (409), et le
+moteur annule bien la création (aucun utilisateur orphelin). Correction (`admin.py`) : sur
+une connexion gérée par la plateforme, l'identifiant par défaut devient `org2-poste1001` ;
+un PBX dédié garde `poste1001` ; une adresse e-mail reste l'identifiant. Le faux PBX des
+tests refuse désormais un identifiant en double. Test
+`test_logins_on_the_shared_pbx_carry_the_tenant_slug`.
+
+### 🐛 n° 10 — le moteur refuse le `+` des numéros publics
+
+`POST /confd/1.1/extensions` avec `exten: "+2250700000002"` → « String does not match
+expected pattern », sur le tenant dédié comme sur les tenants partagés : aucun numéro en
++E.164 ne pouvait être créé depuis NIMBORA. Correction (`main`, `service.py` et
+`numbers.py`) : le numéro est écrit et comparé **sans son `+`** côté moteur (`pbx_exten`),
+NIMBORA et l'argument `called=` de Stasis gardent le +E.164, et l'inventaire retrouve les
+numéros confiés à l'IA sous les deux formes. Le faux PBX refuse le `+` comme le moteur.
+## Rapport d'étape 7 — vérifications pour les PR #2 et #3 (21 novembre 2026)
+
+**Inscription publique.** Fermée depuis la création du compte administrateur :
+`ENABLE_SIGNUP=false`, `/api/v1/health` → `signup_enabled: false`, `POST /auth/signup` → 403.
+Elle n'a été rouverte que quelques minutes pour créer les deux entreprises de test, puis
+refermée (vérifié après chaque bascule).
+
+**PR #2, connexion et inscription en français.** Interface construite depuis la branche
+`feat/auth-fr-signup-control`, lancée dans un conteneur jetable branché sur l'API du
+laboratoire (inscription fermée), captures Chromium : `/auth/login` entièrement en français
+(« Connexion », « Saisissez votre e-mail et votre mot de passe », « Se connecter ») ;
+`/auth/signup` affiche « Inscriptions fermées — Les comptes de cette plateforme sont créés par
+son administrateur… » au lieu du formulaire ; un mauvais mot de passe donne « E-mail ou mot de
+passe incorrect ». ✅ Captures jointes au rapport de session (non versionnées).
+
+**PR #3, minutes humaines : sens du champ `duration` du journal d'appels du moteur.**
+Outil : conteneur Incus jetable `nimbora-siptest` (Debian 12, baresip 1.0) sur le pont privé,
+deux clients SIP enregistrés sur les postes 1002 et 1003 (poste 1003 créé pour servir de
+répondeur), audio 8 kHz dans les deux sens (RTP établi des deux côtés).
+
+| Appel réel (tenant « Entreprise test », `call-logd/1.0/cdr`) | start → answer | start → end | end → answer | `duration` |
+|---|---|---|---|---|
+| n° 2 : décroché automatique, raccroché par l'appelant | 0,4 s | 40,0 s | 39,6 s | **39** |
+| n° 3 : décroché après 12 s de sonnerie (`/accept` envoyé par `ctrl_tcp`) | 12,1 s | 42,0 s | 29,9 s | **29** |
+| n° 1 : jamais décroché (client mal configuré) | `answer: null` | 31,5 s | — | `null`, `answered: false` |
+
+Conclusion ✅ : sur Wazo 26.11, `duration` est le temps **du décroché au raccroché**, en
+secondes entières **tronquées** (29,9 → 29), `null` pour un appel non décroché ; la sonnerie
+n'est jamais comptée. `billing.py` de la PR #3 lit `duration` et `answered` : c'est le bon
+champ. Les appels de test sont `call_direction: internal` et ne sont donc pas facturables, ce
+qui est le comportement voulu ; un appel `inbound`/`outbound` réel demande un opérateur (🧪).
+
+**Constat utile pour le test humain.** Le moteur identifie un poste par le **nom du point de
+terminaison** (`identify_by = username,ip`, ex. `pqxtdakl`), le « SIP username » rendu par
+NIMBORA (`poste7640`) ne servant qu'à l'authentification. Un client SIP générique doit donc
+mettre le nom du point de terminaison en identité et le SIP username en identifiant
+d'authentification ; mes premiers essais avec le seul SIP username ont été refusés (« No
+matching endpoint ») et fail2ban `asterisk-wazo` a banni le conteneur de test après 15
+échecs, preuve que cette prison fonctionne. Amélioration proposée : renvoyer aussi le nom du
+point de terminaison dans la fiche d'identifiants d'un poste (`ExtensionCredentials`).
+
+## Rapport d'étape 8 — PR #3, #4 et #5 sur le laboratoire (21 novembre 2026)
+
+Branche `feat/lot-a-object-storage` (PR #5, qui contient #1, #3 et #4) fusionnée avec `main`,
+images construites (`REGISTRY=nimbora-lot-a5`), déployée par le kit lab ; migrations
+`c6d7e8f9a0b1` et `d7e8f9a0b1c2` appliquées (`alembic current` → `d7e8f9a0b1c2 (head)`).
+
+### Sécurité du bucket (PR #5)
+
+| Vérification | Résultat |
+|---|---|
+| Avant tout : `mc anonymous get local/voice-audio` → `private`, `GET /voice-audio/?list-type=2` via Traefik → **403** | ✅ (déjà privé) |
+| Bucket rendu volontairement public (`mc anonymous set download`, listage → 200) puis démarrage de l'API de la PR : politique → `private`, listage → **403** | ✅ l'API retire la politique anonyme au démarrage |
+| Lien signé (enregistrement de test déposé par la couche de stockage) à travers Traefik | ✅ 200, 16 044 octets |
+| Signature altérée / autre objet avec la même signature / chemin non signé | ✅ 403 / 403 / 403 |
+| Lien à 2 s de validité lu après 4 s | ✅ 403 (expiré) |
+| Type de contenu du lien « inline » : `application/octet-stream` au lieu de `audio/wav` | 🐛 n° 12, corrigé (`response-content-type` demandé comme sur S3), test unitaire |
+
+### Minutes humaines (PR #3) sur de vrais journaux d'appels
+
+Outils : conteneur `nimbora-siptest` (postes 1002 et 1003) et conteneur `nimbora-operator`
+(10.250.0.208) qui joue l'opérateur SIP : ligne opérateur par IP créée depuis NIMBORA,
+route sortante `_00.` (2 chiffres retirés), numéro public `2250700000001` vers le poste 1003.
+Constat : le moteur identifie les postes par `auth_username,username,ip`, le trunk par IP.
+
+| Vérification | Résultat |
+|---|---|
+| `duration` = décroché → raccroché (rapport d'étape 7 ; confirmé sur les nouveaux appels : 21 s et 14 s) | ✅ |
+| `GET /cdr?from=…&order=start&direction=asc&limit=2&offset=0/2/4` : identifiants 1-2, 3-4, 5-6, `total`/`filtered` = 7, départs croissants | ✅ pagination correcte |
+| Appel **sortant** par la ligne opérateur (1003 → 0033123456789, 22 s) : `call_direction: outbound`, `answered: true`, `duration: 21` | ✅ |
+| Appel **entrant** de l'opérateur vers le numéro public (→ 1003, 15 s) : `inbound`, `answered: true`, `duration: 14` | ✅ |
+| Appel interne 1002 → 1003 (29 s) et appel sortant non décroché | ✅ non facturables (interne / `answered: false`) |
+| `sync_human_minutes` : les deux appels externes déjà comptés par le webhook ; deux exécutions → toujours 2 lignes | ✅ aucun doublon |
+| Rattrapage : lignes effacées et `usage_synced_at` remis à zéro → `counted: 2` (exactement les deux externes), seconde exécution `counted: 0` | ✅ |
+| `GET /api/v1/saas/admin/usage?month=2026-11` : 404 tant que `SAAS_MODE` n'atteint pas le conteneur | 🐛 n° 13, corrigé (compose) |
+| Même appel après correction, `SAAS_MODE=true` : organisation 1 `human_minutes: 0.58` (35 s), 1 000 incluses, 0 dépassement ; CSV `;` identique | ✅ (`company_name` vide pour les organisations créées hors SaaS : à renseigner par l'opérateur) |
+| Nom saisi à l'inscription (`Awa Koné Test`) renvoyé par `/auth/me` | ✅ (organisation 4 de test créée pour cela, inscription refermée) |
+| `test_pbx_groups_conferences.py` (cassé sur `main` par 9969fa0, réparé dans la branche) | ✅ passe dans la suite de la branche |
+
+### Sauvegarde et restauration du PBX (PR #4)
+
+| Vérification | Résultat |
+|---|---|
+| `scripts/backup.sh` avec `BACKUP_PASSPHRASE_FILE` de test : `pg_dumpall`, archives chiffrées (`.enc`), `SHA256SUMS`, `manifest.json` (moteur `26.11~20261013…`) | ✅ 15,5 Mo |
+| Dossiers de Wazo 26.11 présents sur le moteur mais **absents de la liste** : `var/lib/wazo-auth-keys` (identifiants internes des services), `var/lib/asterisk/keys` (DTLS WebRTC), `var/lib/asterisk/astdb.sqlite3`, `var/lib/asterisk/sounds`, `var/spool/asterisk/recording`, états `wazo-call-logd`, `wazo-agentd`, `wazo-chatd`… | 🐛 n° 14, liste complétée (38 chemins sauvegardés), test |
+| `restore.sh --check` : intégrité, déchiffrement, archives lisibles, rien d'arrêté | ✅ |
+| **Restauration réelle** (`--yes`, instantané Incus pris avant) : moteur arrêté, bases rechargées, fichiers restaurés, redémarrage « Wazo fully booted », 58 s | ✅ |
+| Après restauration : 4 tenants, postes/files par tenant identiques (3/1, 1/0, 1/0), 18 services, 8 points de terminaison, pare-feu rechargé | ✅ |
+
+### Prometheus et Grafana (PR #4)
+
+| Vérification | Résultat |
+|---|---|
+| `install.sh --firewall-only --metrics-from 10.250.0.1` sur le PBX | 🐛 n° 15 : ouvrait 9100 sans installer l'exporteur ; corrigé, exporteur actif (1 405 séries) |
+| Exporteur de l'hôte, lié à la passerelle Docker `10.0.0.1:9100` seulement (3 400 séries) | ✅ |
+| `deploy/observability` : secret devops `chmod 600` illisible par Prometheus (`nobody`) → toutes les cibles `nimbora` « unable to read headers file » | 🐛 n° 16 : documentation et commentaire corrigés (`644`, dossier privé), test |
+| Prometheus relié au réseau de la pile avec `gw_priority` pour joindre le PBX par le pont connu du pare-feu | ✅ |
+| Cibles : `nimbora` ×2 workers, `nimbora-business`, `node` PBX et hôte → **5/5 up** ; 3 groupes, **11 alertes** chargées | ✅ |
+| Grafana 12 : dossier NIMBORA et tableau « NIMBORA operations » provisionnés ; capture prise (locale du navigateur requise, sinon « failed to load its application files ») | ✅ |
+| Kit lab : nouvelle phase `--observability` qui reproduit tout cela, test | ✅ |
+| Métrique de fraîcheur de la sauvegarde (`nimbora_pbx_backup_last_success_timestamp_seconds`) : absente de Prometheus, tableau « Dernière sauvegarde du PBX » à « No data » | 🐛 n° 17 : l'exporteur Debian démarre avec `ARGS=""` sans répertoire textfile → le kit le règle ; 🐛 n° 18 : fichier `.prom` écrit en `600` (umask du script) illisible par l'utilisateur `prometheus` → `644`. Après correction : métrique vue par Prometheus pour `10.250.0.10:9100` ; tests |
+
+Après la validation : `SAAS_MODE=true` reste actif sur le laboratoire (abonnements « Starter »
+en essai créés pour les 4 organisations).
+
+## Rapport d'étape 9 — plages des contextes (PR #5, `358fb93`) et routage intelligent (PR #6) (22 novembre 2026)
+
+Déployé : pointe de `feat/lot-b-smart-routing` (rebasée sur `feat/lot-a-object-storage` à
+`358fb93`), images `nimbora-lot-b`, pas de nouvelle migration (tête `d7e8f9a0b1c2`).
+
+### Préalable découvert : `SAAS_MODE` et le PBX privé
+
+Depuis le passage en `SAAS_MODE=true` (étape 8), la garde anti-SSRF refusait l'adresse privée du
+PBX (`https://10.250.0.10`) : approvisionnement, inventaire et lignes opérateurs répondaient 502
+« pas joignable publiquement ». `PBX_ALLOWED_HOSTS` existait mais n'était pas transmis par
+compose. Correction sur la PR #5 (`9b789dd`) : variable transmise, et le kit lab la règle sur
+l'adresse du PBX avec `--shared-pbx` ; tests.
+
+### 1. Plages des contextes créés par le moteur (PR #5, commit `358fb93`)
+
+| Vérification | Résultat |
+|---|---|
+| Premier `POST /pbx/provision` org2 et org3 après redéploiement | ❌ 502 « accès refusé (`confd.contexts.5.update`) » → 🐛 n° 19 |
+| 🐛 n° 19 : le nouveau `PUT /contexts/{id}` n'était pas couvert par la politique d'approvisionnement | corrigé (`2c18595`) : `confd.contexts.*.update` dans `PROVISIONING_ACL` et `provisioning-policy.json` (test existant maintenu en phase), politique rejouée sur le moteur (122 ACL) |
+| `POST /pbx/provision` org2 et org3 après correction | ✅ 200, mêmes tenants, mêmes contextes |
+| `confd/contexts` de chaque tenant : contexte entrant `incall_ranges` **12 plages de 4 à 15 chiffres**, `did_length` = longueur | ✅ |
+| Plages existantes du contexte interne inchangées (postes 1000-1999, groupes 2000-2099, files 3000-3099, conférences 4000-4099 posées à la création) | ✅ conservées telles quelles |
+| Aucun contexte en double : 3 contextes, 3 noms distincts par tenant ; inclusion interne → sortant intacte | ✅ |
+| Numéro public `+2250700000022` créé dans org2 (vers son poste 1001) ; ligne opérateur par IP dans org2 ; appel depuis `nimbora-operator` (identité `33987654321`) | ✅ l'appel entre dans `ctx-org2-incall-…`, sonne « Agent A 1001 » (poste non enregistré, donc non décroché), journal d'appels d'org2 : `inbound` |
+
+### 2. Routage intelligent (PR #6)
+
+| Étape demandée | Résultat |
+|---|---|
+| Onglet **PBX → Routage** dans la console (connexion administrateur, Chromium) | ✅ onglet présent entre « Enregistrements » et « Journal », bloc politique et simulateur rendus (capture prise) |
+| Deux compétences : « Facturation » → file `pbx-queue:1` (Support test), « Technique » sans destination ; postes 1001 (Facturation, `fr`) et 1002 (Facturation + Technique, `fr, en`) ; `PUT /pbx/routing` | ✅ enregistrée et relue à l'identique |
+| (a) agent 1001 connecté à la file (`login`, contexte interne), libre → simulation « Facturation » | ✅ `pbx-queue:1`, motif `skill` |
+| (b) agent 1001 en pause → « Facturation » | ✅ `pbx-extension:1002`, motif `skill_agent` (« poste 1002 libre ») ; idem avec langue `en` (1001 ne parle que `fr`) |
+| (c) appel 1003 → 1002 en cours (vu dans l'état en direct) → « Technique » | ✅ `destination: null`, motif `unavailable`, étapes « Pas de conseiller habituel connu », « Personne de libre pour « Technique » » ; « Facturation » pendant l'appel → la file (agent 1001 libre) ; après raccroché → 1002 à nouveau |
+| (4) vrai appel entrant de 40 s depuis `nimbora-operator` (`33123456789`, client connu `+33123456789`, 3 appels déjà) décroché par le poste 1003 | ❌ au premier essai : webhook `call_log_created` reçu, compteur d'appels 3 → 4, mais `attributes.usual_advisor` absent → 🐛 n° 20 |
+| 🐛 n° 20 : pour un appel entrant le code lisait `destination_extension`, qui est le **numéro public** composé (`2250700000001`, 13 chiffres, refusé par `remember_advisor`) ; le poste de l'employé est `destination_internal_extension` (`1003`) — même chose côté source pour les sortants | corrigé (`5115ee9`) sur la PR #6, test avec la forme réelle du journal d'appels (entrant et sortant) |
+| Après correction, nouvel appel de 40 s : `attributes.usual_advisor = {extension: 1003, name: Test 1003…, at: …}` | ✅ |
+| Simulateur avec `caller_number +33123456789` | ✅ `pbx-extension:1003`, motif `usual_advisor`, « Conseiller habituel disponible : Test 1003 (SIP, répondeur automatique) », quelle que soit la compétence demandée |
+| Même simulation pendant que 1003 est en appel | ✅ « Conseiller habituel (…) indisponible » puis `pbx-queue:1` par la compétence |
+| `grep "Routing"` dans les journaux de l'API | aucune ligne : le simulateur ne journalise pas ; la ligne `[Routing org=…]` n'existe que sur la passation réelle (`resolve_for_transfer`), impossible à exercer sans clé IA. Amélioration proposée : journaliser aussi les décisions du simulateur |
+
+Écarts restants : dans le journal de l'API, une trentaine de traces `httpx.ConnectError:
+Name or service not known` vers `agentd`, `amid` et `auth` du PBX (hôte masqué par la
+rédaction des journaux), non reproduites pendant les tests ; à dater et expliquer.
+
+## Rapport d'étape 10 — présence des collègues et annuaire unifié (PR #7) (22 novembre 2026)
+
+Déployé : `feat/lot-b-presence-directory` (images `nimbora-lot-b7`), d'abord `fa6dbee` fusionnée
+avec `feat/lot-b-smart-routing` (`b948fa8`), puis la branche telle que réécrite par son auteur
+sur `c3bbc7d` (`8fdfa79`) ; les deux correctifs ci-dessous ont été rejoués dessus. Aucune nouvelle
+migration. Le Softphone web (`softphone/`, version 1.2.0) a été construit depuis la branche et
+servi en local, appairé au poste 1004. Sans fusion.
+
+### Préalable : postes appairables
+
+Les postes 1002 et 1003 sont des lignes SIP classiques : l'appairage répond 409 « pas de ligne
+navigateur », comme prévu. Les essais ont donc utilisé 1001 (ligne navigateur) et un nouveau
+poste navigateur 1004, créé après avoir porté le plafond de sièges humains du tenant 1 à 10
+(`PATCH /saas/admin/tenants/1`, `limit_overrides.max_human_seats`).
+
+| Étape demandée | Résultat |
+|---|---|
+| (2) **avant** la mise à jour des droits : `GET /softphone/directory` avec le jeton du poste 1004 | `presence_live: true` dès le départ : wazo-chatd 26.11 **ne fait pas respecter** `chatd.users.presences.read` (la politique à 110 ACL lisait déjà les présences). Le repli `presence_live: false` n'est donc pas observable sur ce moteur ; il reste couvert par les tests unitaires. Pendant un appel 1002 → 1003, les deux postes sont bien « En appel » |
+| (3) `create_service_account.py --provisioner` puis `POST /pbx/provision` org2 | ✅ compte opérateur **125 ACL** (112 + 13 : la PR #5 a ajouté `confd.contexts.*.update`, d'où 13 et non 12), compte dédié 112 ; la politique du tenant org2 contient `chatd.users.presences.read` (et `update`). org3 non réapprovisionné (politique à 110) |
+| (4) `GET /api/chatd/1.0/users/presences` avec le compte de service | ✅ forme : `items[] = {uuid, tenant_uuid, state (available/away/unavailable/invisible), status, line_state (available/unavailable/talking/ringing/holding), do_not_disturb, connected, mobile, last_activity, lines[{id, state}]}` |
+| (5) appel en cours entre deux postes | ✅ « En appel » sur 1002 et 1003 (API et console) |
+| (5) « Ne pas déranger » posé sur 1002 (`PUT /pbx/extensions/{id}/call-settings`) | ✅ « Ne pas déranger » (API, console, Softphone) |
+| (5) `PUT /api/v1/softphone/presence {"state":"away","status":"Déjeuner"}` depuis le poste 1001 | ✅ « Absent · Déjeuner » dans **PBX → Postes** (capture Chromium) et dans le **Softphone web** (liste Collègues : « Absent · Déjeuner / Ne pas déranger / Disponible ») |
+| (5) poste sans téléphone enregistré (1004 avant appairage) | ✅ « Hors ligne » |
+| (6) mémoire client activée : `GET /softphone/directory?q=Awa` et `?q=<fin du numéro>` | ✅ `customers: [Awa Koné (test), conseiller habituel Test 1003, 5 appels]` |
+| (6) mémoire client désactivée | ✅ `customers: null` (puis réactivée) |
+
+Bugs trouvés et corrigés sur la branche :
+
+| N° | Symptôme | Cause | Correction |
+|---|---|---|---|
+| 21 | Postes 1002 et 1003 enregistrés et libres affichés « Hors ligne » | sur le moteur, un utilisateur qui n'a jamais choisi de présence reste `state: unavailable` pour toujours, téléphone enregistré ou non ; le code traduisait `unavailable` en hors ligne sans regarder la ligne | `603b00d` : la ligne décide (`line_state: available` → disponible ; rien d'enregistré, pas d'application, pas de mobile → hors ligne) ; tests avec les formes vues sur le moteur |
+| 22 | Softphone web : « Identifiants SIP refusés par le PBX », `Failed to authenticate` dans les journaux Asterisk alors que le mot de passe servi par l'API est le bon | le moteur identifie le point de terminaison par l'utilisateur SIP de la requête (`identify_by = username`, c'est-à-dire le **nom du point de terminaison**) ; le nom d'authentification (`poste####`) ne sert qu'au défi ; le Softphone s'enregistrait en `sip:<nom d'authentification>@…` | `22c2290` : la configuration du poste porte `sip_identity` (nom du point de terminaison) ; l'application s'enregistre avec et passe le nom d'authentification en `authorization_user` (même réglage que la procédure Linphone du laboratoire). Après correction : Softphone « Disponible », plus aucun échec d'authentification côté moteur. Tests API et Vitest |
+
+Autres observations :
+
+- Un fichier `dump.rdb` (vidage Redis) était versionné dans la PR : retiré et ajouté à `.gitignore` (`22c2290`).
+- Le commit `c3bbc7d` de la PR #6 journalise désormais les décisions du simulateur : ligne
+  `[Routing org=1 simulation] skill → pbx-queue:1 | …` observée dans les journaux de l'API
+  (suite de la remarque de l'étape 9).
+- Le « Hors ligne » d'un poste navigateur dont l'application est fermée est normal : JsSIP se
+  désenregistre à la fermeture.
+- Écart de l'étape 9 daté : les traces `httpx.ConnectError: Name or service not known` viennent
+  de l'**amorçage d'organisation** (`organization_bootstrap.py`, « Failed to bootstrap
+  organization 1; will retry on a later request »), qui tente de créer un compte de facturation
+  hébergé sur `MPS_API_URL` (valeur par défaut `https://services.nimbora.example`, hôte
+  inexistant) et recommence à chaque requête. Sans rapport avec le PBX ni avec les PR validées ;
+  à neutraliser dans le kit (variable vide ou amorçage hébergé désactivé en auto-hébergement).
+  → **Corrigé** (branche `feat/lot-b-presence-directory`) : l'adresse par défaut est un exemple ;
+  avec elle (ou vide, ou `off`), les services hébergés sont coupés, l'amorçage ne contacte plus
+  rien et se termine (l'entreprise apporte ses clés IA). À revérifier : plus aucune trace
+  `Name or service not known` après redéploiement.
+
+### Écart `ConnectError` de l'étape 9 : expliqué (sans rapport avec le PBX)
+
+| Vérification | Résultat |
+|---|---|
+| (a) `pbx_connections` : `organization_id, managed, hôte` | `1 / f / 10.250.0.10`, `2 / t / 10.250.0.10`, `3 / t / 10.250.0.10` ; `PBX_PROVISIONING_URL` : hôte `10.250.0.10`. **Aucun nom d'hôte**, uniquement l'adresse privée du moteur, résolue à l'identique depuis le conteneur API (`getent hosts`) |
+| (b) dates | conteneur API courant démarré à 09:41:46 UTC (pointe réécrite de la PR #7) ; les deux lignes `Name or service not known` (une exception `httpcore` chaînée en `httpx`) sont à **09:42:34**, soit la première requête authentifiée après le redémarrage. Les journaux des conteneurs précédents ont disparu avec eux (`docker events` ne conserve pas les `start` sur 24 h) ; la trentaine de traces de l'étape 9 correspondait au même motif, une fois par bail d'amorçage |
+| (c) pile (fichiers NIMBORA) | `routes/public_embed.py:277 __call__` → `services/auth/depends.py:44 get_user` → `depends.py:321 _handle_oss_auth` → **`services/organization_bootstrap.py:100 ensure_organization_bootstrapped`** → `organization_bootstrap.py:183 _bootstrap_organization` → `organization_bootstrap.py:214 mint_managed_service_key` → `services/mps_service_key_client.py:226 create_service_key` → `httpx` → DNS. Message journalisé : « Failed to bootstrap organization 1; will retry on a later request » |
+| cause | l'organisation 1 n'a **aucune configuration de modèle** (pas de clé d'IA sur ce laboratoire) : l'amorçage tente alors de créer une clé de service hébergée sur `MPS_API_URL`, dont la valeur par défaut `https://services.nimbora.example` ne se résout pas. Rien à voir avec `agentd`, `amid` ou `auth` du PBX |
+| (d) libellé des erreurs PBX après `c3bbc7d` | non déclenchable ici (le PBX n'est joint que par adresse IP) ; le libellé « PBX injoignable (service) : ConnectError (nom d'hôte du PBX non résolu) » est couvert par `test_pbx.py` (cas `auth`) ; aucune erreur PBX dans les journaux depuis le redéploiement |
+
+Correction de l'auteur (`fb9acfc`) : `MPS_ENABLED` est faux quand `MPS_API_URL` est vide, `off`
+ou un hôte `.example` ; l'amorçage se termine alors sans contacter de service hébergé.
+Revérifié après redéploiement de `fb9acfc` (API démarrée à 10:17:27 UTC, `MPS_API_URL` non
+défini sur le laboratoire) : requêtes authentifiées (profil, inventaire, routage, clients,
+présence), journal : **0** `Name or service not known`, **0** « Failed to bootstrap », une ligne
+« Organization 1 bootstrapped without hosted services (MPS off) ». ✅ Les tests
+`test_organization_bootstrap.py` passent (78 tests sur les cinq fichiers concernés).
+Avec le même commit, « Hors ligne » choisi depuis le Softphone est envoyé en `invisible` :
+`PUT /softphone/presence {"state":"offline"}` sur 1001 → « Hors ligne » vu du poste 1004, puis
+retour « Disponible » ✅.
+
+### Journal du routage (PR #6, `c3bbc7d`)
+
+| Simulation | Ligne journalisée |
+|---|---|
+| `{"skill": "Facturation", "caller_number": <numéro de la cliente de test>}` | `[Routing org=1 simulation] usual_advisor → pbx-extension:1003 \| → Conseiller habituel disponible : Test 1003 (SIP, répondeur automatique)` |
+| `{"skill": "Technique"}` pendant un appel 1003 → 1002 (seul expert occupé) | `[Routing org=1 simulation] unavailable/queue → — \| Pas de conseiller habituel connu ; Personne de libre pour « Technique »` |
+
+Le numéro du client n'apparaît dans aucune de ces lignes (vérifié par `grep`).
+
+## Rapport d'étape 11 — « Hors ligne » choisi, services hébergés coupés, rotation des secrets SIP (22 novembre 2026)
+
+Déployé : `feat/lot-b-presence-directory` à `a5878bc` (`fb9acfc` inclus), image `nimbora-lot-b7`,
+API redémarrée à 10:17:27 UTC. Softphone web construit depuis la branche (1.2.0), appairé au
+poste 1004. Sans fusion.
+
+### 1. « Hors ligne » choisi dans le Softphone (envoyé en `invisible`)
+
+| Étape | Résultat |
+|---|---|
+| Softphone web 1004 ouvert (Chromium) : enregistrement | ✅ « Disponible » à 10:27:28 |
+| Réglages → Ma présence → **Hors ligne** (bouton `aria-pressed`) | ✅ pris en compte à 10:27:32 ; l'indicateur d'enregistrement reste « Disponible » |
+| Vu depuis le poste 1001 (`GET /softphone/directory` avec son jeton) | ✅ 1004 : « Hors ligne », `state: offline` |
+| Moteur : `pjsip show contacts` pendant la fenêtre | ✅ contact de l'endpoint du poste 1004 présent (téléphone **toujours enregistré**) |
+| Console PBX → Postes (Chromium, pendant la fenêtre) | ✅ 1004 « Hors ligne » (1001 « Hors ligne » car non enregistré, 1002 et 1003 « Disponible ») |
+| Après 70 s, Réglages → **Disponible** | ✅ « Disponible » à 10:28:46, téléphone resté enregistré pendant toute la séquence |
+
+### 2. Services hébergés coupés (`MPS_API_URL` à sa valeur d'exemple)
+
+`MPS_API_URL` n'est pas défini sur le laboratoire : la valeur par défaut (hôte `.example`) coupe
+les services hébergés (`MPS_ENABLED` faux).
+
+| Vérification | Résultat |
+|---|---|
+| 15 minutes d'usage (10:25:54 → 10:41:35 UTC) : boucle de 12 requêtes toutes les 25 s sur les trois organisations (profil, inventaire, routage, supervision, clients, journal d'appels, annuaire et configuration Softphone), plus sessions Chromium de la console (PBX → Postes, Routage) et du Softphone 1004 | 420 requêtes de la boucle, toutes en 200 ; 2 041 requêtes HTTP journalisées par l'API sur la fenêtre |
+| `docker logs --since 15m nimbora_api \| grep -c "Name or service not known"` | ✅ **0** (0 aussi depuis le démarrage de l'API) |
+| `grep -c "Failed to bootstrap organization"` sur la même fenêtre | ✅ **0** |
+| « bootstrapped without hosted services (MPS off) » | ✅ **une ligne par organisation** : 1, 2 et 3 |
+
+
+### 3. Rotation des mots de passe SIP de 1001 et 1004
+
+❌ **Non réalisée.** Trois obstacles, par ordre :
+
+- La console n'offre pas de régénération du mot de passe SIP : le bouton « Mot de passe » d'un
+  poste envoie un lien de réinitialisation du **mot de passe de connexion** (`POST
+  /pbx/extensions/password-reset`), et le secret SIP n'est montré qu'à la création
+  (`CredentialsDialog`).
+- Le compte de service NIMBORA ne peut pas le faire non plus : sa politique contient
+  `confd.endpoints.sip.*.read`, `create` et `delete`, mais **ni `confd.endpoints.sip.read`
+  (liste) ni `confd.endpoints.sip.*.update`** (vérifié sur le jeton, 174 ACL ; `GET
+  /endpoints/sip?name=…` → 401).
+- La rotation avec le compte d'administration du moteur (depuis l'intérieur du conteneur, via
+  `wazo-auth-cli`, puis `PUT /confd/1.1/endpoints/sip/{uuid}`) a été **refusée par le garde-fou
+  de la session** (action classée « accès non autorisé ») : à faire par l'opérateur, ou à
+  autoriser explicitement.
+
+Proposition : ajouter à la PR une action « Régénérer le mot de passe SIP » (route API +
+bouton dans Postes), avec `confd.endpoints.sip.*.update` dans les politiques de service et
+d'approvisionnement. Le Softphone appairé relit le secret en direct (`/softphone/config`) :
+aucun rejumelage ne serait nécessaire pour les postes navigateur, seuls les clients SIP
+configurés à la main (Linphone) seraient à mettre à jour. Le rejumelage de 1004 est reporté
+avec la rotation.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**

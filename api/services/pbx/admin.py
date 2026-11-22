@@ -81,6 +81,21 @@ class NewExtension:
         return self
 
 
+def _default_login(connection, extension: str) -> str:
+    """The login of an extension created without an e-mail address.
+
+    The engine's logins are unique across the whole PBX, not per tenant: on
+    the operator's shared PBX, the "poste1001" of one company collides with
+    the "poste1001" of another (seen on the lab engine: 409 on /auth/users).
+    A platform-managed tenant prefixes its slug; a company's own PBX keeps
+    the short form.
+    """
+    slug = None
+    if getattr(connection, "managed", False):
+        slug = (getattr(connection, "provisioning", None) or {}).get("tenant_slug")
+    return f"{slug}-poste{extension}" if slug else f"poste{extension}"
+
+
 async def _internal_context(client: PbxClient) -> str:
     contexts = await client.contexts("internal")
     if not contexts:
@@ -145,7 +160,11 @@ def _user_body(
 
 
 async def create_extension(
-    organization_id: int, spec: NewExtension, **client_kwargs
+    organization_id: int,
+    spec: NewExtension,
+    *,
+    seat_check: bool = True,
+    **client_kwargs,
 ) -> dict[str, Any]:
     """User + line + extension + SIP account + voicemail + login (+ agent).
 
@@ -158,7 +177,7 @@ async def create_extension(
     creds = {
         "sip_username": f"{_slug(spec.firstname)[:8]}{_pin(4)}",
         "sip_password": _secret(20),
-        "login": spec.email or f"poste{spec.extension}",
+        "login": spec.email or _default_login(connection, spec.extension),
         "login_password": _secret(14),
         "voicemail_pin": _pin(6) if spec.voicemail else None,
     }
@@ -166,6 +185,12 @@ async def create_extension(
         context = await _internal_context(client)
         if await client.extensions(exten=spec.extension, context=context):
             raise PbxRouteError(f"Le poste {spec.extension} existe déjà", 409)
+        if seat_check:
+            from api.services.pbx.provisioning import assert_seats_available
+
+            await assert_seats_available(
+                organization_id, pbx_users=len(await client.users())
+            )
         templates = await _templates_for(client, spec.line)
         user = await client.create_user(_user_body(spec, context, templates, creds))
         agent = None
@@ -300,15 +325,28 @@ async def run_import(
     organization_id: int, content: str, **client_kwargs
 ) -> dict[str, Any]:
     """Create every valid row; one failure never stops the others."""
+    from api.services.pbx.provisioning import seats_left
+
     report = await preview_import(organization_id, content, **client_kwargs)
     rows = parse_csv(content)
+    # The plan's human seats are counted once: the import fills what is left.
+    left = await seats_left(organization_id, **client_kwargs)
     created, failed = [], []
     for entry, spec in zip(report, rows):
         if entry["errors"]:
             failed.append({**entry})
             continue
+        if left is not None and left <= 0:
+            failed.append(
+                {**entry, "errors": ["Plus de poste disponible dans votre offre"]}
+            )
+            continue
         try:
-            result = await create_extension(organization_id, spec, **client_kwargs)
+            result = await create_extension(
+                organization_id, spec, seat_check=False, **client_kwargs
+            )
+            if left is not None:
+                left -= 1
             created.append(result)
         except (PbxError, PbxRouteError) as error:
             failed.append({**entry, "errors": [str(error)]})

@@ -40,6 +40,8 @@ class PlanResponse(BaseModel):
     monthly_price_cents: int
     included_minutes: int | None
     overage_price_cents_per_minute: int | None
+    included_human_minutes: int | None = None
+    human_overage_price_cents_per_minute: int | None = None
     max_concurrent_calls: int | None
     max_agents: int | None
     max_human_seats: int | None
@@ -64,6 +66,11 @@ class SubscriptionResponse(BaseModel):
     remaining_minutes: float | None
     overage_minutes: float
     estimated_overage_cents: int
+    human_used_minutes: float = 0.0
+    human_included_minutes: int | None = None
+    human_remaining_minutes: float | None = None
+    human_overage_minutes: float = 0.0
+    estimated_human_overage_cents: int = 0
     limits: dict[str, Any]
     features: dict[str, bool]
     usable: bool
@@ -86,6 +93,8 @@ class PlanUpdateRequest(BaseModel):
     monthly_price_cents: int | None = Field(default=None, ge=0)
     included_minutes: int | None = Field(default=None, ge=0)
     overage_price_cents_per_minute: int | None = Field(default=None, ge=0)
+    included_human_minutes: int | None = Field(default=None, ge=0)
+    human_overage_price_cents_per_minute: int | None = Field(default=None, ge=0)
     max_concurrent_calls: int | None = Field(default=None, ge=1)
     max_agents: int | None = Field(default=None, ge=0)
     max_human_seats: int | None = Field(default=None, ge=0)
@@ -99,6 +108,7 @@ class PlanUpdateRequest(BaseModel):
     unlimited: list[
         Literal[
             "included_minutes",
+            "included_human_minutes",
             "max_concurrent_calls",
             "max_agents",
             "max_human_seats",
@@ -150,6 +160,8 @@ def _plan_response(plan: SubscriptionPlanModel) -> PlanResponse:
         monthly_price_cents=plan.monthly_price_cents,
         included_minutes=plan.included_minutes,
         overage_price_cents_per_minute=plan.overage_price_cents_per_minute,
+        included_human_minutes=plan.included_human_minutes,
+        human_overage_price_cents_per_minute=plan.human_overage_price_cents_per_minute,
         max_concurrent_calls=plan.max_concurrent_calls,
         max_agents=plan.max_agents,
         max_human_seats=plan.max_human_seats,
@@ -213,6 +225,11 @@ async def get_my_subscription(user: UserModel = Depends(get_user)):
         remaining_minutes=summary.remaining_minutes,
         overage_minutes=summary.overage_minutes,
         estimated_overage_cents=summary.estimated_overage_cents,
+        human_used_minutes=summary.human_used_minutes,
+        human_included_minutes=summary.human_included_minutes,
+        human_remaining_minutes=summary.human_remaining_minutes,
+        human_overage_minutes=summary.human_overage_minutes,
+        estimated_human_overage_cents=summary.estimated_human_overage_cents,
         limits=summary.limits,
         features=summary.features,
         usable=summary.usable,
@@ -383,6 +400,84 @@ async def admin_tenant_usage(
             if k not in {"platform_name", "organization_id", "can_manage_billing"}
         },
     )
+
+
+@router.get("/admin/usage")
+async def admin_monthly_usage(
+    month: str = Query(..., pattern=r"^\d{4}-\d{2}$", description="AAAA-MM"),
+    format: Literal["json", "csv"] = Query("json"),
+    _: UserModel = Depends(get_superuser),
+):
+    """AI and human minutes of every company for one calendar month."""
+    from dataclasses import asdict
+
+    from fastapi import Response
+
+    from api.services.saas import usage_report
+
+    try:
+        lines = await usage_report.monthly_usage(month)
+    except ValueError as error:
+        raise HTTPException(422, str(error)) from error
+    if format == "csv":
+        return Response(
+            content=usage_report.to_csv(lines),
+            media_type="text/csv; charset=utf-8",
+            headers={
+                "Content-Disposition": f'attachment; filename="consommation-{month}.csv"'
+            },
+        )
+    return {"month": month, "lines": [asdict(line) for line in lines]}
+
+
+@router.post("/admin/tenants/{organization_id}/pbx/provision")
+async def admin_provision_pbx(
+    organization_id: int, _: UserModel = Depends(get_superuser)
+) -> dict[str, Any]:
+    """Create (or complete) the company's tenant on the shared PBX."""
+    from api.constants import BACKEND_API_ENDPOINT
+    from api.services.pbx import provisioning
+    from api.services.pbx.client import PbxError
+    from api.services.pbx.service import PbxRouteError
+
+    if await db_client.get_organization_by_id(organization_id) is None:
+        raise HTTPException(status_code=404, detail="Organization not found")
+    try:
+        connection = await provisioning.provision_organization(
+            organization_id, public_base_url=BACKEND_API_ENDPOINT
+        )
+    except provisioning.ProvisioningUnavailable as error:
+        raise HTTPException(
+            404, "No shared PBX configured (PBX_PROVISIONING_URL)"
+        ) from error
+    except PbxRouteError as error:
+        raise HTTPException(error.status, str(error)) from error
+    except PbxError as error:
+        raise HTTPException(502, f"PBX: {error}") from error
+    return {
+        "tenant_uuid": connection.tenant_uuid,
+        "status": connection.status,
+        "provisioning": connection.provisioning,
+    }
+
+
+@router.delete("/admin/tenants/{organization_id}/pbx", status_code=204)
+async def admin_deprovision_pbx(
+    organization_id: int, _: UserModel = Depends(get_superuser)
+):
+    """Delete the company's tenant from the shared PBX (irreversible)."""
+    from fastapi import Response
+
+    from api.services.pbx import provisioning
+    from api.services.pbx.client import PbxError
+
+    try:
+        removed = await provisioning.deprovision_organization(organization_id)
+    except PbxError as error:
+        raise HTTPException(502, f"PBX: {error}") from error
+    if not removed:
+        raise HTTPException(404, "No platform-managed PBX for this organization")
+    return Response(status_code=204)
 
 
 @router.patch("/admin/tenants/{organization_id}", response_model=TenantResponse)

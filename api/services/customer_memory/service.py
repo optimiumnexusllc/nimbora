@@ -22,8 +22,9 @@ import re
 from datetime import datetime
 from typing import Any
 
-from api.enums import OrganizationConfigurationKey
 from loguru import logger
+
+from api.enums import OrganizationConfigurationKey
 
 SETTING_KEY = OrganizationConfigurationKey.CUSTOMER_MEMORY.value
 MEMORY_PROMPT_KEY = "customer_memory"
@@ -235,13 +236,14 @@ def _name_from_context(gathered: dict[str, Any]) -> str | None:
 
 
 async def _summarize_call(workflow_run, transcript: str) -> dict[str, Any] | None:
+    from pipecat.processors.aggregators.llm_context import LLMContext
+
     from api.services.configuration.run_model_configuration import (
         get_effective_ai_model_configuration_for_run,
     )
     from api.services.contact_center.handoff import parse_summary
     from api.services.managed_model_services import get_mps_correlation_id
     from api.services.pipecat.service_factory import create_llm_service
-    from pipecat.processors.aggregators.llm_context import LLMContext
 
     workflow = workflow_run.workflow
     configurations = (

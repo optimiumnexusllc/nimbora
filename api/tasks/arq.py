@@ -60,6 +60,8 @@ REDIS_SETTINGS = RedisSettings(
 
 from api.services.contact_center.callbacks import run_callback_scheduler
 from api.services.pbx.alerts import run_alert_checks
+from api.services.pbx.billing import sync_human_minutes
+from api.services.pbx.provisioning import provision_pbx_tenant
 from api.services.pbx.recordings import import_pbx_recordings, sync_all_recordings
 from api.services.privacy.service import run_retention_sweep
 from api.services.whatsapp_messaging.service import close_idle_conversations
@@ -94,11 +96,15 @@ class WorkerSettings:
         complete_inactive_text_chat_session,
         finalize_completed_text_chat,
         func(import_pbx_recordings, timeout=600),
+        func(provision_pbx_tenant, timeout=300),
     ]
     cron_jobs = [
         # GDPR retention: purge recordings, transcripts and customer memory
         # older than each organization's policy (daily, off-peak).
         cron(run_retention_sweep, hour={3}, minute={17}, second=0),
+        # Human minutes of the enterprise PBX: call logs whose webhook was
+        # missed are counted within the hour (idempotent).
+        cron(sync_human_minutes, minute={23}, second=10),
         # WhatsApp conversations quiet for 30 min are closed (summary, memory,
         # QA, webhooks); the next message opens a new run.
         cron(close_idle_conversations, minute=set(range(0, 60, 5)), second=40),

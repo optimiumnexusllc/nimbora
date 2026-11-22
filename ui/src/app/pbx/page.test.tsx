@@ -6,6 +6,7 @@ import { selectOption } from "@/components/model-connections/test-helpers";
 import PbxPage from "./page";
 
 const mocks = vi.hoisted(() => ({
+    access: vi.fn(),
     read: vi.fn(),
     save: vi.fn(),
     test: vi.fn(),
@@ -45,6 +46,7 @@ vi.mock("@/client/sdk.gen", () => ({
     }),
     saveMissedCallsApiV1PbxMissedCallsPut: async () => ({ data: {} }),
     readConnectionApiV1PbxConnectionGet: mocks.read,
+    readPlanAccessApiV1PbxPlanGet: mocks.access,
     saveConnectionApiV1PbxConnectionPut: mocks.save,
     testConnectionApiV1PbxConnectionTestPost: mocks.test,
     readInventoryApiV1PbxInventoryGet: mocks.inventory,
@@ -91,8 +93,14 @@ const inventory = {
     errors: {},
 };
 
+const ownPbxOnly = {
+    shared: false, dedicated: true, shared_available: false, seats_limit: null, seats_used: null,
+    plan_name: null, connected: false, managed: false,
+};
+
 beforeEach(() => {
     vi.clearAllMocks();
+    mocks.access.mockResolvedValue({ data: ownPbxOnly });
     vi.spyOn(window, "confirm").mockReturnValue(true);
     mocks.read.mockResolvedValue({ data: connected });
     mocks.inventory.mockResolvedValue({ data: inventory });
@@ -143,13 +151,25 @@ beforeEach(() => {
 });
 
 describe("pbx page", () => {
+    it("keeps the platform PBX read-only and shows the seats of the plan", async () => {
+        mocks.read.mockResolvedValue({ data: { ...connected, managed: true, name: "PBX de la plateforme" } });
+        mocks.access.mockResolvedValue({
+            data: { ...ownPbxOnly, shared: true, shared_available: true, seats_limit: 15, seats_used: 4, connected: true, managed: true },
+        });
+        render(<PbxPage />);
+        await waitFor(() => expect(screen.getByTestId("pbx-status").textContent).toContain("NIMBORA Voice de la plateforme"));
+        expect((await screen.findByTestId("pbx-seats")).textContent).toContain("Postes 4 / 15");
+        expect(screen.queryByRole("button", { name: /Connexion/ })).toBeNull();
+        expect(screen.queryByRole("button", { name: /Appliquer la marque/ })).toBeNull();
+    });
+
     it("guides the first connection and only offers ARI configurations", async () => {
         mocks.read.mockResolvedValueOnce({ data: { configured: false, brand } });
         mocks.save.mockResolvedValue({ data: connected });
         render(<PbxPage />);
-        expect(await screen.findByText("Connectez votre PBX")).toBeTruthy();
+        expect(await screen.findByText("Votre propre PBX")).toBeTruthy();
         expect(screen.getByRole("heading", { level: 1 }).textContent).toBe("NIMBORA Voice");
-        fireEvent.click(screen.getByRole("button", { name: /Connecter le PBX/ }));
+        fireEvent.click(await screen.findByRole("button", { name: /Connecter mon PBX/ }));
         fireEvent.change(screen.getByLabelText("Adresse du PBX"), { target: { value: "https://pbx.ivoire-immo.ci" } });
         fireEvent.change(screen.getByLabelText("Mot de passe"), { target: { value: "s3cret" } });
         fireEvent.change(screen.getByLabelText("Tenant de l'entreprise"), { target: { value: "t-1" } });

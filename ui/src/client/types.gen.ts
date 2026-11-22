@@ -2137,6 +2137,10 @@ export type ConnectionResponse = {
      * Events Connected
      */
     events_connected?: boolean;
+    /**
+     * Managed
+     */
+    managed?: boolean;
 };
 
 /**
@@ -5933,6 +5937,44 @@ export type PhoneNumberUpdateRequest = {
 };
 
 /**
+ * PlanAccessResponse
+ */
+export type PlanAccessResponse = {
+    /**
+     * Shared
+     */
+    shared: boolean;
+    /**
+     * Dedicated
+     */
+    dedicated: boolean;
+    /**
+     * Shared Available
+     */
+    shared_available: boolean;
+    /**
+     * Seats Limit
+     */
+    seats_limit: number | null;
+    /**
+     * Seats Used
+     */
+    seats_used: number | null;
+    /**
+     * Plan Name
+     */
+    plan_name: string | null;
+    /**
+     * Connected
+     */
+    connected: boolean;
+    /**
+     * Managed
+     */
+    managed: boolean;
+};
+
+/**
  * PlanResponse
  */
 export type PlanResponse = {
@@ -5964,6 +6006,14 @@ export type PlanResponse = {
      * Overage Price Cents Per Minute
      */
     overage_price_cents_per_minute: number | null;
+    /**
+     * Included Human Minutes
+     */
+    included_human_minutes?: number | null;
+    /**
+     * Human Overage Price Cents Per Minute
+     */
+    human_overage_price_cents_per_minute?: number | null;
     /**
      * Max Concurrent Calls
      */
@@ -6029,6 +6079,14 @@ export type PlanUpdateRequest = {
      */
     overage_price_cents_per_minute?: number | null;
     /**
+     * Included Human Minutes
+     */
+    included_human_minutes?: number | null;
+    /**
+     * Human Overage Price Cents Per Minute
+     */
+    human_overage_price_cents_per_minute?: number | null;
+    /**
      * Max Concurrent Calls
      */
     max_concurrent_calls?: number | null;
@@ -6069,7 +6127,7 @@ export type PlanUpdateRequest = {
     /**
      * Unlimited
      */
-    unlimited?: Array<'included_minutes' | 'max_concurrent_calls' | 'max_agents' | 'max_human_seats' | 'max_campaigns'>;
+    unlimited?: Array<'included_minutes' | 'included_human_minutes' | 'max_concurrent_calls' | 'max_agents' | 'max_human_seats' | 'max_campaigns'>;
 };
 
 /**
@@ -7522,6 +7580,24 @@ export type RouteResponse = {
 };
 
 /**
+ * RoutingSimulation
+ */
+export type RoutingSimulation = {
+    /**
+     * Caller Number
+     */
+    caller_number?: string | null;
+    /**
+     * Language
+     */
+    language?: string | null;
+    /**
+     * Skill
+     */
+    skill?: string | null;
+};
+
+/**
  * S3SignedUrlResponse
  */
 export type S3SignedUrlResponse = {
@@ -8083,6 +8159,20 @@ export type SoftphoneCredentials = {
 };
 
 /**
+ * SoftphonePresenceRequest
+ */
+export type SoftphonePresenceRequest = {
+    /**
+     * State
+     */
+    state: 'available' | 'away' | 'offline';
+    /**
+     * Status
+     */
+    status?: string;
+};
+
+/**
  * SoftphoneSettingsRequest
  */
 export type SoftphoneSettingsRequest = {
@@ -8180,6 +8270,26 @@ export type SubscriptionResponse = {
      * Estimated Overage Cents
      */
     estimated_overage_cents: number;
+    /**
+     * Human Used Minutes
+     */
+    human_used_minutes?: number;
+    /**
+     * Human Included Minutes
+     */
+    human_included_minutes?: number | null;
+    /**
+     * Human Remaining Minutes
+     */
+    human_remaining_minutes?: number | null;
+    /**
+     * Human Overage Minutes
+     */
+    human_overage_minutes?: number;
+    /**
+     * Estimated Human Overage Cents
+     */
+    estimated_human_overage_cents?: number;
     /**
      * Limits
      */
@@ -9763,9 +9873,9 @@ export type TransferCallConfig = {
     /**
      * Destination Source
      *
-     * Whether the destination is static/template, resolved by HTTP, or selected by ordered gathered/initial-context mapping rules.
+     * Whether the destination is static/template, resolved by HTTP, selected by ordered gathered/initial-context mapping rules, or chosen by the company's intelligent routing policy (smart: VIP, usual advisor, skill, language, availability).
      */
-    destination_source?: 'static' | 'dynamic' | 'context_mapping';
+    destination_source?: 'static' | 'dynamic' | 'context_mapping' | 'smart';
     /**
      * Destination
      *
@@ -21284,6 +21394,146 @@ export type AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses
 
 export type AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponse = AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses[keyof AdminTenantUsageApiV1SaasAdminTenantsOrganizationIdUsageGetResponses];
 
+export type AdminMonthlyUsageApiV1SaasAdminUsageGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query: {
+        /**
+         * Month
+         *
+         * AAAA-MM
+         */
+        month: string;
+        /**
+         * Format
+         */
+        format?: 'json' | 'csv';
+    };
+    url: '/api/v1/saas/admin/usage';
+};
+
+export type AdminMonthlyUsageApiV1SaasAdminUsageGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminMonthlyUsageApiV1SaasAdminUsageGetError = AdminMonthlyUsageApiV1SaasAdminUsageGetErrors[keyof AdminMonthlyUsageApiV1SaasAdminUsageGetErrors];
+
+export type AdminMonthlyUsageApiV1SaasAdminUsageGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Organization Id
+         */
+        organization_id: number;
+    };
+    query?: never;
+    url: '/api/v1/saas/admin/tenants/{organization_id}/pbx/provision';
+};
+
+export type AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostError = AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostErrors[keyof AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostErrors];
+
+export type AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostResponses = {
+    /**
+     * Response Admin Provision Pbx Api V1 Saas Admin Tenants  Organization Id  Pbx Provision Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostResponse = AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostResponses[keyof AdminProvisionPbxApiV1SaasAdminTenantsOrganizationIdPbxProvisionPostResponses];
+
+export type AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Organization Id
+         */
+        organization_id: number;
+    };
+    query?: never;
+    url: '/api/v1/saas/admin/tenants/{organization_id}/pbx';
+};
+
+export type AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteError = AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteErrors[keyof AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteErrors];
+
+export type AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteResponse = AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteResponses[keyof AdminDeprovisionPbxApiV1SaasAdminTenantsOrganizationIdPbxDeleteResponses];
+
 export type AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchData = {
     body: TenantUpdateRequest;
     headers?: {
@@ -22967,6 +23217,218 @@ export type SaveConnectionApiV1PbxConnectionPutResponses = {
 
 export type SaveConnectionApiV1PbxConnectionPutResponse = SaveConnectionApiV1PbxConnectionPutResponses[keyof SaveConnectionApiV1PbxConnectionPutResponses];
 
+export type ReadPlanAccessApiV1PbxPlanGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/plan';
+};
+
+export type ReadPlanAccessApiV1PbxPlanGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadPlanAccessApiV1PbxPlanGetError = ReadPlanAccessApiV1PbxPlanGetErrors[keyof ReadPlanAccessApiV1PbxPlanGetErrors];
+
+export type ReadPlanAccessApiV1PbxPlanGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: PlanAccessResponse;
+};
+
+export type ReadPlanAccessApiV1PbxPlanGetResponse = ReadPlanAccessApiV1PbxPlanGetResponses[keyof ReadPlanAccessApiV1PbxPlanGetResponses];
+
+export type ProvisionApiV1PbxProvisionPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/provision';
+};
+
+export type ProvisionApiV1PbxProvisionPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ProvisionApiV1PbxProvisionPostError = ProvisionApiV1PbxProvisionPostErrors[keyof ProvisionApiV1PbxProvisionPostErrors];
+
+export type ProvisionApiV1PbxProvisionPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ConnectionResponse;
+};
+
+export type ProvisionApiV1PbxProvisionPostResponse = ProvisionApiV1PbxProvisionPostResponses[keyof ProvisionApiV1PbxProvisionPostResponses];
+
+export type ReadRoutingApiV1PbxRoutingGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/routing';
+};
+
+export type ReadRoutingApiV1PbxRoutingGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadRoutingApiV1PbxRoutingGetError = ReadRoutingApiV1PbxRoutingGetErrors[keyof ReadRoutingApiV1PbxRoutingGetErrors];
+
+export type ReadRoutingApiV1PbxRoutingGetResponses = {
+    /**
+     * Response Read Routing Api V1 Pbx Routing Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadRoutingApiV1PbxRoutingGetResponse = ReadRoutingApiV1PbxRoutingGetResponses[keyof ReadRoutingApiV1PbxRoutingGetResponses];
+
+export type SaveRoutingApiV1PbxRoutingPutData = {
+    /**
+     * Request
+     */
+    body: {
+        [key: string]: unknown;
+    };
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/routing';
+};
+
+export type SaveRoutingApiV1PbxRoutingPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveRoutingApiV1PbxRoutingPutError = SaveRoutingApiV1PbxRoutingPutErrors[keyof SaveRoutingApiV1PbxRoutingPutErrors];
+
+export type SaveRoutingApiV1PbxRoutingPutResponses = {
+    /**
+     * Response Save Routing Api V1 Pbx Routing Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SaveRoutingApiV1PbxRoutingPutResponse = SaveRoutingApiV1PbxRoutingPutResponses[keyof SaveRoutingApiV1PbxRoutingPutResponses];
+
+export type SimulateRoutingApiV1PbxRoutingSimulatePostData = {
+    body: RoutingSimulation;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/routing/simulate';
+};
+
+export type SimulateRoutingApiV1PbxRoutingSimulatePostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SimulateRoutingApiV1PbxRoutingSimulatePostError = SimulateRoutingApiV1PbxRoutingSimulatePostErrors[keyof SimulateRoutingApiV1PbxRoutingSimulatePostErrors];
+
+export type SimulateRoutingApiV1PbxRoutingSimulatePostResponses = {
+    /**
+     * Response Simulate Routing Api V1 Pbx Routing Simulate Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SimulateRoutingApiV1PbxRoutingSimulatePostResponse = SimulateRoutingApiV1PbxRoutingSimulatePostResponses[keyof SimulateRoutingApiV1PbxRoutingSimulatePostResponses];
+
 export type TestConnectionApiV1PbxConnectionTestPostData = {
     body?: never;
     headers?: {
@@ -23177,6 +23639,49 @@ export type ReadInventoryApiV1PbxInventoryGetResponses = {
 };
 
 export type ReadInventoryApiV1PbxInventoryGetResponse = ReadInventoryApiV1PbxInventoryGetResponses[keyof ReadInventoryApiV1PbxInventoryGetResponses];
+
+export type ReadPresenceApiV1PbxPresenceGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/presence';
+};
+
+export type ReadPresenceApiV1PbxPresenceGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadPresenceApiV1PbxPresenceGetError = ReadPresenceApiV1PbxPresenceGetErrors[keyof ReadPresenceApiV1PbxPresenceGetErrors];
+
+export type ReadPresenceApiV1PbxPresenceGetResponses = {
+    /**
+     * Response Read Presence Api V1 Pbx Presence Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadPresenceApiV1PbxPresenceGetResponse = ReadPresenceApiV1PbxPresenceGetResponses[keyof ReadPresenceApiV1PbxPresenceGetResponses];
 
 export type RouteNumberApiV1PbxRoutesPostData = {
     body: RouteRequest;
@@ -26245,7 +26750,12 @@ export type DirectoryApiV1SoftphoneDirectoryGetData = {
         authorization?: string | null;
     };
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Q
+         */
+        q?: string;
+    };
     url: '/api/v1/softphone/directory';
 };
 
@@ -26274,6 +26784,45 @@ export type DirectoryApiV1SoftphoneDirectoryGetResponses = {
 };
 
 export type DirectoryApiV1SoftphoneDirectoryGetResponse = DirectoryApiV1SoftphoneDirectoryGetResponses[keyof DirectoryApiV1SoftphoneDirectoryGetResponses];
+
+export type SavePresenceApiV1SoftphonePresencePutData = {
+    body: SoftphonePresenceRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/softphone/presence';
+};
+
+export type SavePresenceApiV1SoftphonePresencePutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SavePresenceApiV1SoftphonePresencePutError = SavePresenceApiV1SoftphonePresencePutErrors[keyof SavePresenceApiV1SoftphonePresencePutErrors];
+
+export type SavePresenceApiV1SoftphonePresencePutResponses = {
+    /**
+     * Response Save Presence Api V1 Softphone Presence Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type SavePresenceApiV1SoftphonePresencePutResponse = SavePresenceApiV1SoftphonePresencePutResponses[keyof SavePresenceApiV1SoftphonePresencePutResponses];
 
 export type HistoryApiV1SoftphoneHistoryGetData = {
     body?: never;

@@ -1,21 +1,12 @@
+from api.db.actions_client import ActionsClient
 from api.db.agent_trigger_client import AgentTriggerClient
 from api.db.api_key_client import APIKeyClient
+from api.db.blocked_number_client import BlockedNumberClient
 from api.db.builder_run_client import BuilderRunClient
+from api.db.callback_client import CallbackClient
 from api.db.campaign_client import CampaignClient
 from api.db.contact_center_client import ContactCenterClient
 from api.db.customer_memory_client import CustomerMemoryClient
-from api.db.callback_client import CallbackClient
-from api.db.privacy_client import PrivacyClient
-from api.db.actions_client import ActionsClient
-from api.db.whatsapp_conversation_client import WhatsAppConversationClient
-from api.db.blocked_number_client import BlockedNumberClient
-from api.db.pbx_supervision_client import PbxSupervisionClient
-from api.db.softphone_client import SoftphoneClient
-from api.db.pbx_client import (
-    PbxCallRecordingClient,
-    PbxConnectionClient,
-    PbxIvrMenuClient,
-)
 from api.db.embed_token_client import EmbedTokenClient
 from api.db.folder_client import FolderClient
 from api.db.integration_client import IntegrationClient
@@ -24,8 +15,16 @@ from api.db.model_connection_client import ModelConnectionClient
 from api.db.organization_client import OrganizationClient
 from api.db.organization_configuration_client import OrganizationConfigurationClient
 from api.db.organization_usage_client import OrganizationUsageClient
+from api.db.pbx_client import (
+    PbxCallRecordingClient,
+    PbxConnectionClient,
+    PbxIvrMenuClient,
+)
+from api.db.pbx_supervision_client import PbxSupervisionClient
+from api.db.privacy_client import PrivacyClient
 from api.db.reports_client import ReportsClient
 from api.db.saas_client import SaasClient
+from api.db.softphone_client import SoftphoneClient
 from api.db.telephony_configuration_client import TelephonyConfigurationClient
 from api.db.telephony_phone_number_client import TelephonyPhoneNumberClient
 from api.db.telephony_trunk_client import TelephonyTrunkClient
@@ -33,6 +32,7 @@ from api.db.tool_client import ToolClient
 from api.db.user_client import UserClient
 from api.db.webhook_credential_client import WebhookCredentialClient
 from api.db.webhook_delivery_client import WebhookDeliveryClient
+from api.db.whatsapp_conversation_client import WhatsAppConversationClient
 from api.db.workflow_builder import WorkflowBuilderClient
 from api.db.workflow_client import WorkflowClient
 from api.db.workflow_completion_client import WorkflowCompletionClient

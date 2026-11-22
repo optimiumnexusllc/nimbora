@@ -411,6 +411,37 @@ async def resolve_transfer_config(
     """Resolve transfer destination and options for a transfer tool call."""
 
     destination_source = config.get("destination_source", "static")
+    if destination_source == "smart":
+        from api.services.contact_center.smart_routing import (
+            NoAgentAvailable,
+            resolve_for_transfer,
+        )
+
+        if organization_id is None:
+            raise TransferResolutionError(
+                "no_organization_id",
+                "Intelligent routing needs the call's organization",
+            )
+        try:
+            decision = await resolve_for_transfer(
+                int(organization_id),
+                call_context_vars=call_context_vars,
+                gathered_context_vars=gathered_context_vars,
+                arguments=arguments,
+            )
+        except NoAgentAvailable as error:
+            raise TransferResolutionError(
+                "callback_scheduled"
+                if error.callback_scheduled
+                else "no_agent_available",
+                str(error),
+            ) from error
+        return ResolvedTransferConfig(
+            destination=decision.destination,
+            timeout_seconds=_base_timeout(config),
+            source="smart",
+            metadata={"reason": decision.reason, "explanation": decision.explanation},
+        )
     if destination_source == "context_mapping":
         resolved = _resolve_context_mapping_transfer(
             config, call_context_vars, gathered_context_vars

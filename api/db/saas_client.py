@@ -9,6 +9,7 @@ from sqlalchemy.future import select
 
 from api.db.base_client import BaseDBClient
 from api.db.models import (
+    HumanCallUsageModel,
     OrganizationModel,
     OrganizationSubscriptionModel,
     SubscriptionPlanModel,
@@ -26,6 +27,8 @@ PLAN_MUTABLE_FIELDS = {
     "monthly_price_cents",
     "included_minutes",
     "overage_price_cents_per_minute",
+    "included_human_minutes",
+    "human_overage_price_cents_per_minute",
     "max_concurrent_calls",
     "max_agents",
     "max_human_seats",
@@ -295,6 +298,82 @@ class SaasClient(BaseDBClient):
                 )
             )
             return float(result.scalar_one() or 0.0)
+
+    async def record_human_call_usage(
+        self, organization_id: int, fields: dict[str, Any]
+    ) -> bool:
+        """Insert one billable human call; False if already counted."""
+        async with self.async_session() as session:
+            result = await session.execute(
+                insert(HumanCallUsageModel)
+                .values(organization_id=organization_id, **fields)
+                .on_conflict_do_nothing(constraint="uq_human_call_usage_ext")
+                .returning(HumanCallUsageModel.id)
+            )
+            await session.commit()
+            return result.scalar_one_or_none() is not None
+
+    async def get_organization_human_seconds(
+        self, organization_id: int, start: datetime, end: datetime
+    ) -> float:
+        """Billable seconds of human calls started in [start, end)."""
+        async with self.async_session() as session:
+            result = await session.execute(
+                select(
+                    func.coalesce(func.sum(HumanCallUsageModel.billable_seconds), 0)
+                ).where(
+                    HumanCallUsageModel.organization_id == organization_id,
+                    HumanCallUsageModel.started_at >= start,
+                    HumanCallUsageModel.started_at < end,
+                )
+            )
+            return float(result.scalar_one() or 0)
+
+    async def get_usage_by_organization(
+        self, start: datetime, end: datetime
+    ) -> dict[int, dict[str, float]]:
+        """AI and human seconds of every organization in [start, end)."""
+        usage: dict[int, dict[str, float]] = {}
+        async with self.async_session() as session:
+            ai = await session.execute(
+                select(
+                    WorkflowModel.organization_id,
+                    func.coalesce(
+                        func.sum(
+                            WorkflowRunModel.usage_info[
+                                "call_duration_seconds"
+                            ].as_float()
+                        ),
+                        0.0,
+                    ),
+                )
+                .join(WorkflowModel, WorkflowModel.id == WorkflowRunModel.workflow_id)
+                .where(
+                    WorkflowRunModel.created_at >= start,
+                    WorkflowRunModel.created_at < end,
+                )
+                .group_by(WorkflowModel.organization_id)
+            )
+            for organization_id, seconds in ai.all():
+                usage.setdefault(organization_id, {"ai": 0.0, "human": 0.0})["ai"] = (
+                    float(seconds or 0)
+                )
+            human = await session.execute(
+                select(
+                    HumanCallUsageModel.organization_id,
+                    func.sum(HumanCallUsageModel.billable_seconds),
+                )
+                .where(
+                    HumanCallUsageModel.started_at >= start,
+                    HumanCallUsageModel.started_at < end,
+                )
+                .group_by(HumanCallUsageModel.organization_id)
+            )
+            for organization_id, seconds in human.all():
+                usage.setdefault(organization_id, {"ai": 0.0, "human": 0.0})[
+                    "human"
+                ] = float(seconds or 0)
+        return usage
 
     async def count_organization_agents(self, organization_id: int) -> int:
         """Active (non-archived) AI agents (workflows) of one organization."""

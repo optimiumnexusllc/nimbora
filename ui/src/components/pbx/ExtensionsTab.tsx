@@ -32,6 +32,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { detailFromError } from "@/lib/apiError";
 
 import { CredentialsDialog } from "./CredentialsDialog";
+import { PresenceBadge, useTeamPresence } from "./Presence";
 import type { PbxUser } from "./types";
 
 const TEMPLATE_CSV = "prenom;nom;poste;email;ligne;messagerie;agent\nAwa;Diallo;1010;awa@exemple.ci;navigateur;oui;oui\n";
@@ -60,6 +61,7 @@ export function ExtensionsTab({
     onCallSettings?: (user: PbxUser) => void;
     onSoftphone?: (user: PbxUser) => void;
 }) {
+    const presence = useTeamPresence();
     const [creating, setCreating] = useState(false);
     const [form, setForm] = useState<Form>(EMPTY);
     const [busy, setBusy] = useState(false);
@@ -143,6 +145,7 @@ export function ExtensionsTab({
                         <TableRow>
                             <TableHead>Utilisateur</TableHead>
                             <TableHead>Poste</TableHead>
+                            <TableHead>Présence</TableHead>
                             <TableHead>E-mail</TableHead>
                             <TableHead />
                         </TableRow>
@@ -152,6 +155,9 @@ export function ExtensionsTab({
                             <TableRow key={u.uuid} data-testid="pbx-user">
                                 <TableCell className="font-medium">{u.name}</TableCell>
                                 <TableCell className="font-mono">{u.extension ?? "—"}</TableCell>
+                                <TableCell>
+                                    <PresenceBadge presence={u.extension ? presence?.extensions[u.extension] : undefined} />
+                                </TableCell>
                                 <TableCell className="text-sm text-muted-foreground">{u.email ?? "—"}</TableCell>
                                 <TableCell className="space-x-1 text-right">
                                     {onSoftphone && (

@@ -1,0 +1,67 @@
+---
+title: "Object storage"
+description: "Where recordings and files are stored, why the bucket is private, and how to move from the bundled MinIO to a maintained S3 service."
+---
+
+Call recordings, transcripts, knowledge-base documents and campaign files are stored in an S3-compatible object store. By default the platform ships a MinIO container; any S3 service can replace it.
+
+## A private bucket and signed links
+
+The bucket is **private**. Every link handed to a browser — play a recording, open a transcript, upload a document — is a **signed URL that expires** (one hour for downloads, 15 minutes for uploads), computed for the address the browser will use.
+
+<Warning>
+Versions before this change made the bundled bucket readable, writable and **listable by anyone** reaching the public `/voice-audio/` path, and returned unsigned links. The API now removes that anonymous policy when it starts. If you ran an earlier version on a public server, update, and check your access logs for requests to `/voice-audio/` without an `X-Amz-Signature` parameter.
+</Warning>
+
+Requirements:
+
+- `MINIO_PUBLIC_ENDPOINT` (or `PUBLIC_BASE_URL`) is the **public** address, scheme and host only (`https://app.example.com`). A link signed for `localhost` does not work from another computer.
+- The reverse proxy in front keeps the **Host header** and the `/<bucket>/` path. nginx (`deploy/templates`), Caddy (`deploy/enterprise`) and Traefik (`deploy/lab`) do.
+
+To close an exposed bucket right away, before updating:
+
+```bash
+docker exec minio mc anonymous set none local/voice-audio
+```
+
+## Leaving the bundled MinIO
+
+MinIO removed its public images; the bundled one is the last open-source release, pinned and no longer updated. For production, move the files to a maintained S3 service (Scaleway Object Storage, OVHcloud, Cloudflare R2, Wasabi, AWS S3) or a self-hosted one (SeaweedFS, Garage).
+
+<Steps>
+  <Step title="Create the destination bucket">
+    Private bucket, an access key limited to it. For uploads from the browser, allow `PUT` and `GET` from your platform's address in the bucket's CORS rules.
+  </Step>
+  <Step title="Configure the destination">
+    In the API environment: `S3_BUCKET`, `S3_REGION`, `S3_ENDPOINT_URL` (outside AWS), `S3_ADDRESSING_STYLE=path` and `S3_SIGNATURE_VERSION=s3v4` for most S3-compatible services, `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY`. If the endpoint is only reachable internally (a self-hosted store behind your proxy), set `S3_PUBLIC_ENDPOINT_URL` to the address browsers use.
+  </Step>
+  <Step title="Copy, then verify">
+    ```bash
+    docker compose exec api python -m scripts.migrate_object_store copy --dry-run
+    docker compose exec api python -m scripts.migrate_object_store copy
+    docker compose exec api python -m scripts.migrate_object_store verify
+    ```
+    The copy skips objects already at the destination with the same size: run it as often as needed, the last run just before switching copies only what was added since. `verify` fails if an object is missing or has a different size.
+  </Step>
+  <Step title="Switch">
+    ```bash
+    docker compose exec api python -m scripts.migrate_object_store switch   # type BASCULER
+    ```
+    Files stored on MinIO now point to the S3 backend. Set `ENABLE_AWS_S3=true` and restart the API, workers and ARQ. Keep the MinIO volume until you have checked recordings and documents in the console, then remove it.
+  </Step>
+</Steps>
+
+## Self-hosted: SeaweedFS (to validate)
+
+SeaweedFS (Apache-2.0, maintained) is the planned default self-hosted store. Until it ships in the compose files, a single container is enough:
+
+```yaml
+  seaweedfs:
+    image: chrislusf/seaweedfs   # pin the version and digest you validated
+    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json
+    volumes:
+      - seaweedfs-data:/data
+      - ./seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
+```
+
+with `seaweedfs-s3.json` holding one identity (access key, secret key, actions `Read`, `Write`, `List`, `Tagging`, `Admin`), then `S3_ENDPOINT_URL=http://seaweedfs:8333`, `S3_PUBLIC_ENDPOINT_URL` = your public address, the proxy's `/voice-audio/` path pointed at `seaweedfs:8333`, and the migration above.

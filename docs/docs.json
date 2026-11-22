@@ -142,7 +142,8 @@
             "group": "Contact Center",
             "pages": [
               "contact-center/overview",
-              "contact-center/supervision"
+              "contact-center/supervision",
+              "contact-center/smart-routing"
             ]
           },
           {
@@ -194,6 +195,9 @@
               "deployment/authentication",
               "deployment/custom-domain",
               "deployment/scaling",
+              "deployment/saas",
+              "deployment/backup-monitoring",
+              "deployment/object-storage",
               "deployment/update",
               "deployment/heroku"
             ]

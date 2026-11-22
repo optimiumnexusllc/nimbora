@@ -31,6 +31,9 @@ _UPDATABLE = {
     "softphone_settings",
     "supervision_settings",
     "missed_call_policy",
+    "managed",
+    "usage_synced_at",
+    "provisioning",
 }
 
 

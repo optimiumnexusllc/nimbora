@@ -246,3 +246,118 @@ def test_tenant_contexts_cover_what_the_platform_reads_by_type():
     assert module.slugify("  OPTIMIUM NEXUS LLC ") == "optimium-nexus-llc"
     source = (DEPLOY / "pbx" / "install.sh").read_text()
     assert "ensure_tenant_contexts.py" in source and source.index("create_service_account.py") < source.index("ensure_tenant_contexts.py")
+
+
+def test_lab_secrets_file_default_survives_a_partial_run():
+    """`--only nimbora` re-reads lab.env, which stores SECRETS_FILE= (empty): the
+    default path must be applied again or the warning names an empty file."""
+    source = (DEPLOY / "lab" / "install.sh").read_text()
+    default_line = '[[ -n "$SECRETS_FILE" ]] || SECRETS_FILE="$DEFAULT_SECRETS_FILE"'
+    assert source.count(default_line) == 2
+    after_reload = source.index("Lancez d'abord la phase preflight")
+    assert source.index(default_line, after_reload) > after_reload
+
+
+def test_lab_kit_can_run_the_shared_pbx_of_the_operator():
+    """--shared-pbx: engine installed with --operator and PBX_PROVISIONING_* written."""
+    source = (DEPLOY / "lab" / "install.sh").read_text()
+    assert "--shared-pbx) SHARED_PBX=1" in source
+    assert "echo --operator" in source
+    assert "provisioning-account.json" in source
+    for key in ("PBX_PROVISIONING_URL", "PBX_PROVISIONING_PASSWORD", "PBX_PROVISIONING_VERIFY_TLS",
+                "PBX_PROVISIONING_ARI_ENDPOINT", "PBX_PROVISIONING_ARI_PASSWORD", "PBX_PROVISIONING_ARI_WS_CLIENT"):
+        assert f'set_kv "$ENV" {key}' in source, key
+    # The kit never exposes the ARI: the provisioning URL and ARI stay on the private bridge.
+    assert 'PBX_PROVISIONING_URL "https://$PBX_IP"' in source
+    assert 'PBX_PROVISIONING_ARI_ENDPOINT "http://$PBX_IP:5039"' in source
+
+
+def test_pbx_firewall_opens_metrics_only_to_prometheus():
+    assert "9100" not in render_pbx_firewall()
+    rules = render_pbx_firewall(metrics_from="10.0.0.5")
+    assert "ip saddr { 10.0.0.5 } tcp dport 9100 accept" in rules
+
+
+def test_pbx_install_schedules_the_nightly_backup():
+    script = (DEPLOY / "pbx" / "install.sh").read_text()
+    assert "40 2 * * * root ${KIT_DIR}/scripts/backup.sh" in script
+    assert "--no-backup) BACKUP=0" in script
+    # The settings file is written once, never overwritten (it may hold a key path).
+    assert 'if [[ ! -f "$STATE_DIR/backup.env" ]]; then' in script
+    assert "apply_backup\n" in script and "apply_monitoring\n" in script
+
+
+def test_pbx_firewall_only_also_installs_the_node_exporter():
+    """--metrics-from added after the install must install the exporter, not only open 9100."""
+    script = (DEPLOY / "pbx" / "install.sh").read_text()
+    block = script[script.index('if [[ "$FIREWALL_ONLY" == 1 ]]; then'):]
+    block = block[: block.index("exit 0")]
+    assert "apply_monitoring" in block
+
+
+def test_lab_kit_observability_phase():
+    """--observability: metrics on in the stack, exporters on both hosts, Prometheus/Grafana on local ports."""
+    source = (DEPLOY / "lab" / "install.sh").read_text()
+    assert "--observability) OBSERVABILITY=1" in source
+    assert 'set_kv "$ENV" ENABLE_PROMETHEUS_METRICS true' in source
+    assert 'ensure_secret "$ENV" NIMBORA_DEVOPS_SECRET' in source
+    assert "echo --metrics-from $(bridge_gateway)" in source          # PBX exporter opened to the host only
+    assert "--trusted-proxy $(bridge_gateway)" in source               # the PBX logs the real client behind Traefik
+    assert 'chmod 644 "$OBS/devops_secret"' in source                  # readable by Prometheus (nobody)
+    assert "gw_priority: 1" in source                                  # reach the PBX via the stack bridge
+    assert "--web.listen-address=%s:9100" in source                    # host exporter never public
+
+
+def test_pbx_node_exporter_reads_the_backup_textfile_directory():
+    """Debian's exporter starts with ARGS="": without the textfile directory the
+    backup freshness metric never reaches Prometheus (seen on the lab)."""
+    script = (DEPLOY / "pbx" / "install.sh").read_text()
+    assert "--collector.textfile.directory=/var/lib/prometheus/node-exporter" in script
+    assert "/etc/default/prometheus-node-exporter" in script
+
+
+def test_tenant_contexts_fill_the_ranges_of_engine_default_contexts(monkeypatch, capsys):
+    """The 26.11 engine gives a new tenant default contexts with incall_ranges []:
+    the script fills the empty ranges and keeps those set by hand."""
+    import importlib.util
+    import sys
+
+    spec = importlib.util.spec_from_file_location("ensure_tenant_contexts", DEPLOY / "pbx" / "scripts" / "ensure_tenant_contexts.py")
+    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    contexts = [
+        {"id": 1, "name": "default-internal", "type": "internal", "label": "x", "enabled": True,
+         "user_ranges": [{"start": "1000", "end": "1099"}], "contexts": []},
+        {"id": 2, "name": "default-incall", "type": "incall", "label": "y", "enabled": True, "incall_ranges": []},
+        {"id": 3, "name": "default-outcall", "type": "outcall", "label": "z", "enabled": True},
+    ]
+    calls = []
+
+    class FakeApi:
+        def __init__(self, *_):
+            self.token = self.tenant = None
+
+        def call(self, method, path, body=None, **_):
+            calls.append((method, path, body))
+            if path.endswith("/token"):
+                return {"data": {"token": "t"}}
+            if path.endswith("/tenants"):
+                return {"items": [{"uuid": "u1", "name": "Entreprise test", "slug": ""}]}
+            if path.endswith("/contexts") and method == "GET":
+                return {"items": contexts}
+            return None
+
+    monkeypatch.setattr(module, "Api", FakeApi)
+    monkeypatch.setattr(sys, "argv", ["x", "--root-password", "p", "--tenant-name", "Entreprise test"])
+    module.main()
+    puts = {path: body for method, path, body in calls if method == "PUT"}
+    incall = puts["/api/confd/1.1/contexts/2"]
+    assert [r["did_length"] for r in incall["incall_ranges"]] == list(range(4, 16))
+    internal = puts["/api/confd/1.1/contexts/1"]
+    assert "user_ranges" not in internal and internal["queue_ranges"]
+    assert "/api/confd/1.1/contexts/3" not in puts   # nothing missing
+    assert puts["/api/confd/1.1/contexts/1/contexts"] == {"contexts": [{"id": 3}]}
+
+
+def test_lab_shared_pbx_allows_its_private_address_in_saas_mode():
+    source = (DEPLOY / "lab" / "install.sh").read_text()
+    assert 'set_kv "$ENV" PBX_ALLOWED_HOSTS "$PBX_IP"' in source

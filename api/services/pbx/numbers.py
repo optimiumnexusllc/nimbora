@@ -17,6 +17,7 @@ from api.services.pbx.service import (
     _connection,
     _incall_context,
     client_for,
+    pbx_exten,
     route_number_to_agent,
 )
 
@@ -37,9 +38,16 @@ def _clean(number: str) -> str:
     return number
 
 
+_exten = pbx_exten  # the engine holds DIDs without their "+"
+
+
 async def _find_incall(client: PbxClient, number: str) -> dict | None:
+    wanted = _exten(number)
     for incall in await client.incalls():
-        if any(e.get("exten") == number for e in incall.get("extensions") or []):
+        if any(
+            _exten(e.get("exten") or "") == wanted
+            for e in incall.get("extensions") or []
+        ):
             return incall
     return None
 
@@ -135,7 +143,7 @@ async def set_number_destination(
     async with client_for(connection, **client_kwargs) as client:
         if incall is None:
             context = await _incall_context(client, connection)
-            extension = await client.create_extension(number, context)
+            extension = await client.create_extension(_exten(number), context)
             try:
                 incall = await client.create_incall(
                     destination, f"{brand().name} — {number}"
@@ -238,7 +246,9 @@ async def remove_number(organization_id: int, number: str, **client_kwargs) -> b
             return False
         await client.delete_incall(incall["id"])
         for extension in incall.get("extensions") or []:
-            if extension.get("exten") == number and extension.get("id"):
+            if _exten(extension.get("exten") or "") == _exten(number) and extension.get(
+                "id"
+            ):
                 try:
                     await client.delete_extension(extension["id"])
                 except PbxError as error:

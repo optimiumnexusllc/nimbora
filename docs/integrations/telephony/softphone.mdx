@@ -10,7 +10,8 @@ NIMBORA Softphone turns a computer, a phone or a browser tab into an [enterprise
 - Places and receives calls on the PBX. Signaling is SIP over a secure WebSocket; audio is WebRTC, encrypted with SRTP. It rings, shows a notification, and displays the caller's number or name.
 - During a call: mute, hold, a keypad for menus (DTMF), **transfer**, and a call timer. A second caller hears busy.
 - **Recents**: the extension's calls from the PBX's call log, missed calls in red.
-- **Contacts**: colleagues, call groups and queues, with accent-insensitive search.
+- **Contacts**: one directory with colleagues and their **presence**, call groups and queues, and the company's **customers** (see below), with accent-insensitive search.
+- **My presence**: Available, Away or Offline, with a message colleagues see (« En réunion jusqu'à 15 h »).
 - **Voicemail** in one tap. It dials `*98`.
 - **Do-not-disturb** and **forward all calls**, from the app.
 - **Calls handed over by the AI** come with the AI agent's handoff card (see below).
@@ -19,6 +20,33 @@ NIMBORA Softphone turns a computer, a phone or a browser tab into an [enterprise
 <Frame caption="Pairing an extension: one-time code, QR code and downloads">
   <img src="/images/screenshots/softphone-pairing.webp" alt="Softphone dialog with the activation code, the QR code and the download links per platform" />
 </Frame>
+
+## Presence and unified directory
+
+<Frame caption="Contacts with each colleague's presence and the recent customers; « Ma présence » in Réglages">
+  <img src="/images/screenshots/softphone-presence.webp" alt="Softphone Contacts tab listing services, colleagues with presence (en appel, absent avec message, disponible, ne pas déranger, hors ligne) and recent customers with a VIP badge, next to the Réglages tab with the Ma présence choices" />
+</Frame>
+
+Each colleague shows one state, refreshed every 20 seconds while Contacts is open:
+
+| State | When |
+|---|---|
+| **Disponible** | Ready to take a call |
+| **En appel** / **Sonne** | Talking or holding a call / a call is ringing or being placed |
+| **Ne pas déranger** | Do-not-disturb is on |
+| **Absent** | The person chose it, with an optional message |
+| **Hors ligne** | No phone or app connected, or the person chose « Hors ligne » |
+
+On a call, ringing and do-not-disturb follow the extension by themselves. Available, Away and Offline are chosen in **Réglages → Ma présence**. The same presence appears in the console, in the **Postes** tab of the PBX page.
+
+Below the colleagues, Contacts lists the **customers** from customer memory: the most recent ones, or every customer matching the search (name or number, searched on the server). VIP customers carry a badge, with their usual advisor when known. An incoming call from a known customer shows their name. Customers are not listed when customer memory is off.
+
+Presence comes from the PBX's presence service. It needs the rights `chatd.users.presences.read` and `chatd.users.*.presences.update`, included in the service account's policy since this version:
+
+- **PBX shared by the operator**: run `create_service_account.py --provisioner` again on the operator's PBX, then **Activer la téléphonie** again for each company (or the operator's « Provisionner »). Each company's policy is then updated in place.
+- **Your own PBX**: run `deploy/pbx/scripts/create_service_account.py` again.
+
+Until then, the app still works and shows only who is on a call.
 
 ## Calls handed over by the AI
 
@@ -84,7 +112,8 @@ The app uses `/api/v1/softphone/*` with `Authorization: Bearer <device token>`:
 | `POST` | `/softphone/activate` | `{code, device_name, platform, app_version}` → `{token, config}` |
 | `GET` | `/softphone/config` | SIP account, WebSocket, domain, ICE servers, brand |
 | `GET` | `/softphone/history` | Recent calls of the extension |
-| `GET` | `/softphone/directory` | Colleagues, groups, queues |
+| `GET` | `/softphone/directory?q=…` | Colleagues with presence, groups, queues, customers (`q` searches customers; `customers: null` when customer memory is off) |
+| `PUT` | `/softphone/presence` | `{state: available \| away \| offline, status}` |
 | `GET` / `PUT` | `/softphone/status` | Do-not-disturb, forward all calls |
 | `GET` | `/softphone/handoff?number=…` | The AI's handoff card for the call ringing now (`{card: … \| null}`) |
 | `POST` | `/softphone/handoff/{id}/answered` | The person took the call |

@@ -92,6 +92,23 @@ def tool_to_function_schema(tool: Any) -> dict[str, Any]:
     parameters = config.get("parameters", []) or []
     if (
         definition.get("type") == "transfer_call"
+        and config.get("destination_source", "static") == "smart"
+    ):
+        # Intelligent routing: the agent names what the customer needs.
+        parameters = [
+            {
+                "name": "skill",
+                "type": "string",
+                "description": (
+                    "What the customer needs, in one or two words (for example: "
+                    "ventes, facturation, support technique, réclamation). Used to "
+                    "reach the right team."
+                ),
+                "required": False,
+            }
+        ]
+    elif (
+        definition.get("type") == "transfer_call"
         and config.get("destination_source", "static") != "dynamic"
     ):
         parameters = []

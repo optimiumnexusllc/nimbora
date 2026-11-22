@@ -11,7 +11,6 @@ import {
     PhoneForwarded,
     PhoneOff,
     Play,
-    Plug,
     RefreshCw,
     Settings2,
     Sparkles,
@@ -38,6 +37,7 @@ import {
     listVoicemailsApiV1PbxVoicemailsGet,
     readConnectionApiV1PbxConnectionGet,
     readInventoryApiV1PbxInventoryGet,
+    readPlanAccessApiV1PbxPlanGet,
     removeNumberApiV1PbxNumbersNumberDelete,
     saveConnectionApiV1PbxConnectionPut,
     testConnectionApiV1PbxConnectionTestPost,
@@ -45,6 +45,7 @@ import {
 } from "@/client/sdk.gen";
 import type {
     ConnectionResponse,
+    PlanAccessResponse,
     TelephonyConfigurationListItem,
     WorkflowSummaryResponse,
 } from "@/client/types.gen";
@@ -59,9 +60,11 @@ import { GroupsTab, type PbxGroup } from "@/components/pbx/GroupsTab";
 import { MenusTab } from "@/components/pbx/MenusTab";
 import { MissedCallsCard } from "@/components/pbx/MissedCallsCard";
 import { NumberDialog, type NumberEdit } from "@/components/pbx/NumberDialog";
+import { PbxActivation, SeatsBadge } from "@/components/pbx/PbxActivation";
 import { QueuesTab } from "@/components/pbx/QueuesTab";
 import { RecordingsTab } from "@/components/pbx/RecordingsTab";
 import { RestrictionsSection } from "@/components/pbx/RestrictionsSection";
+import { RoutingTab } from "@/components/pbx/RoutingTab";
 import { ScheduleDialog } from "@/components/pbx/ScheduleDialog";
 import { SoftphoneDialog } from "@/components/pbx/SoftphoneDialog";
 import { SoftphonesSection } from "@/components/pbx/SoftphonesSection";
@@ -108,6 +111,7 @@ function Empty({ children }: { children: React.ReactNode }) {
 export default function PbxPage() {
     const { user, loading: authLoading } = useAuth();
     const [connection, setConnection] = useState<ConnectionResponse | null>(null);
+    const [access, setAccess] = useState<PlanAccessResponse | null>(null);
     const [inventory, setInventory] = useState<PbxInventory | null>(null);
     const [logs, setLogs] = useState<PbxCallLog[] | null>(null);
     const [ariConfigs, setAriConfigs] = useState<TelephonyConfigurationListItem[]>([]);
@@ -125,7 +129,12 @@ export default function PbxPage() {
         conferences: [],
         live_error: null,
     });
+    // ?tab=routing (from the transfer tool's help) opens that tab directly.
     const [tab, setTab] = useState("calls");
+    useEffect(() => {
+        const wanted = new URLSearchParams(window.location.search).get("tab");
+        if (wanted) setTab(wanted);
+    }, []);
     const [menus, setMenus] = useState<PbxMenu[]>([]);
     const [voicemails, setVoicemails] = useState<PbxVoicemail[]>([]);
     const [lines, setLines] = useState<{
@@ -195,6 +204,11 @@ export default function PbxPage() {
         return response.data ?? null;
     }, []);
 
+    const loadAccess = useCallback(async () => {
+        const response = await readPlanAccessApiV1PbxPlanGet();
+        if (!response.error) setAccess(response.data ?? null);
+    }, []);
+
     useEffect(() => {
         if (authLoading || !user || fetched.current) return;
         fetched.current = true;
@@ -206,6 +220,7 @@ export default function PbxPage() {
             ]);
             setAriConfigs((configs.data?.configurations ?? []).filter((c) => c.provider === "ari"));
             setWorkflows((flows.data as WorkflowSummaryResponse[] | undefined) ?? []);
+            void loadAccess();
             if (current?.configured) {
                 void loadInventory();
                 void loadMenus();
@@ -214,7 +229,7 @@ export default function PbxPage() {
                 void loadConferences();
             }
         })();
-    }, [authLoading, user, loadConnection, loadInventory, loadMenus, loadVoicemails, loadGroups, loadConferences]);
+    }, [authLoading, user, loadConnection, loadAccess, loadInventory, loadMenus, loadVoicemails, loadGroups, loadConferences]);
 
     useEffect(() => {
         if (!connection?.configured) return;
@@ -304,22 +319,20 @@ export default function PbxPage() {
                 title={pbxName}
                 description="Le PBX d'entreprise : postes, files d'attente, agents, numéros et serveurs vocaux, piloté depuis cette console et ouvert à vos agents IA."
             >
-                <div className="card-weave flex flex-col items-center gap-4 rounded-xl border border-border/60 p-10 text-center">
-                    <div className="flex size-12 items-center justify-center rounded-xl bg-gradient-to-br from-brand-cyan to-brand-violet text-white">
-                        <Plug className="size-6" />
-                    </div>
-                    <div className="max-w-xl space-y-2">
-                        <h2 className="font-display text-xl font-semibold">Connectez votre PBX</h2>
-                        <p className="text-sm text-muted-foreground">
-                            Installez {pbxName} sur un serveur dédié avec le kit <code>deploy/pbx</code> (une commande,
-                            marque blanche incluse), puis saisissez ici l&apos;adresse et le compte de service affichés
-                            à la fin de l&apos;installation.
-                        </p>
-                    </div>
-                    <Button onClick={() => setEditing(true)}>
-                        <Plug /> Connecter le PBX
-                    </Button>
-                </div>
+                <PbxActivation
+                    access={access}
+                    pbxName={pbxName}
+                    onConnectOwn={() => setEditing(true)}
+                    onActivated={(activated) => {
+                        setConnection(activated);
+                        void loadAccess();
+                        void loadInventory();
+                        void loadMenus();
+                        void loadVoicemails();
+                        void loadGroups();
+                        void loadConferences();
+                    }}
+                />
                 {dialog}
             </PageLayout>
         );
@@ -382,9 +395,11 @@ export default function PbxPage() {
                     <Button variant="outline" onClick={() => void loadInventory()}>
                         <RefreshCw /> Actualiser
                     </Button>
-                    <Button variant="outline" onClick={() => setEditing(true)}>
-                        <Settings2 /> Connexion
-                    </Button>
+                    {!connection.managed && (
+                        <Button variant="outline" onClick={() => setEditing(true)}>
+                            <Settings2 /> Connexion
+                        </Button>
+                    )}
                 </>
             }
         >
@@ -392,7 +407,7 @@ export default function PbxPage() {
                 <span className={cn("size-2.5 rounded-full", ok ? "bg-emerald-400" : "bg-red-400")} />
                 <div className="min-w-0 flex-1">
                     <p className="font-medium">
-                        {ok ? "Connecté" : "Injoignable"} · {connection.name}
+                        {ok ? "Connecté" : "Injoignable"} · {connection.managed ? `${pbxName} de la plateforme` : connection.name}
                         {connection.engine_version && (
                             <span className="ml-2 text-sm font-normal text-muted-foreground">
                                 version {connection.engine_version}
@@ -403,27 +418,30 @@ export default function PbxPage() {
                         {ok ? connection.base_url : connection.last_error} · vérifié le {fmt(connection.last_checked_at)}
                     </p>
                 </div>
+                <SeatsBadge access={access} />
                 <Button variant="ghost" size="sm" onClick={test}>
                     <RefreshCw /> Tester
                 </Button>
-                <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={async () => {
-                        const response = await applyBrandingApiV1PbxBrandingApplyPost();
-                        if (response.error) {
-                            toast.error(detailFromError(response.error, "Application impossible"));
-                            return;
-                        }
-                        // A company's service account cannot touch the engine's
-                        // global settings: the install kit brands them instead.
-                        if (response.data?.applied_by === "kit") toast.info(response.data.detail);
-                        else toast.success(`Marque appliquée : ${connection.brand.sip_user_agent}`);
-                        void loadConnection();
-                    }}
-                >
-                    <Sparkles /> {connection.branding_applied_at ? "Marque appliquée" : "Appliquer la marque"}
-                </Button>
+                {!connection.managed && (
+                    <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={async () => {
+                            const response = await applyBrandingApiV1PbxBrandingApplyPost();
+                            if (response.error) {
+                                toast.error(detailFromError(response.error, "Application impossible"));
+                                return;
+                            }
+                            // A company's service account cannot touch the engine's
+                            // global settings: the install kit brands them instead.
+                            if (response.data?.applied_by === "kit") toast.info(response.data.detail);
+                            else toast.success(`Marque appliquée : ${connection.brand.sip_user_agent}`);
+                            void loadConnection();
+                        }}
+                    >
+                        <Sparkles /> {connection.branding_applied_at ? "Marque appliquée" : "Appliquer la marque"}
+                    </Button>
+                )}
                 <Button
                     variant="ghost"
                     size="sm"
@@ -465,6 +483,7 @@ export default function PbxPage() {
                             <Cable className="size-3.5" /> Lignes opérateurs
                         </TabsTrigger>
                         <TabsTrigger value="recordings">Enregistrements</TabsTrigger>
+                        <TabsTrigger value="routing">Routage</TabsTrigger>
                         <TabsTrigger value="logs">Journal</TabsTrigger>
                     </TabsList>
 
@@ -765,6 +784,10 @@ export default function PbxPage() {
 
                     <TabsContent value="recordings">
                         <RecordingsTab users={inventory.users} />
+                    </TabsContent>
+
+                    <TabsContent value="routing">
+                        <RoutingTab queues={inventory.queues} users={inventory.users} />
                     </TabsContent>
 
                     <TabsContent value="logs">

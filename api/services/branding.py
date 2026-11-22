@@ -29,16 +29,22 @@ def _slug(text: str) -> str:
     return re.sub(r"[^A-Za-z0-9._-]+", "-", text).strip("-") or "PBX"
 
 
+def _env(name: str, default: str) -> str:
+    """An unset OR empty variable means the default: Compose passes `${VAR:-}`
+    as an empty string when .env does not define it."""
+    return os.environ.get(name, "").strip() or default
+
+
 def brand() -> Brand:
-    name = os.environ.get("BRAND_NAME", "NIMBORA").strip() or "NIMBORA"
-    domain = os.environ.get("BRAND_DOMAIN", "nimbora.io").strip() or "nimbora.io"
-    pbx_name = os.environ.get("BRAND_PBX_NAME", f"{name} Voice").strip()
+    name = _env("BRAND_NAME", "NIMBORA")
+    domain = _env("BRAND_DOMAIN", "nimbora.io")
+    pbx_name = _env("BRAND_PBX_NAME", f"{name} Voice")
     return Brand(
         name=name,
         pbx_name=pbx_name,
-        support_email=os.environ.get("BRAND_SUPPORT_EMAIL", f"support@{domain}"),
-        noreply_email=os.environ.get("BRAND_NOREPLY_EMAIL", f"noreply@{domain}"),
-        website=os.environ.get("BRAND_WEBSITE", f"https://{domain}"),
+        support_email=_env("BRAND_SUPPORT_EMAIL", f"support@{domain}"),
+        noreply_email=_env("BRAND_NOREPLY_EMAIL", f"noreply@{domain}"),
+        website=_env("BRAND_WEBSITE", f"https://{domain}"),
         # Shown in SIP User-Agent / Server headers of the PBX.
-        sip_user_agent=os.environ.get("BRAND_SIP_USER_AGENT", _slug(pbx_name)),
+        sip_user_agent=_env("BRAND_SIP_USER_AGENT", _slug(pbx_name)),
     )

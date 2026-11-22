@@ -9,6 +9,7 @@ const config: SoftphoneConfig = {
     account: {
         display_name: "Koffi Yao",
         extension: "1001",
+        sip_identity: "k0ff1y40",
         username: "koffi1001",
         password: "secret",
         wss_url: "wss://pbx.example/api/asterisk/ws",
@@ -94,7 +95,7 @@ describe("Phone", () => {
         const states: string[] = [];
         phone.subscribe((s) => states.push(s.registration));
         await phone.start();
-        expect(ua.options).toMatchObject({ uri: "sip:koffi1001@pbx.example", password: "secret", display_name: "Koffi Yao", register: true });
+        expect(ua.options).toMatchObject({ uri: "sip:k0ff1y40@pbx.example", authorization_user: "koffi1001", password: "secret", display_name: "Koffi Yao", register: true });
         expect((ua.options.sockets as { url: string }[])[0].url).toBe("wss://pbx.example/api/asterisk/ws");
         ua.fire("registered");
         expect(phone.state.registration).toBe("registered");

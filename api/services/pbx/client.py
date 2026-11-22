@@ -91,6 +91,15 @@ def _error_message(response: httpx.Response) -> str:
     return str(body)[:400]
 
 
+def _describe(error: httpx.HTTPError) -> str:
+    """The error class, and for DNS failures say so: « Name or service not
+    known » means the PBX address is a host name the API cannot resolve."""
+    text = str(error)
+    if "Name or service not known" in text or "nodename nor servname" in text:
+        return f"{error.__class__.__name__} (nom d'hôte du PBX non résolu)"
+    return error.__class__.__name__
+
+
 class PbxClient:
     def __init__(
         self,
@@ -128,7 +137,7 @@ class PbxClient:
             )
         except httpx.HTTPError as error:
             raise PbxUnavailable(
-                f"PBX injoignable : {error.__class__.__name__}"
+                f"PBX injoignable (auth) : {_describe(error)}"
             ) from error
         if response.status_code in (401, 403):
             raise PbxAuthError(
@@ -185,7 +194,7 @@ class PbxClient:
                 )
             except httpx.HTTPError as error:
                 raise PbxUnavailable(
-                    f"PBX injoignable : {error.__class__.__name__}"
+                    f"PBX injoignable ({service}) : {_describe(error)}"
                 ) from error
             if response.status_code == 401 and attempt == 0:
                 continue  # token expired or revoked: one fresh try
@@ -240,6 +249,51 @@ class PbxClient:
         if slug:
             body["slug"] = slug
         return await self.request("auth", "POST", "/tenants", json=body)
+
+    # --- operator provisioning (shared PBX: one tenant per company).
+    # Used only with the operator's provisioning account, never with a
+    # company's service account (see services/pbx/provisioning).
+
+    async def tenants(self, search: str) -> list[dict]:
+        return await self._items("auth", "/tenants", search=search)
+
+    async def delete_tenant(self, tenant_uuid: str) -> None:
+        await self.request("auth", "DELETE", f"/tenants/{tenant_uuid}")
+
+    async def policies(self, search: str) -> list[dict]:
+        return await self._items("auth", "/policies", search=search)
+
+    async def create_policy(self, body: dict) -> dict:
+        return await self.request("auth", "POST", "/policies", json=body)
+
+    async def update_policy(self, policy_uuid: str, body: dict) -> None:
+        await self.request("auth", "PUT", f"/policies/{policy_uuid}", json=body)
+
+    async def auth_users(self, search: str) -> list[dict]:
+        return await self._items("auth", "/users", search=search)
+
+    async def create_auth_user(self, body: dict) -> dict:
+        return await self.request("auth", "POST", "/users", json=body)
+
+    async def delete_auth_user(self, user_uuid: str) -> None:
+        await self.request("auth", "DELETE", f"/users/{user_uuid}")
+
+    async def set_auth_user_policy(self, user_uuid: str, policy_uuid: str) -> None:
+        await self.request("auth", "PUT", f"/users/{user_uuid}/policies/{policy_uuid}")
+
+    async def create_context(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/contexts", json=body)
+
+    async def update_context(self, context_id: int, body: dict) -> None:
+        await self.request("confd", "PUT", f"/contexts/{context_id}", json=body)
+
+    async def set_context_includes(self, context_id: int, included: list[int]) -> None:
+        await self.request(
+            "confd",
+            "PUT",
+            f"/contexts/{context_id}/contexts",
+            json={"contexts": [{"id": i} for i in included]},
+        )
 
     # ------------------------------------------------------------ confd
 
@@ -673,6 +727,22 @@ class PbxClient:
             params["from"] = since
         return await self._items("call_logd", "/cdr", **params)
 
+    async def cdr_since(
+        self, since: str, *, limit: int = 500, offset: int = 0
+    ) -> list[dict]:
+        """Call logs started from ``since`` (ISO 8601), oldest first."""
+        return await self._items(
+            "call_logd",
+            "/cdr",
+            **{
+                "from": since,
+                "order": "start",
+                "direction": "asc",
+                "limit": limit,
+                "offset": offset,
+            },
+        )
+
     async def recording_media(self, cdr_id: int, recording_uuid: str) -> bytes:
         return await self.request(
             "call_logd",
@@ -716,6 +786,18 @@ class PbxClient:
             raise PbxError(_error_message(response), status=response.status_code)
 
     # ------------------------------------------------- calls and agents
+
+    async def presences(self) -> list[dict]:
+        """Presence of the tenant's users (chatd): state, line state, DND."""
+        return await self._items("chatd", "/users/presences", recurse="false")
+
+    async def set_presence(self, user_uuid: str, state: str, status: str = "") -> None:
+        await self.request(
+            "chatd",
+            "PUT",
+            f"/users/{user_uuid}/presences",
+            json={"uuid": user_uuid, "state": state, "status": status},
+        )
 
     async def calls(self) -> list[dict]:
         return await self._items("calld", "/calls")
@@ -907,6 +989,8 @@ REQUIRED_ACL: dict[str, str] = {
     "user_forwards": "confd.users.{user_id}.forwards.read",
     "set_user_forwards": "confd.users.{user_id}.forwards.update",
     "user_services": "confd.users.{user_id}.services.read",
+    "presences": "chatd.users.presences.read",
+    "set_presence": "chatd.users.{user_uuid}.presences.update",
     "set_user_services": "confd.users.{user_id}.services.update",
     "user_fallbacks": "confd.users.{user_id}.fallbacks.read",
     "set_user_fallbacks": "confd.users.{user_id}.fallbacks.update",
@@ -928,4 +1012,28 @@ REQUIRED_ACL: dict[str, str] = {
     # NIMBORA Softphone
     "endpoint_sip": "confd.endpoints.sip.{sip_uuid}.read",
     "user_cdr": "call-logd.cdr.read",
+    # human minutes billing (catch-up of missed call-log webhooks)
+    "cdr_since": "call-logd.cdr.read",
+}
+
+
+# What the operator's provisioning account needs on top of REQUIRED_ACL to
+# create a company's tenant, its dialplan contexts and its service account on
+# a shared PBX. The engine only lets an account hand out a policy whose ACLs it
+# holds itself, so the provisioning policy is REQUIRED_ACL + these (see
+# deploy/pbx/provisioning-policy.json; a test keeps them in sync).
+PROVISIONING_ACL: dict[str, str] = {
+    "tenants": "auth.tenants.read",
+    "create_tenant": "auth.tenants.create",
+    "delete_tenant": "auth.tenants.{tenant_uuid}.delete",
+    "policies": "auth.policies.read",
+    "create_policy": "auth.policies.create",
+    "update_policy": "auth.policies.{policy_uuid}.update",
+    "auth_users": "auth.users.read",
+    "create_auth_user": "auth.users.create",
+    "delete_auth_user": "auth.users.{user_uuid}.delete",
+    "set_auth_user_policy": "auth.users.{user_uuid}.policies.{policy_uuid}.create",
+    "create_context": "confd.contexts.create",
+    "set_context_includes": "confd.contexts.{context_id}.contexts.update",
+    "update_context": "confd.contexts.{context_id}.update",
 }

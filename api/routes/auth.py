@@ -69,6 +69,21 @@ async def signup(request: SignupRequest):
         await ensure_organization_subscription(
             organization.id, billing_email=request.email
         )
+        from api.constants import PBX_PROVISIONING_ON_SIGNUP, PBX_PROVISIONING_URL
+
+        if PBX_PROVISIONING_ON_SIGNUP and PBX_PROVISIONING_URL:
+            # The company's tenant on the shared PBX, created in the background.
+            from api.tasks.arq import enqueue_job
+            from api.tasks.function_names import FunctionNames
+
+            try:
+                await enqueue_job(FunctionNames.PROVISION_PBX_TENANT, organization.id)
+            except Exception:  # noqa: BLE001 - never fail a signup on this
+                from loguru import logger
+
+                logger.opt(exception=True).warning(
+                    "Could not enqueue PBX provisioning for org {}", organization.id
+                )
 
     # Create JWT token
     token = create_jwt_token(user.id, request.email)
@@ -87,7 +102,7 @@ async def signup(request: SignupRequest):
         user=UserResponse(
             id=user.id,
             email=user.email,
-            name=request.name,
+            name=getattr(user, "name", None),
             organization_id=organization.id,
             provider_id=user.provider_id,
         ),
@@ -126,6 +141,7 @@ async def login(request: LoginRequest):
         user=UserResponse(
             id=user.id,
             email=user.email,
+            name=getattr(user, "name", None),
             organization_id=user.selected_organization_id,
             provider_id=user.provider_id,
         ),
@@ -137,6 +153,7 @@ async def get_current_user(user: UserModel = Depends(get_user)):
     return UserResponse(
         id=user.id,
         email=user.email,
+        name=getattr(user, "name", None),
         organization_id=user.selected_organization_id,
         provider_id=user.provider_id,
     )

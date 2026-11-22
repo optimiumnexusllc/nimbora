@@ -408,13 +408,14 @@ async def test_number_destinations_and_ai_adoption(db_session, monkeypatch, spok
     )
     assert row.inbound_workflow_id == workflow.id
     inventory = await pbx.inventory(org.id)
-    shown = next(n for n in inventory["numbers"] if n["number"] == "+22527000000")
+    # The engine holds the DID without its "+"; the inventory shows it as held.
+    shown = next(n for n in inventory["numbers"] if n["number"] == "22527000000")
     assert shown["destination_type"] == "ai" and shown["ai_workflow_id"] == workflow.id
 
     assert await pbx.unroute_number(org.id, "+22527000000")
     assert any(i["id"] == 5 for i in fake.incalls)  # never deleted
     assert fake.incalls[0]["destination"] == {"type": "queue", "queue_id": 1}
-    assert any(e["exten"] == "+22527000000" for e in fake.extensions)
+    assert any(e["exten"] == "22527000000" for e in fake.extensions)
 
     # AI → menu releases NIMBORA's route.
     await numbers.set_number_destination(
@@ -442,7 +443,7 @@ async def test_number_destinations_and_ai_adoption(db_session, monkeypatch, spok
     shown = next(
         n
         for n in (await pbx.inventory(org.id))["numbers"]
-        if n["number"] == "+22527000000"
+        if n["number"] == "22527000000"  # as the engine holds it, without "+"
     )
     assert shown["destination_type"] == "ivr"
     assert shown["destination_target_id"] == published["pbx_ivr_id"]
@@ -451,7 +452,9 @@ async def test_number_destinations_and_ai_adoption(db_session, monkeypatch, spok
         await numbers.set_number_destination(org.id, "abc", ivr.MenuAction())
     assert await numbers.remove_number(org.id, "+22527000077")
     assert not await numbers.remove_number(org.id, "+22527000077")
-    assert not any(e["exten"] == "+22527000077" for e in fake.extensions)
+    assert not any(
+        e["exten"] in ("+22527000077", "22527000077") for e in fake.extensions
+    )
 
 
 # ------------------------------------------------------- operator lines

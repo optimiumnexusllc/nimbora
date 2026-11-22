@@ -73,6 +73,7 @@ sudo ./install.sh --app-domain app.votre-domaine.com --pbx-domain pbx.votre-doma
 | `--sip-public` | redirige aussi SIP 5060/5061 vers le PBX (opérateur raccordé) |
 | `--ufw` | installe UFW avec la liste de ports ci-dessus (hébergeur sans pare-feu) |
 | `--only incus,firewall,pbx,nimbora,traefik` | ne joue que ces phases |
+| `--shared-pbx` | PBX partagé de l'opérateur : moteur installé avec `--operator`, compte d'approvisionnement et `PBX_PROVISIONING_*` écrits dans le `.env` de la pile ; chaque entreprise active ensuite sa téléphonie en un clic |
 | `--no-build` | ne reconstruit pas les images Docker |
 | `--force-pbx` | relance l'installateur du moteur dans un conteneur déjà installé |
 

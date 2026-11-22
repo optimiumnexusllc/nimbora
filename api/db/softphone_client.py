@@ -115,6 +115,22 @@ class SoftphoneClient(BaseDBClient):
             await session.commit()
             return result.rowcount > 0
 
+    async def revoke_softphone_devices_for_organization(
+        self, organization_id: int
+    ) -> int:
+        """Every device of the company (its PBX is gone)."""
+        async with self.async_session() as session:
+            result = await session.execute(
+                update(SoftphoneDeviceModel)
+                .where(
+                    SoftphoneDeviceModel.organization_id == organization_id,
+                    SoftphoneDeviceModel.revoked_at.is_(None),
+                )
+                .values(revoked_at=datetime.now(UTC))
+            )
+            await session.commit()
+            return result.rowcount
+
     async def revoke_softphone_devices_for_extension(
         self, organization_id: int, pbx_user_uuid: str
     ) -> int:

@@ -1,5 +1,24 @@
 # NIMBORA Softphone — journal des versions
 
+## 1.2.0 — 22 novembre 2026
+
+**Qui est disponible, et tous vos contacts au même endroit.**
+
+- **Présence des collègues** dans Contacts : disponible, en appel, sonne, ne pas déranger, absent
+  ou hors ligne, avec leur message (« En réunion jusqu'à 15 h ») ; nombre de collègues
+  disponibles ; actualisé toutes les 20 secondes tant que l'onglet est ouvert.
+- **Ma présence** dans Réglages : Disponible, Absent ou Hors ligne, avec un message. En appel,
+  sonnerie et ne pas déranger suivent le poste automatiquement.
+- **Annuaire unifié** : collègues, services (groupes et files) et **clients** de la mémoire
+  client (clients récents, recherche par nom ou numéro sur le serveur, badge VIP, conseiller
+  habituel). Un appel entrant d'un client connu affiche son nom.
+- Nécessite NIMBORA avec le droit de présence du compte de service ; sans lui, l'application
+  montre seulement qui est en appel.
+- **Correctif** : l'application s'enregistre avec l'identité SIP du poste et s'authentifie avec
+  son nom SIP (`sip_identity` dans la configuration). Avant, le moteur 26.11 refusait les
+  identifiants d'un poste navigateur alors que le mot de passe était le bon.
+- « Hors ligne » choisi dans Ma présence reste « Hors ligne » même téléphone enregistré.
+
 ## 1.1.0 — 21 novembre 2026
 
 **Les appels transférés par l'agent IA arrivent avec leur contexte.**
