@@ -554,7 +554,14 @@ Autres observations :
 
 Correction de l'auteur (`fb9acfc`) : `MPS_ENABLED` est faux quand `MPS_API_URL` est vide, `off`
 ou un hôte `.example` ; l'amorçage se termine alors sans contacter de service hébergé.
-Revérification après redéploiement : voir ci-dessous.
+Revérifié après redéploiement de `fb9acfc` (API démarrée à 10:17:27 UTC, `MPS_API_URL` non
+défini sur le laboratoire) : requêtes authentifiées (profil, inventaire, routage, clients,
+présence), journal : **0** `Name or service not known`, **0** « Failed to bootstrap », une ligne
+« Organization 1 bootstrapped without hosted services (MPS off) ». ✅ Les tests
+`test_organization_bootstrap.py` passent (78 tests sur les cinq fichiers concernés).
+Avec le même commit, « Hors ligne » choisi depuis le Softphone est envoyé en `invisible` :
+`PUT /softphone/presence {"state":"offline"}` sur 1001 → « Hors ligne » vu du poste 1004, puis
+retour « Disponible » ✅.
 
 ### Journal du routage (PR #6, `c3bbc7d`)
 
