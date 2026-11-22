@@ -1002,4 +1002,5 @@ PROVISIONING_ACL: dict[str, str] = {
     "set_auth_user_policy": "auth.users.{user_uuid}.policies.{policy_uuid}.create",
     "create_context": "confd.contexts.create",
     "set_context_includes": "confd.contexts.{context_id}.contexts.update",
+    "update_context": "confd.contexts.{context_id}.update",
 }
