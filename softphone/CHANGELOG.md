@@ -14,6 +14,10 @@
   habituel). Un appel entrant d'un client connu affiche son nom.
 - Nécessite NIMBORA avec le droit de présence du compte de service ; sans lui, l'application
   montre seulement qui est en appel.
+- **Correctif** : l'application s'enregistre avec l'identité SIP du poste et s'authentifie avec
+  son nom SIP (`sip_identity` dans la configuration). Avant, le moteur 26.11 refusait les
+  identifiants d'un poste navigateur alors que le mot de passe était le bon.
+- « Hors ligne » choisi dans Ma présence reste « Hors ligne » même téléphone enregistré.
 
 ## 1.1.0 — 21 novembre 2026
 
