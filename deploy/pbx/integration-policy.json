@@ -106,6 +106,7 @@
     "confd.parkinglots.create",
     "confd.parkinglots.*.delete",
     "confd.parkinglots.*.extensions.*.update",
+    "calld.parkings.*.read",
     "confd.pagings.read",
     "confd.pagings.create",
     "confd.pagings.*.delete",
@@ -129,7 +130,6 @@
     "confd.endpoints.sip.*.update",
     "calld.calls.create",
     "amid.action.QueueStatus.create",
-    "amid.action.ParkedCalls.create",
     "call-logd.queues.statistics.read",
     "call-logd.agents.statistics.read"
   ]

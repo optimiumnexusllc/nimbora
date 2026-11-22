@@ -16,6 +16,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
+from datetime import datetime, timezone
 from typing import Any
 
 from api.services.pbx.admin import EXTEN, _internal_context
@@ -249,11 +250,24 @@ def asterisk_lot_name(lot: dict) -> str:
     return f"parkinglot-{lot['id']}"
 
 
+def _waiting_seconds(parked_at: str | None) -> int:
+    if not parked_at:
+        return 0
+    try:
+        since = datetime.fromisoformat(parked_at.replace("Z", "+00:00"))
+    except ValueError:
+        return 0
+    if since.tzinfo is None:
+        since = since.replace(tzinfo=timezone.utc)
+    return max(0, int((datetime.now(timezone.utc) - since).total_seconds()))
+
+
 async def parked_calls(client: PbxClient) -> list[dict]:
     """Calls waiting in the company's lots, with the slot to dial to take one.
 
-    Only the company's own lots are asked for by name: the AMI sees every
-    company on a shared PBX.
+    Read from wazo-calld, lot by lot: it only knows the company's own lots
+    (tenant aware), unlike the AMI, which also refuses any token that is not
+    the master tenant's (lab step 15).
     """
     try:
         lots = await client.parkinglots()
@@ -262,22 +276,21 @@ async def parked_calls(client: PbxClient) -> list[dict]:
     parked = []
     for lot in lots:
         try:
-            events = await client.parked_calls(asterisk_lot_name(lot))
+            data = await client.parkinglot_calls(lot["id"])
         except PbxError:
             continue
-        for event in events:
-            if event.get("Event") != "ParkedCall":
-                continue
-            if event.get("Parkinglot") not in (None, asterisk_lot_name(lot)):
-                continue  # never another company's call
+        for call in data.get("calls") or []:
+            name = call.get("caller_id_name") or None
+            if name in ("<unknown>", "unknown"):
+                name = None
             parked.append(
                 {
                     "lot": lot.get("name"),
-                    "slot": str(event.get("ParkingSpace") or ""),
-                    "number": event.get("ParkeeCallerIDNum") or "",
-                    "name": event.get("ParkeeCallerIDName") or None,
-                    "waiting_seconds": int(event.get("ParkingDuration") or 0),
-                    "parked_by": event.get("ParkerDialString") or None,
+                    "slot": str(call.get("slot") or ""),
+                    "number": call.get("caller_id_num") or "",
+                    "name": name,
+                    "waiting_seconds": _waiting_seconds(call.get("parked_at")),
+                    "parked_by": call.get("parker_caller_id_num") or None,
                 }
             )
     return sorted(parked, key=lambda p: p["slot"])
@@ -329,7 +342,11 @@ async def list_pagings(organization_id: int, **client_kwargs) -> list[dict]:
             if p.get("duplex") and len((p.get("members") or {}).get("users") or []) == 1
             else "announcement",
             "members": _names(p.get("members"), users),
-            "callers": _names(p.get("callers"), users),
+            # Everyone may call it: shown as no restriction.
+            "callers": []
+            if {u.get("uuid") for u in (p.get("callers") or {}).get("users") or []}
+            >= set(users)
+            else _names(p.get("callers"), users),
         }
         for p in pagings
     ]
@@ -359,10 +376,12 @@ async def create_paging(
         )
         try:
             await client.set_paging_users(paging["id"], "members", _users(spec.members))
-            if spec.callers:
-                await client.set_paging_users(
-                    paging["id"], "callers", _users(spec.callers)
-                )
+            # The engine only lets listed callers page the group: « everyone »
+            # means every extension of the company (lab step 15: an empty list
+            # refused every caller, « Unable to find paging caller entry »).
+            await client.set_paging_users(
+                paging["id"], "callers", _users(spec.callers or list(users))
+            )
         except PbxError:
             await client.delete_paging(paging["id"])
             raise
