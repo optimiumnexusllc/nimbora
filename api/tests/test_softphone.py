@@ -197,7 +197,12 @@ async def test_directory_history_and_status(db_session, monkeypatch):
     device = await softphone.device_for_token(paired["token"])
 
     found = await softphone.directory(device)
-    assert {"name": "Koffi Yao", "extension": "1001", "me": True} in found["people"]
+    me = next(p for p in found["people"] if p["extension"] == "1001")
+    assert (me["name"], me["me"], me["presence"]["state"]) == (
+        "Koffi Yao",
+        True,
+        "on_call",
+    )
     assert found["services"] == [
         {"name": "Ventes", "extension": "3001", "kind": "queue"}
     ]
@@ -341,3 +346,86 @@ async def test_activation_attempts_are_throttled(monkeypatch):
     results = [await REAL_THROTTLE("9.9.9.9") for _ in range(11)]
     assert results[:10] == [False] * 10 and results[10] is True
     assert ("expire", 600) in calls
+
+
+async def _paired(db_session, monkeypatch, fake):
+    user, org = await _setup(db_session, monkeypatch, fake)
+    activation = await softphone.create_activation(org.id, "u-1", created_by=user.id)
+    paired = await softphone.activate(
+        activation["code"],
+        device_name="Android",
+        platform="android",
+        app_version="1",
+        client_key="k",
+    )
+    return user, org, await softphone.device_for_token(paired["token"])
+
+
+async def test_colleagues_show_their_presence(db_session, monkeypatch):
+    fake = FakePbx()
+    _, _, device = await _paired(db_session, monkeypatch, fake)
+    fake.presences[1].update(state="away", status="En réunion jusqu'à 15 h")
+
+    found = await softphone.directory(device)
+    aya = next(p for p in found["people"] if p["extension"] == "1002")
+    assert aya["presence"] == {
+        "state": "away",
+        "label": "Absent",
+        "status": "En réunion jusqu'à 15 h",
+    }
+    assert found["presence_live"] is True
+
+    # The employee says they are back; colleagues see it.
+    saved = await softphone.save_presence(device, "available", "")
+    assert saved["state"] == "available"
+    assert fake.presences[0]["state"] == "available"
+    with pytest.raises(ValueError):
+        await softphone.save_presence(device, "on_call")
+
+
+async def test_presence_without_presence_rights_falls_back_on_calls(
+    db_session, monkeypatch
+):
+    fake = FakePbx()
+    _, _, device = await _paired(db_session, monkeypatch, fake)
+    fake.forbidden.add("chatd")  # an account made before NIMBORA asked for presence
+
+    found = await softphone.directory(device)
+    states = {p["extension"]: p["presence"]["state"] for p in found["people"]}
+    assert states == {"1001": "on_call", "1002": "unknown"}
+    assert found["presence_live"] is False
+
+
+async def test_directory_includes_customers_when_memory_is_on(db_session, monkeypatch):
+    fake = FakePbx()
+    _, org, device = await _paired(db_session, monkeypatch, fake)
+    await db_session.upsert_configuration(org.id, "CUSTOMER_MEMORY", {"enabled": False})
+    assert (await softphone.directory(device))["customers"] is None  # memory off
+
+    await db_session.upsert_configuration(org.id, "CUSTOMER_MEMORY", {"enabled": True})
+    awa = await db_session.get_or_create_customer_profile(
+        org.id, "+2250700112233", "700112233"
+    )
+    await db_session.update_customer_profile(
+        org.id,
+        awa.id,
+        {
+            "name": "Awa Koné",
+            "tags": ["VIP"],
+            "attributes": {"usual_advisor": {"extension": "1001", "name": "Koffi Yao"}},
+        },
+    )
+    await db_session.get_or_create_customer_profile(
+        org.id, "+2250500998877", "500998877"
+    )
+
+    everyone = (await softphone.directory(device))["customers"]
+    assert len(everyone) == 2
+    found = (await softphone.directory(device, query="koné"))["customers"]
+    assert [(c["name"], c["number"], c["vip"], c["advisor"]) for c in found] == [
+        ("Awa Koné", "+2250700112233", True, "Koffi Yao")
+    ]
+    by_number = (await softphone.directory(device, query="0500998877"[-6:]))[
+        "customers"
+    ]
+    assert [c["number"] for c in by_number] == ["+2250500998877"]

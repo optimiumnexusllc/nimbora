@@ -2,7 +2,7 @@
 
 import type { Platform } from "./format";
 
-export const APP_VERSION = "1.1.0";
+export const APP_VERSION = "1.2.0";
 
 export type IceServer = { urls: string[] | string; username?: string; credential?: string };
 export type SoftphoneConfig = {
@@ -28,9 +28,23 @@ export type RecentCall = {
     number: string | null;
     name: string | null;
 };
+export type PresenceState = "available" | "on_call" | "ringing" | "dnd" | "away" | "offline" | "unknown";
+export type Presence = { state: PresenceState; label: string; status: string };
+export type Customer = {
+    id: number;
+    name: string | null;
+    number: string;
+    vip: boolean;
+    advisor: string | null;
+    calls: number;
+    last_seen_at: string | null;
+};
 export type Directory = {
-    people: { name: string; extension: string; me: boolean }[];
+    people: { name: string; extension: string; me: boolean; presence?: Presence }[];
     services: { name: string; extension: string; kind: "group" | "queue" }[];
+    /** null: the company does not remember its customers. */
+    customers?: Customer[] | null;
+    presence_live?: boolean;
 };
 export type Status = { dnd: boolean; forward: { enabled: boolean; destination: string } };
 /** What the AI agent knew when it handed this caller to a human. */
@@ -116,8 +130,11 @@ export class SoftphoneApi {
     history() {
         return this.call<RecentCall[]>("GET", "/history?limit=50");
     }
-    directory() {
-        return this.call<Directory>("GET", "/directory");
+    directory(query = "") {
+        return this.call<Directory>("GET", query ? `/directory?q=${encodeURIComponent(query)}` : "/directory");
+    }
+    savePresence(state: "available" | "away" | "offline", status = "") {
+        return this.call<Presence>("PUT", "/presence", { state, status });
     }
     status() {
         return this.call<Status>("GET", "/status");

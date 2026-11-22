@@ -330,8 +330,13 @@ async def touch(device, app_version: str | None = None) -> None:
     await db_client.touch_softphone_device(device.organization_id, device.id, fields)
 
 
-async def directory(device, **client_kwargs) -> dict[str, Any]:
-    """Who and what the employee can call inside the company."""
+async def directory(device, query: str = "", **client_kwargs) -> dict[str, Any]:
+    """The unified directory of an employee: colleagues with their presence,
+    groups and queues of the PBX, and the company's customers (customer
+    memory, when it is on). ``query`` narrows the customers (name or number);
+    colleagues and services are filtered by the app."""
+    from api.services.pbx.presence import presence_of, team_presence
+
     connection = await _connection(device.organization_id)
     async with client_for(connection, **client_kwargs) as client:
         users = await client.users()
@@ -343,6 +348,7 @@ async def directory(device, **client_kwargs) -> dict[str, Any]:
             queues = await client.queues()
         except PbxError:
             queues = []
+        presence, live = await team_presence(client)
     people = [
         {
             "name": " ".join(
@@ -352,6 +358,7 @@ async def directory(device, **client_kwargs) -> dict[str, Any]:
             or u.get("extension"),
             "extension": u.get("extension"),
             "me": u.get("uuid") == device.pbx_user_uuid,
+            "presence": presence_of(presence, u.get("uuid"), live),
         }
         for u in users
         if u.get("extension")
@@ -376,7 +383,51 @@ async def directory(device, **client_kwargs) -> dict[str, Any]:
     return {
         "people": sorted(people, key=lambda p: (p["name"] or "").lower()),
         "services": services,
+        "customers": await directory_customers(device.organization_id, query),
+        "presence_live": live,
     }
+
+
+async def directory_customers(
+    organization_id: int, query: str = "", limit: int = 30
+) -> list[dict[str, Any]] | None:
+    """Customers from customer memory, most recent first. None when the
+    company does not remember its callers."""
+    from api.db import db_client
+    from api.services.customer_memory.service import is_memory_enabled
+
+    if not await is_memory_enabled(organization_id):
+        return None
+    profiles, _ = await db_client.search_customer_profiles(
+        organization_id, query=query.strip()[:64] or None, limit=limit
+    )
+    return [
+        {
+            "id": profile.id,
+            "name": profile.name,
+            "number": profile.phone,
+            "vip": "vip" in [str(t).lower() for t in profile.tags or []],
+            "advisor": ((profile.attributes or {}).get("usual_advisor") or {}).get(
+                "name"
+            ),
+            "calls": profile.total_calls or 0,
+            "last_seen_at": profile.last_seen_at.isoformat()
+            if profile.last_seen_at
+            else None,
+        }
+        for profile in profiles
+    ]
+
+
+async def save_presence(
+    device, state: str, status: str = "", **client_kwargs
+) -> dict[str, str]:
+    """The employee's own presence: available, away or offline."""
+    from api.services.pbx.presence import set_my_presence
+
+    connection = await _connection(device.organization_id)
+    async with client_for(connection, **client_kwargs) as client:
+        return await set_my_presence(client, device.pbx_user_uuid, state, status)
 
 
 async def history(device, limit: int = 50, **client_kwargs) -> list[dict[str, Any]]:

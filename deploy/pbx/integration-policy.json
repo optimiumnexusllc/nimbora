@@ -1,6 +1,6 @@
 {
   "name": "nimbora-integration",
-  "description": "Platform integration: PBX management and administration, voice menus, operator lines, call restrictions, groups, forwards, conferences, call recordings, NIMBORA Softphone, supervision (live queues, listening, statistics), AI routing, events",
+  "description": "Platform integration: PBX management and administration, voice menus, operator lines, call restrictions, groups, forwards, conferences, call recordings, NIMBORA Softphone, colleague presence, supervision (live queues, listening, statistics), AI routing, events",
   "acl": [
     "auth.tenants.*.read",
     "confd.infos.read",
@@ -18,6 +18,8 @@
     "confd.asterisk.pjsip.global.read",
     "confd.asterisk.pjsip.global.update",
     "calld.calls.read",
+    "chatd.users.presences.read",
+    "chatd.users.*.presences.update",
     "calld.calls.*.delete",
     "agentd.agents.read",
     "agentd.agents.by-number.*.login.create",

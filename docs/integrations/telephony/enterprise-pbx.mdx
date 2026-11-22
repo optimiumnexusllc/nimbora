@@ -41,7 +41,7 @@ The install script:
 - leaves out the engine's own web UI;
 - installs the supervision dialplan (`nimbora-supervision`, used to listen to calls from NIMBORA, reachable by API only);
 - installs a deny-by-default nftables firewall: only SSH, HTTPS, SIP and RTP (`--sip-from`), the ARI (port 5039) from NIMBORA and, optionally, phone provisioning (`--phones-from`) are reachable; the AMI (port 5038), RabbitMQ, Postfix and the engine's internal services stay local to the server;
-- creates the service account. Its policy grants only the 110 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
+- creates the service account. Its policy grants only the 112 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
 
 See `deploy/pbx/README.md` for every option and what the white label changes.
 

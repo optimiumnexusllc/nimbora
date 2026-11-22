@@ -1,22 +1,33 @@
-import { BellOff, Headphones, LogOut, PhoneForwarded, ShieldCheck } from "lucide-react";
+import { BellOff, CircleDot, Headphones, LogOut, PhoneForwarded, ShieldCheck } from "lucide-react";
 import { useEffect, useState } from "react";
 
-import type { SoftphoneConfig, Status } from "../lib/api";
+import type { Presence, SoftphoneConfig, Status } from "../lib/api";
 import { APP_VERSION } from "../lib/api";
 import { isDialable } from "../lib/format";
 
 type Device = { deviceId: string; label: string };
+type Settable = "available" | "away" | "offline";
+const CHOICES: [Settable, string][] = [
+    ["available", "Disponible"],
+    ["away", "Absent"],
+    ["offline", "Hors ligne"],
+];
 
 export function Settings({
     config,
     status,
+    presence,
     onSaveStatus,
+    onSavePresence,
     onOutputDevice,
     onSignOut,
 }: {
     config: SoftphoneConfig;
     status: Status | null;
+    /** The employee's presence as colleagues see it (undefined: not known). */
+    presence?: Presence;
     onSaveStatus: (dnd: boolean, forwardEnabled: boolean, forwardTo: string) => Promise<void>;
+    onSavePresence?: (state: Settable, message: string) => Promise<void>;
     onOutputDevice: (deviceId: string) => void;
     onSignOut: () => void;
 }) {
@@ -26,6 +37,19 @@ export function Settings({
     const [saving, setSaving] = useState(false);
 
     useEffect(() => setForwardTo(status?.forward.destination ?? ""), [status?.forward.destination]);
+    const [message, setMessage] = useState(presence?.status ?? "");
+    useEffect(() => setMessage(presence?.status ?? ""), [presence?.status]);
+    const chosen: Settable | null =
+        presence?.state === "away" ? "away" : presence?.state === "offline" ? "offline" : presence && presence.state !== "unknown" ? "available" : null;
+    const savePresence = async (state: Settable) => {
+        if (!onSavePresence) return;
+        setSaving(true);
+        try {
+            await onSavePresence(state, message);
+        } finally {
+            setSaving(false);
+        }
+    };
 
     useEffect(() => {
         void navigator.mediaDevices
@@ -54,6 +78,28 @@ export function Settings({
             <header className="list-header">
                 <h2>Réglages</h2>
             </header>
+            {onSavePresence && presence && presence.state !== "unknown" && (
+                <div className="card" data-testid="my-presence">
+                    <span>
+                        <CircleDot size={18} /> Ma présence <span className="tiny muted">· vue par vos collègues : {presence.label}</span>
+                    </span>
+                    <div className="status-row">
+                        {CHOICES.map(([state, label]) => (
+                            <button key={state} type="button" aria-pressed={chosen === state} disabled={saving} onClick={() => void savePresence(state)}>
+                                {label}
+                            </button>
+                        ))}
+                    </div>
+                    <input
+                        aria-label="Message de présence"
+                        placeholder="Message (ex. En réunion jusqu'à 15 h)"
+                        maxLength={128}
+                        value={message}
+                        onChange={(e) => setMessage(e.target.value)}
+                        onBlur={() => chosen && message !== (presence.status ?? "") && void savePresence(chosen)}
+                    />
+                </div>
+            )}
             <div className="card">
                 <label className="toggle">
                     <span>

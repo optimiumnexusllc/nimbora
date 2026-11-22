@@ -1,7 +1,7 @@
-import { PhoneIncoming, PhoneMissed, PhoneOutgoing, RefreshCw, Search, Users } from "lucide-react";
-import { useMemo, useState } from "react";
+import { Crown, PhoneIncoming, PhoneMissed, PhoneOutgoing, RefreshCw, Search, Users } from "lucide-react";
+import { useEffect, useMemo, useState } from "react";
 
-import type { Directory, RecentCall } from "../lib/api";
+import type { Customer, Directory, Presence, RecentCall } from "../lib/api";
 import { formatDuration, initials } from "../lib/format";
 
 const when = (iso: string | null) => {
@@ -62,29 +62,63 @@ export function Recents({
     );
 }
 
-export function Contacts({ directory, onCall }: { directory: Directory | null; onCall: (number: string) => void }) {
-    const [query, setQuery] = useState("");
-    const q = query
+const fold = (text: string) =>
+    text
         .normalize("NFD")
         .replace(/\p{Diacritic}/gu, "")
         .toLowerCase();
-    const match = (text: string) =>
-        text
-            .normalize("NFD")
-            .replace(/\p{Diacritic}/gu, "")
-            .toLowerCase()
-            .includes(q);
+
+function PresenceDot({ presence }: { presence?: Presence }) {
+    if (!presence || presence.state === "unknown") return null;
+    return <span className={`presence-dot ${presence.state}`} title={presence.label} aria-hidden />;
+}
+
+/** Colleagues (with their presence), services and customers, in one place. */
+export function Contacts({
+    directory,
+    onCall,
+    onSearchCustomers,
+}: {
+    directory: Directory | null;
+    onCall: (number: string) => void;
+    onSearchCustomers?: (query: string) => Promise<Customer[] | null>;
+}) {
+    const [query, setQuery] = useState("");
+    const [found, setFound] = useState<Customer[] | null | undefined>(undefined);
+    const q = fold(query.trim());
+    const match = (text: string) => fold(text).includes(q);
     const people = useMemo(() => (directory?.people ?? []).filter((p) => !p.me && (match(p.name) || p.extension.includes(q))), [directory, q]);
     const services = useMemo(() => (directory?.services ?? []).filter((s) => match(s.name) || s.extension.includes(q)), [directory, q]);
+
+    // Customers are searched on the server (the company may have thousands).
+    useEffect(() => {
+        if (!q || !onSearchCustomers) {
+            setFound(undefined);
+            return;
+        }
+        let stale = false;
+        const timer = setTimeout(() => {
+            void onSearchCustomers(query.trim())
+                .then((customers) => !stale && setFound(customers))
+                .catch(() => !stale && setFound([]));
+        }, 300);
+        return () => {
+            stale = true;
+            clearTimeout(timer);
+        };
+    }, [q, query, onSearchCustomers]);
+    const customers = found === undefined ? directory?.customers : found;
+    const available = people.filter((p) => p.presence?.state === "available").length;
 
     return (
         <section className="list-page">
             <header className="list-header">
                 <h2>Contacts</h2>
+                {directory?.presence_live && <span className="tiny muted">{available} disponible{available > 1 ? "s" : ""}</span>}
             </header>
             <label className="search">
                 <Search size={16} />
-                <input aria-label="Rechercher un collègue" placeholder="Nom ou poste" value={query} onChange={(e) => setQuery(e.target.value)} />
+                <input aria-label="Rechercher un contact" placeholder="Nom, poste ou numéro" value={query} onChange={(e) => setQuery(e.target.value)} />
             </label>
             {services.length > 0 && (
                 <>
@@ -115,13 +149,55 @@ export function Contacts({ directory, onCall }: { directory: Directory | null; o
                     {people.map((p) => (
                         <li key={p.extension}>
                             <button type="button" className="row" onClick={() => onCall(p.extension)} data-testid="contact">
-                                <span className="avatar small">{initials(p.name)}</span>
-                                <span className="row-main">{p.name}</span>
+                                <span className="avatar small with-presence">
+                                    {initials(p.name)}
+                                    <PresenceDot presence={p.presence} />
+                                </span>
+                                <span className="row-main">
+                                    <span>{p.name}</span>
+                                    {p.presence && p.presence.state !== "unknown" && (
+                                        <span className={`tiny presence-label ${p.presence.state}`} data-testid="presence">
+                                            {p.presence.label}
+                                            {p.presence.status ? ` · ${p.presence.status}` : ""}
+                                        </span>
+                                    )}
+                                </span>
                                 <span className="mono muted">{p.extension}</span>
                             </button>
                         </li>
                     ))}
                 </ul>
+            )}
+            {customers && (
+                <>
+                    <h3 className="section-title">{q ? "Clients" : "Clients récents"}</h3>
+                    {!customers.length ? (
+                        <p className="empty muted">{q ? "Aucun client ne correspond." : "Aucun client pour l'instant."}</p>
+                    ) : (
+                        <ul className="list">
+                            {customers.map((c) => (
+                                <li key={c.id}>
+                                    <button type="button" className="row" onClick={() => onCall(c.number)} data-testid="customer">
+                                        <span className="avatar small customer">
+                                            {c.vip ? <Crown size={16} /> : initials(c.name || "#")}
+                                        </span>
+                                        <span className="row-main">
+                                            <span>
+                                                {c.name || c.number}
+                                                {c.vip && <span className="vip">VIP</span>}
+                                            </span>
+                                            <span className="tiny muted">
+                                                {c.advisor ? `Conseiller : ${c.advisor}` : `${c.calls} appel${c.calls > 1 ? "s" : ""}`}
+                                                {c.last_seen_at ? ` · ${when(c.last_seen_at)}` : ""}
+                                            </span>
+                                        </span>
+                                        <span className="mono muted">{c.name ? c.number : ""}</span>
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </>
             )}
         </section>
     );
