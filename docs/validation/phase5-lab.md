@@ -650,6 +650,7 @@ SIP avec `pjsip set logger on`).
 | Preuve | endpoint de 1004 remis sur le seul modèle `webrtc` (qui hérite déjà de `global`) → `transport-wss`, et 1004 sonne |
 | Correction (branche de la PR #10) | `admin.py::_templates_for` : ligne navigateur → `[webrtc]` seul, ligne SIP → `[global]` ; test `test_pbx_admin.py` ajusté. API reconstruite et déployée : un poste navigateur de contrôle (1005, supprimé ensuite) sort avec `transport-wss` |
 | Réparation du laboratoire | endpoints de 1001 et 1004 repassés sur `[webrtc]` (confd, compte de service). **Les installations existantes ont le même défaut sur toutes leurs lignes navigateur** : prévoir une réparation (à l'approvisionnement ou au démarrage de l'API) |
+| → Corrigé (`2808b03`, même branche) | chaque Softphone répare sa ligne en lisant son compte ; **Postes → Softphones → Vérifier les lignes navigateur** répare toutes les lignes de l'entreprise (`POST /pbx/maintenance/webrtc-lines`, idempotent). À revérifier : remettre 1004 sur `[webrtc, global]`, ouvrir le Softphone → `[webrtc]` seul et 1004 sonne |
 
 ### 1-4. Consultation, bascules, transfert assisté
 
