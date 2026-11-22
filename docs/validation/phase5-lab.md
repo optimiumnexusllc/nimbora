@@ -444,6 +444,51 @@ Constat : le moteur identifie les postes par `auth_username,username,ip`, le tru
 Après la validation : `SAAS_MODE=true` reste actif sur le laboratoire (abonnements « Starter »
 en essai créés pour les 4 organisations).
 
+## Rapport d'étape 9 — plages des contextes (PR #5, `358fb93`) et routage intelligent (PR #6) (22 novembre 2026)
+
+Déployé : pointe de `feat/lot-b-smart-routing` (rebasée sur `feat/lot-a-object-storage` à
+`358fb93`), images `nimbora-lot-b`, pas de nouvelle migration (tête `d7e8f9a0b1c2`).
+
+### Préalable découvert : `SAAS_MODE` et le PBX privé
+
+Depuis le passage en `SAAS_MODE=true` (étape 8), la garde anti-SSRF refusait l'adresse privée du
+PBX (`https://10.250.0.10`) : approvisionnement, inventaire et lignes opérateurs répondaient 502
+« pas joignable publiquement ». `PBX_ALLOWED_HOSTS` existait mais n'était pas transmis par
+compose. Correction sur la PR #5 (`9b789dd`) : variable transmise, et le kit lab la règle sur
+l'adresse du PBX avec `--shared-pbx` ; tests.
+
+### 1. Plages des contextes créés par le moteur (PR #5, commit `358fb93`)
+
+| Vérification | Résultat |
+|---|---|
+| Premier `POST /pbx/provision` org2 et org3 après redéploiement | ❌ 502 « accès refusé (`confd.contexts.5.update`) » → 🐛 n° 19 |
+| 🐛 n° 19 : le nouveau `PUT /contexts/{id}` n'était pas couvert par la politique d'approvisionnement | corrigé (`2c18595`) : `confd.contexts.*.update` dans `PROVISIONING_ACL` et `provisioning-policy.json` (test existant maintenu en phase), politique rejouée sur le moteur (122 ACL) |
+| `POST /pbx/provision` org2 et org3 après correction | ✅ 200, mêmes tenants, mêmes contextes |
+| `confd/contexts` de chaque tenant : contexte entrant `incall_ranges` **12 plages de 4 à 15 chiffres**, `did_length` = longueur | ✅ |
+| Plages existantes du contexte interne inchangées (postes 1000-1999, groupes 2000-2099, files 3000-3099, conférences 4000-4099 posées à la création) | ✅ conservées telles quelles |
+| Aucun contexte en double : 3 contextes, 3 noms distincts par tenant ; inclusion interne → sortant intacte | ✅ |
+| Numéro public `+2250700000022` créé dans org2 (vers son poste 1001) ; ligne opérateur par IP dans org2 ; appel depuis `nimbora-operator` (identité `33987654321`) | ✅ l'appel entre dans `ctx-org2-incall-…`, sonne « Agent A 1001 » (poste non enregistré, donc non décroché), journal d'appels d'org2 : `inbound` |
+
+### 2. Routage intelligent (PR #6)
+
+| Étape demandée | Résultat |
+|---|---|
+| Onglet **PBX → Routage** dans la console (connexion administrateur, Chromium) | ✅ onglet présent entre « Enregistrements » et « Journal », bloc politique et simulateur rendus (capture prise) |
+| Deux compétences : « Facturation » → file `pbx-queue:1` (Support test), « Technique » sans destination ; postes 1001 (Facturation, `fr`) et 1002 (Facturation + Technique, `fr, en`) ; `PUT /pbx/routing` | ✅ enregistrée et relue à l'identique |
+| (a) agent 1001 connecté à la file (`login`, contexte interne), libre → simulation « Facturation » | ✅ `pbx-queue:1`, motif `skill` |
+| (b) agent 1001 en pause → « Facturation » | ✅ `pbx-extension:1002`, motif `skill_agent` (« poste 1002 libre ») ; idem avec langue `en` (1001 ne parle que `fr`) |
+| (c) appel 1003 → 1002 en cours (vu dans l'état en direct) → « Technique » | ✅ `destination: null`, motif `unavailable`, étapes « Pas de conseiller habituel connu », « Personne de libre pour « Technique » » ; « Facturation » pendant l'appel → la file (agent 1001 libre) ; après raccroché → 1002 à nouveau |
+| (4) vrai appel entrant de 40 s depuis `nimbora-operator` (`33123456789`, client connu `+33123456789`, 3 appels déjà) décroché par le poste 1003 | ❌ au premier essai : webhook `call_log_created` reçu, compteur d'appels 3 → 4, mais `attributes.usual_advisor` absent → 🐛 n° 20 |
+| 🐛 n° 20 : pour un appel entrant le code lisait `destination_extension`, qui est le **numéro public** composé (`2250700000001`, 13 chiffres, refusé par `remember_advisor`) ; le poste de l'employé est `destination_internal_extension` (`1003`) — même chose côté source pour les sortants | corrigé (`5115ee9`) sur la PR #6, test avec la forme réelle du journal d'appels (entrant et sortant) |
+| Après correction, nouvel appel de 40 s : `attributes.usual_advisor = {extension: 1003, name: Test 1003…, at: …}` | ✅ |
+| Simulateur avec `caller_number +33123456789` | ✅ `pbx-extension:1003`, motif `usual_advisor`, « Conseiller habituel disponible : Test 1003 (SIP, répondeur automatique) », quelle que soit la compétence demandée |
+| Même simulation pendant que 1003 est en appel | ✅ « Conseiller habituel (…) indisponible » puis `pbx-queue:1` par la compétence |
+| `grep "Routing"` dans les journaux de l'API | aucune ligne : le simulateur ne journalise pas ; la ligne `[Routing org=…]` n'existe que sur la passation réelle (`resolve_for_transfer`), impossible à exercer sans clé IA. Amélioration proposée : journaliser aussi les décisions du simulateur |
+
+Écarts restants : dans le journal de l'API, une trentaine de traces `httpx.ConnectError:
+Name or service not known` vers `agentd`, `amid` et `auth` du PBX (hôte masqué par la
+rédaction des journaux), non reproduites pendant les tests ; à dater et expliquer.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
