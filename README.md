@@ -389,6 +389,9 @@ Principaux réglages de la plateforme :
 | `PRIVACY_REDACT_LOGS` | Masquage des données personnelles dans les journaux (activé par défaut) |
 | `BRAND_NAME` / `BRAND_PBX_NAME` / `BRAND_DOMAIN` / `BRAND_SIP_USER_AGENT` | Marque blanche : nom de la plateforme, du PBX, domaine des e-mails, en-tête SIP |
 | `PBX_ALLOWED_HOSTS` | PBX de l'opérateur sur réseau privé autorisés en mode SaaS (protection SSRF) |
+| `PBX_PROVISIONING_URL` / `PBX_PROVISIONING_USERNAME` / `PBX_PROVISIONING_PASSWORD` | PBX partagé de l'opérateur : compte d'approvisionnement qui crée le tenant de chaque entreprise |
+| `S3_PUBLIC_ENDPOINT_URL` | Adresse publique du stockage objet pour les liens signés (bucket privé) |
+| `MPS_API_URL` | Services hébergés NIMBORA ; laissé vide (ou `off`), chaque entreprise apporte ses clés IA et rien n'est contacté |
 
 ## Documentation
 
@@ -409,6 +412,8 @@ blanche** : chaque entreprise dispose de ses agents IA, nourris de ses informati
 **chat web, téléphone et WhatsApp**, et de son **PBX d'entreprise**, sur un moteur commun.
 
 Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle · 🔜 prévu
+
+> **État au 22 novembre 2026** : les lots A (SaaS multi-entreprises sur le PBX partagé) et B (premiers volets du centre d'appels complet) sont fusionnés dans `main` (PR #1 à #7), chacun validé sur un moteur réel Wazo Platform 26.11 dans le laboratoire mono-serveur ; le détail, étape par étape, est dans le [journal de validation](docs/validation/phase5-lab.md). Les points encore 🧪 attendent surtout des clés de fournisseur IA (appels IA de bout en bout) ou des systèmes réels (paquets du Softphone sur chaque OS).
 
 ### Phase 1 — Moteur universel
 
@@ -492,7 +497,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Par poste : **renvois** (toujours, si occupé, si pas de réponse), **ne pas déranger**, et destination quand personne ne décroche — dont un **agent IA qui répond à la place du collaborateur** |
 | ✅ | **Salles de conférence** : code participants et code organisateur (jamais renvoyés), places, annonces, enregistrement ; **en direct** : participants, durée, organisateurs, micro coupé ou rendu, exclusion ; numéro public vers une salle |
 | 🔜 | Horaires des routes sortantes, interception d'appel, parcage, interphone |
-| ✅ | **Compétences et langues par poste**, routage par compétence entre IA et conseillers (file de la compétence, sinon un poste libre qui l'a et parle la langue) — 🧪 à valider sur le PBX réel |
+| ✅ | **Compétences et langues par poste**, routage par compétence entre IA et conseillers (file de la compétence, sinon un poste libre qui l'a et parle la langue) ; validé sur le moteur réel : file libre, agent en pause, poste en appel, conseiller habituel appris d'un vrai appel de 40 s ; chaque décision journalisée (`[Routing org=… handoff|simulation]`, sans numéro) |
 | ✅ | **Enregistrements des appels humains** : appels reçus, émis ou internes, sur tous les postes ou certains ; copie dans le stockage de la plateforme (webhook + rattrapage toutes les 10 min), retrait du PBX optionnel (copie unique), **transcription masquée** (cartes, CVV, IBAN, n° de sécurité sociale toujours masqués), recherche par mot prononcé, écoute par lien temporaire, conservation, accès et effacement RGPD |
 
 **5.3 Centre d'appels humain unifié**
@@ -503,11 +508,13 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Jumelage par **QR code** ou code à usage unique (15 min, anti-force brute), lien `nimbora-softphone://`, jeton d'appareil haché, **secret SIP lu sur le PBX à chaque démarrage et jamais stocké**, révocation par appareil, révocation automatique à la suppression du poste, adresse WebSocket/domaine SIP réglables |
 | ✅ | CI de compilation pour toutes les plateformes (`softphone.yml` : PWA, `.msi`/`.exe`, `.dmg` universel, `.deb`/`.rpm`/`.AppImage`, `.apk`, iOS simulateur), release sur tag `softphone-v*` ; paquet `.deb` Linux construit et lancé (≈ 2 Mo, lien `nimbora-softphone://` déclaré au bureau) ; inscription SIP et appel entrant validés contre un registraire WebSocket de test |
 | ✅ | **Builds vérifiés sur la CI** pour les six cibles : PWA, Windows (`.msi`/`.exe`), macOS universel (`.dmg`, non signé sans certificat), Linux (`.deb`/`.rpm`/`.AppImage`), Android (`.apk`), iOS (simulateur) |
-| 🧪 | Appels réels sur un PBX du moteur (WebSocket `/api/asterisk/ws`, certificats) ; installation des paquets sur chaque système |
+| ✅ | Version navigateur enregistrée sur le moteur réel en WebRTC (WSS via Traefik), présence et annuaire vérifiés depuis un autre poste ; l'application s'enregistre avec l'identité SIP du poste et s'authentifie avec son nom SIP |
+| 🧪 | Installation et appels des paquets natifs sur chaque système (Windows, macOS, Linux, Android, iOS) |
 | 🔜 | Appels entrants application fermée sur mobile (notifications push VoIP PushKit / FCM relayées par la plateforme), signature des builds (Apple, Windows, Play Store) |
-| ✅ | **Présence des collègues** (disponible, en appel, sonne, ne pas déranger, absent, hors ligne, avec message) dans le Softphone et l'onglet Postes de la console ; « Ma présence » réglable depuis l'application ; repli sur les appels en cours si le compte de service n'a pas encore le droit de présence — 🧪 à valider sur le moteur réel |
+| ✅ | **Présence des collègues** (disponible, en appel, sonne, ne pas déranger, absent, hors ligne, avec message) dans le Softphone et l'onglet Postes de la console ; « Ma présence » réglable depuis l'application ; repli sur les appels en cours si le compte de service n'a pas encore le droit de présence ; validé sur le moteur réel (en appel, ne pas déranger, absent avec message, hors ligne choisi, poste non enregistré) |
 | ✅ | **Annuaire unifié** du Softphone : collègues, groupes, files et clients de la mémoire client (récents, recherche serveur par nom ou numéro, VIP, conseiller habituel) ; nom du client affiché à l'appel entrant |
 | 🔜 | Transfert avec consultation, conférence à trois |
+| 🔜 | **Régénérer le mot de passe SIP** d'un poste depuis la console (le Softphone jumelé relit le secret à chaque démarrage : aucun rejumelage) |
 | ✅ | **Supervision unifiée IA + humains** : un seul écran pour les appels IA, le centre d'appels intégré et le PBX ; files du PBX en direct avec les **appelants en attente** (action AMI `QueueStatus` par `wazo-amid`, toujours sur une file nommée de l'entreprise), conseillers (en appel, sonne, en pause, déconnecté ; pause et reprise), conversations de tous les postes |
 | ✅ | **Écoute, chuchotement, intervention via le PBX** : le PBX fait sonner le poste du superviseur (`POST /calls`) puis `ChanSpy` sur la seule ligne visée, dans un contexte `nimbora-supervision` installé par le kit et joignable par l'API uniquement (dialplan exécuté sur Asterisk 20 : cibles ou options piégées raccrochées avant `ChanSpy`) ; désactivée par défaut, activation après confirmation de l'information des salariés, modes autorisés, postes superviseurs, **postes jamais écoutés**, **journal des écoutes** |
 | ✅ | **Temps réel par WebSocket** (`/supervision/stream`) : webhooks du PBX (appels créés, décrochés, terminés ; agents en pause) et appels IA notifient la console par Redis ; seuls les vrais changements sont envoyés (pas les horloges) ; un seul relevé du PBX partagé entre superviseurs ; repli automatique en rafraîchissement toutes les 5 s |
