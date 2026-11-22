@@ -542,6 +542,29 @@ Autres observations :
   rien et se termine (l'entreprise apporte ses clés IA). À revérifier : plus aucune trace
   `Name or service not known` après redéploiement.
 
+### Écart `ConnectError` de l'étape 9 : expliqué (sans rapport avec le PBX)
+
+| Vérification | Résultat |
+|---|---|
+| (a) `pbx_connections` : `organization_id, managed, hôte` | `1 / f / 10.250.0.10`, `2 / t / 10.250.0.10`, `3 / t / 10.250.0.10` ; `PBX_PROVISIONING_URL` : hôte `10.250.0.10`. **Aucun nom d'hôte**, uniquement l'adresse privée du moteur, résolue à l'identique depuis le conteneur API (`getent hosts`) |
+| (b) dates | conteneur API courant démarré à 09:41:46 UTC (pointe réécrite de la PR #7) ; les deux lignes `Name or service not known` (une exception `httpcore` chaînée en `httpx`) sont à **09:42:34**, soit la première requête authentifiée après le redémarrage. Les journaux des conteneurs précédents ont disparu avec eux (`docker events` ne conserve pas les `start` sur 24 h) ; la trentaine de traces de l'étape 9 correspondait au même motif, une fois par bail d'amorçage |
+| (c) pile (fichiers NIMBORA) | `routes/public_embed.py:277 __call__` → `services/auth/depends.py:44 get_user` → `depends.py:321 _handle_oss_auth` → **`services/organization_bootstrap.py:100 ensure_organization_bootstrapped`** → `organization_bootstrap.py:183 _bootstrap_organization` → `organization_bootstrap.py:214 mint_managed_service_key` → `services/mps_service_key_client.py:226 create_service_key` → `httpx` → DNS. Message journalisé : « Failed to bootstrap organization 1; will retry on a later request » |
+| cause | l'organisation 1 n'a **aucune configuration de modèle** (pas de clé d'IA sur ce laboratoire) : l'amorçage tente alors de créer une clé de service hébergée sur `MPS_API_URL`, dont la valeur par défaut `https://services.nimbora.example` ne se résout pas. Rien à voir avec `agentd`, `amid` ou `auth` du PBX |
+| (d) libellé des erreurs PBX après `c3bbc7d` | non déclenchable ici (le PBX n'est joint que par adresse IP) ; le libellé « PBX injoignable (service) : ConnectError (nom d'hôte du PBX non résolu) » est couvert par `test_pbx.py` (cas `auth`) ; aucune erreur PBX dans les journaux depuis le redéploiement |
+
+Correction de l'auteur (`fb9acfc`) : `MPS_ENABLED` est faux quand `MPS_API_URL` est vide, `off`
+ou un hôte `.example` ; l'amorçage se termine alors sans contacter de service hébergé.
+Revérification après redéploiement : voir ci-dessous.
+
+### Journal du routage (PR #6, `c3bbc7d`)
+
+| Simulation | Ligne journalisée |
+|---|---|
+| `{"skill": "Facturation", "caller_number": <numéro de la cliente de test>}` | `[Routing org=1 simulation] usual_advisor → pbx-extension:1003 \| → Conseiller habituel disponible : Test 1003 (SIP, répondeur automatique)` |
+| `{"skill": "Technique"}` pendant un appel 1003 → 1002 (seul expert occupé) | `[Routing org=1 simulation] unavailable/queue → — \| Pas de conseiller habituel connu ; Personne de libre pour « Technique »` |
+
+Le numéro du client n'apparaît dans aucune de ces lignes (vérifié par `grep`).
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
