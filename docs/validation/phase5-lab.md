@@ -572,6 +572,60 @@ retour « Disponible » ✅.
 
 Le numéro du client n'apparaît dans aucune de ces lignes (vérifié par `grep`).
 
+## Rapport d'étape 11 — « Hors ligne » choisi, services hébergés coupés, rotation des secrets SIP (22 novembre 2026)
+
+Déployé : `feat/lot-b-presence-directory` à `a5878bc` (`fb9acfc` inclus), image `nimbora-lot-b7`,
+API redémarrée à 10:17:27 UTC. Softphone web construit depuis la branche (1.2.0), appairé au
+poste 1004. Sans fusion.
+
+### 1. « Hors ligne » choisi dans le Softphone (envoyé en `invisible`)
+
+| Étape | Résultat |
+|---|---|
+| Softphone web 1004 ouvert (Chromium) : enregistrement | ✅ « Disponible » à 10:27:28 |
+| Réglages → Ma présence → **Hors ligne** (bouton `aria-pressed`) | ✅ pris en compte à 10:27:32 ; l'indicateur d'enregistrement reste « Disponible » |
+| Vu depuis le poste 1001 (`GET /softphone/directory` avec son jeton) | ✅ 1004 : « Hors ligne », `state: offline` |
+| Moteur : `pjsip show contacts` pendant la fenêtre | ✅ contact de l'endpoint du poste 1004 présent (téléphone **toujours enregistré**) |
+| Console PBX → Postes (Chromium, pendant la fenêtre) | ✅ 1004 « Hors ligne » (1001 « Hors ligne » car non enregistré, 1002 et 1003 « Disponible ») |
+| Après 70 s, Réglages → **Disponible** | ✅ « Disponible » à 10:28:46, téléphone resté enregistré pendant toute la séquence |
+
+### 2. Services hébergés coupés (`MPS_API_URL` à sa valeur d'exemple)
+
+`MPS_API_URL` n'est pas défini sur le laboratoire : la valeur par défaut (hôte `.example`) coupe
+les services hébergés (`MPS_ENABLED` faux).
+
+| Vérification | Résultat |
+|---|---|
+| 15 minutes d'usage (10:25:54 → 10:41:35 UTC) : boucle de 12 requêtes toutes les 25 s sur les trois organisations (profil, inventaire, routage, supervision, clients, journal d'appels, annuaire et configuration Softphone), plus sessions Chromium de la console (PBX → Postes, Routage) et du Softphone 1004 | 420 requêtes de la boucle, toutes en 200 ; 2 041 requêtes HTTP journalisées par l'API sur la fenêtre |
+| `docker logs --since 15m nimbora_api \| grep -c "Name or service not known"` | ✅ **0** (0 aussi depuis le démarrage de l'API) |
+| `grep -c "Failed to bootstrap organization"` sur la même fenêtre | ✅ **0** |
+| « bootstrapped without hosted services (MPS off) » | ✅ **une ligne par organisation** : 1, 2 et 3 |
+
+
+### 3. Rotation des mots de passe SIP de 1001 et 1004
+
+❌ **Non réalisée.** Trois obstacles, par ordre :
+
+- La console n'offre pas de régénération du mot de passe SIP : le bouton « Mot de passe » d'un
+  poste envoie un lien de réinitialisation du **mot de passe de connexion** (`POST
+  /pbx/extensions/password-reset`), et le secret SIP n'est montré qu'à la création
+  (`CredentialsDialog`).
+- Le compte de service NIMBORA ne peut pas le faire non plus : sa politique contient
+  `confd.endpoints.sip.*.read`, `create` et `delete`, mais **ni `confd.endpoints.sip.read`
+  (liste) ni `confd.endpoints.sip.*.update`** (vérifié sur le jeton, 174 ACL ; `GET
+  /endpoints/sip?name=…` → 401).
+- La rotation avec le compte d'administration du moteur (depuis l'intérieur du conteneur, via
+  `wazo-auth-cli`, puis `PUT /confd/1.1/endpoints/sip/{uuid}`) a été **refusée par le garde-fou
+  de la session** (action classée « accès non autorisé ») : à faire par l'opérateur, ou à
+  autoriser explicitement.
+
+Proposition : ajouter à la PR une action « Régénérer le mot de passe SIP » (route API +
+bouton dans Postes), avec `confd.endpoints.sip.*.update` dans les politiques de service et
+d'approvisionnement. Le Softphone appairé relit le secret en direct (`/softphone/config`) :
+aucun rejumelage ne serait nécessaire pour les postes navigateur, seuls les clients SIP
+configurés à la main (Linphone) seraient à mettre à jour. Le rejumelage de 1004 est reporté
+avec la rotation.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
