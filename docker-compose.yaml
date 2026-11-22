@@ -279,6 +279,9 @@ services:
       PBX_PROVISIONING_ARI_USER: "${PBX_PROVISIONING_ARI_USER:-}"
       PBX_PROVISIONING_ARI_PASSWORD: "${PBX_PROVISIONING_ARI_PASSWORD:-}"
       PBX_PROVISIONING_ARI_WS_CLIENT: "${PBX_PROVISIONING_ARI_WS_CLIENT:-}"
+      # SaaS mode refuses private PBX addresses (SSRF) unless listed here: the
+      # operator's own PBX on an internal network, e.g. "10.250.0.10".
+      PBX_ALLOWED_HOSTS: "${PBX_ALLOWED_HOSTS:-}"
 
       # Langfuse — credentials can be set here or per-organization via the UI
       # at /settings. Tracing is automatically active when credentials are

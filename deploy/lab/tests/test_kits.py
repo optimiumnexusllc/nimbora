@@ -356,3 +356,8 @@ def test_tenant_contexts_fill_the_ranges_of_engine_default_contexts(monkeypatch,
     assert "user_ranges" not in internal and internal["queue_ranges"]
     assert "/api/confd/1.1/contexts/3" not in puts   # nothing missing
     assert puts["/api/confd/1.1/contexts/1/contexts"] == {"contexts": [{"id": 3}]}
+
+
+def test_lab_shared_pbx_allows_its_private_address_in_saas_mode():
+    source = (DEPLOY / "lab" / "install.sh").read_text()
+    assert 'set_kv "$ENV" PBX_ALLOWED_HOSTS "$PBX_IP"' in source
