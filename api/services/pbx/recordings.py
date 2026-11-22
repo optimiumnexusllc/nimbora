@@ -196,7 +196,8 @@ def _party(cdr: dict, side: str) -> tuple[str | None, str | None]:
     if (
         name
         and bare.isdigit()
-        and bare in {digits(cdr.get(f"{side}_extension")), digits(internal), digits(extension)}
+        and bare
+        in {digits(cdr.get(f"{side}_extension")), digits(internal), digits(extension)}
     ):
         name = None
     return (
