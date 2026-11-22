@@ -30,7 +30,7 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
     const [booting, setBooting] = useState(true);
     const [bootError, setBootError] = useState<string | null>(null);
     const [pairing, setPairing] = useState<PairingLink | null>(null);
-    const [snapshot, setSnapshot] = useState<Snapshot>({ registration: "disconnected", error: null, call: null });
+    const [snapshot, setSnapshot] = useState<Snapshot>({ registration: "disconnected", error: null, call: null, consult: null, conference: false, notice: null });
     const [tab, setTab] = useState<Tab>("dial");
     const [dial, setDial] = useState("");
     const [recents, setRecents] = useState<RecentCall[] | null>(null);
@@ -317,6 +317,15 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
                     onHold={() => phoneRef.current?.toggleHold()}
                     onDtmf={(tone) => phoneRef.current?.dtmf(tone)}
                     onTransfer={(target) => phoneRef.current?.transfer(target)}
+                    consult={snapshot.consult}
+                    conference={snapshot.conference}
+                    notice={snapshot.notice}
+                    colleagues={(directory?.people ?? []).filter((p) => !p.me)}
+                    onConsult={config.features.transfer ? (target) => phoneRef.current?.consult(target) : undefined}
+                    onSwap={() => phoneRef.current?.swap()}
+                    onCompleteTransfer={() => phoneRef.current?.completeTransfer()}
+                    onCancelConsult={() => phoneRef.current?.cancelConsult()}
+                    onConference={() => void phoneRef.current?.startConference()}
                 />
             )}
         </div>

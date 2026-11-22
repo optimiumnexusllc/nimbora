@@ -8,7 +8,7 @@ NIMBORA Softphone turns a computer, a phone or a browser tab into an [enterprise
 ## What it does
 
 - Places and receives calls on the PBX. Signaling is SIP over a secure WebSocket; audio is WebRTC, encrypted with SRTP. It rings, shows a notification, and displays the caller's number or name.
-- During a call: mute, hold, a keypad for menus (DTMF), **transfer**, and a call timer. A second caller hears busy.
+- During a call: mute, hold, a keypad for menus (DTMF), **transfer** (directly, or after talking to the colleague first), a **three-way conference**, and a call timer. A second caller hears busy.
 - **Recents**: the extension's calls from the PBX's call log, missed calls in red.
 - **Contacts**: one directory with colleagues and their **presence**, call groups and queues, and the company's **customers** (see below), with accent-insensitive search.
 - **My presence**: Available, Away or Offline, with a message colleagues see (« En réunion jusqu'à 15 h »).
@@ -20,6 +20,26 @@ NIMBORA Softphone turns a computer, a phone or a browser tab into an [enterprise
 <Frame caption="Pairing an extension: one-time code, QR code and downloads">
   <img src="/images/screenshots/softphone-pairing.webp" alt="Softphone dialog with the activation code, the QR code and the download links per platform" />
 </Frame>
+
+## Transfer and three-way conference
+
+**Transférer** offers two choices. The colleagues who are available right now are suggested.
+
+| Choice | What happens |
+|---|---|
+| **Appeler d'abord** | The customer is put on hold and the app calls the colleague. You talk to them first. |
+| **Transférer directement** | The PBX calls the colleague for the customer at once (blind transfer). |
+
+While you consult a colleague:
+
+| Button | What happens |
+|---|---|
+| **Basculer** | Talk to the other one: the customer or the colleague. The other one is on hold. |
+| **Transférer** | The PBX connects the customer and the colleague, and you leave (attended transfer, SIP REFER with Replaces). If the colleague has not answered yet, the PBX calls them for the customer. |
+| **Conférence** | The three of you hear each other. The microphone button mutes you on both calls. **Se retirer** leaves the customer and the colleague together; **Tout raccrocher** ends both calls. |
+| **Annuler** or the red button | Hang up on the colleague and go back to the customer. |
+
+If the customer hangs up during the consultation, the colleague's call goes on as a normal call. The conference is mixed in the app with WebAudio, so it needs nothing on the PBX.
 
 ## Presence and unified directory
 
@@ -122,4 +142,4 @@ The app uses `/api/v1/softphone/*` with `Authorization: Bearer <device token>`:
 ## Limits
 
 - **Mobile calls with the app closed** need VoIP push notifications (PushKit on iOS, FCM on Android), relayed by the platform. This is planned. Until then, calls ring while the app is open; on computers it can stay minimized.
-- One call at a time. Transfers are blind (no consultation).
+- One customer call at a time, plus the colleague consulted during a transfer. The three-way conference is mixed in the app: the employee's connection carries both calls, and when they leave (**Se retirer**) the PBX keeps the two others connected.
