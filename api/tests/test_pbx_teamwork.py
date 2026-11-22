@@ -240,3 +240,41 @@ async def test_parked_calls_of_the_company_only(
             "parked_by": "1004",
         }
     ]
+
+
+async def test_new_opening_hours_reach_the_schedules_already_set(
+    db_session, monkeypatch, test_client_factory
+):
+    """Lab step 15: changing the hours in « Mon entreprise » left the outbound
+    schedule on the old ones until the switch was flipped again."""
+    from api.services.business.profile import BusinessProfile, save_business_profile
+
+    fake = FakePbx()
+    user, org, _ = await _setup(db_session, monkeypatch, fake)
+    fake.outcalls.append({"id": 5, "name": "Sortie", "trunks": [], "extensions": []})
+    await save_business_profile(
+        org.id,
+        BusinessProfile(opening_hours={"mon": [{"open": "08:00", "close": "18:00"}]}),
+    )
+    async with test_client_factory(user) as client:
+        await client.put(
+            "/api/v1/pbx/outbound-routes/5/hours", json={"opening_hours_only": True}
+        )
+        profile = (await client.get("/api/v1/business/profile")).json()
+        profile["opening_hours"] = {
+            "mon": [{"open": "09:00", "close": "17:00"}],
+            "tue": [{"open": "09:00", "close": "17:00"}],
+        }
+        saved = await client.put("/api/v1/business/profile", json=profile)
+    assert saved.status_code == 200
+    (schedule,) = [x for x in fake.schedules if x["name"].endswith(f"sortie-{org.id}")]
+    assert [p["hours_start"] for p in schedule["open_periods"]] == ["09:00", "09:00"]
+    # Still a refusal after hours: only the hours changed.
+    assert schedule["closed_destination"] == {"type": "hangup", "cause": "congestion"}
+
+    # A PBX that does not answer never blocks saving the card.
+    fake.down.add("confd")
+    profile["opening_hours"] = {"mon": [{"open": "10:00", "close": "16:00"}]}
+    async with test_client_factory(user) as client:
+        saved = await client.put("/api/v1/business/profile", json=profile)
+    assert saved.status_code == 200

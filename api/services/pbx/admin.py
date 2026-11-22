@@ -752,6 +752,49 @@ def schedule_from_profile(profile) -> dict:
     }
 
 
+async def refresh_schedules(organization_id: int, **client_kwargs) -> list[str]:
+    """After a change of hours in « Mon entreprise »: the PBX schedules NIMBORA
+    already set (numbers, outbound routes) take the new hours at once.
+
+    Each keeps its own closed destination (the AI, voicemail or a refusal):
+    only the periods and the time zone change. Schedules never set up are not
+    created here. Returns the names of the schedules updated.
+    """
+    from api.db import db_client
+    from api.services.business.profile import get_business_profile
+    from api.services.pbx.teamwork import outbound_schedule_name
+
+    profile = await get_business_profile(organization_id)
+    connection = await db_client.get_pbx_connection(organization_id)
+    if connection is None or not profile.opening_hours:
+        return []
+    connection = await _connection(organization_id)
+    names = {
+        f"{SCHEDULE_NAME_PREFIX}-{organization_id}",
+        outbound_schedule_name(organization_id),
+    }
+    hours = schedule_from_profile(profile)
+    refreshed: list[str] = []
+    async with client_for(connection, **client_kwargs) as client:
+        for schedule in await client.schedules():
+            closed = schedule.get("closed_destination")
+            if schedule.get("name") not in names or not closed:
+                continue
+            body = {
+                "name": schedule["name"],
+                "enabled": schedule.get("enabled", True),
+                "closed_destination": closed,
+                **hours,
+            }
+            body["exceptional_periods"] = [
+                {**period, "destination": closed}
+                for period in body["exceptional_periods"]
+            ]
+            await client.update_schedule(schedule["id"], body)
+            refreshed.append(schedule["name"])
+    return refreshed
+
+
 async def sync_opening_hours(
     organization_id: int,
     incall_ids: list[int],
