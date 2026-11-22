@@ -87,12 +87,17 @@ MPS_API_URL = os.getenv("MPS_API_URL", "https://services.nimbora.example")
 # platform that has no such service sets nothing, or MPS_API_URL=off, and
 # companies bring their own AI keys. Without this, every request of a company
 # with no model configuration tried to reach the placeholder (lab step 10).
-MPS_ENABLED = bool(MPS_API_URL) and MPS_API_URL.strip().lower() not in {
-    "off",
-    "none",
-    "disabled",
-    "false",
-} and not (urlparse(MPS_API_URL).hostname or "").endswith(".example")
+MPS_ENABLED = (
+    bool(MPS_API_URL)
+    and MPS_API_URL.strip().lower()
+    not in {
+        "off",
+        "none",
+        "disabled",
+        "false",
+    }
+    and not (urlparse(MPS_API_URL).hostname or "").endswith(".example")
+)
 NIMBORA_DEPLOYMENT_ID = os.getenv(
     "NIMBORA_DEPLOYMENT_ID", "oss" if DEPLOYMENT_MODE == "oss" else "us"
 )

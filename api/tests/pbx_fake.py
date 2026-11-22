@@ -95,10 +95,24 @@ class FakePbx:
         ]
         # chatd presence, as the engine reports it (u-1 is on the call below).
         self.presences = [
-            {"uuid": "u-1", "state": "available", "status": "", "line_state": "talking",
-             "do_not_disturb": False, "connected": True, "mobile": False},
-            {"uuid": "u-2", "state": "available", "status": "", "line_state": "available",
-             "do_not_disturb": False, "connected": True, "mobile": False},
+            {
+                "uuid": "u-1",
+                "state": "available",
+                "status": "",
+                "line_state": "talking",
+                "do_not_disturb": False,
+                "connected": True,
+                "mobile": False,
+            },
+            {
+                "uuid": "u-2",
+                "state": "available",
+                "status": "",
+                "line_state": "available",
+                "do_not_disturb": False,
+                "connected": True,
+                "mobile": False,
+            },
         ]
         self.calls = [
             {
@@ -1303,7 +1317,9 @@ class FakePbx:
         if m and method == "PUT":
             for presence in self.presences:
                 if presence["uuid"] == m.group(1):
-                    presence.update({k: body[k] for k in ("state", "status") if k in body})
+                    presence.update(
+                        {k: body[k] for k in ("state", "status") if k in body}
+                    )
                     return httpx.Response(204)
             return httpx.Response(404, json={"message": "No such user"})
         if path == "/api/calld/1.0/calls" and method == "POST":
