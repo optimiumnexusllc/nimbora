@@ -17,6 +17,7 @@ from xml.etree import ElementTree
 from zoneinfo import ZoneInfo
 
 import httpx
+
 from api.services.actions.calendar.slots import Interval
 
 TIMEOUT = httpx.Timeout(10.0)

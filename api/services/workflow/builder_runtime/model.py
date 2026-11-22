@@ -119,7 +119,9 @@ class BuilderChatModel(BaseChatModel):
                 },
             )
         except (httpx.HTTPError, MPSUnavailableError) as exc:
-            failure = classify_exception(exc, source=ErrorSource.LLM, provider="nimbora")
+            failure = classify_exception(
+                exc, source=ErrorSource.LLM, provider="nimbora"
+            )
             log_failure(
                 failure,
                 organization_id=self.organization_id,

@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from api.services.actions.common import ActionContext, ActionError
 from loguru import logger
+
+from api.services.actions.common import ActionContext, ActionError
 
 ACTION_CATEGORIES = ("book_appointment", "send_message", "create_ticket")
 

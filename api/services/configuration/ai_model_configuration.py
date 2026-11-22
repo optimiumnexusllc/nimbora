@@ -85,6 +85,9 @@ def apply_managed_embeddings_base_url(
     provider: str | None,
     base_url: str | None,
 ) -> str | None:
-    if provider == ServiceProviders.NIMBORA.value or provider == ServiceProviders.NIMBORA:
+    if (
+        provider == ServiceProviders.NIMBORA.value
+        or provider == ServiceProviders.NIMBORA
+    ):
         return nimbora_embeddings_base_url()
     return base_url

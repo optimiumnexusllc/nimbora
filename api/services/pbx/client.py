@@ -267,9 +267,7 @@ class PbxClient:
         await self.request("auth", "DELETE", f"/users/{user_uuid}")
 
     async def set_auth_user_policy(self, user_uuid: str, policy_uuid: str) -> None:
-        await self.request(
-            "auth", "PUT", f"/users/{user_uuid}/policies/{policy_uuid}"
-        )
+        await self.request("auth", "PUT", f"/users/{user_uuid}/policies/{policy_uuid}")
 
     async def create_context(self, body: dict) -> dict:
         return await self.request("confd", "POST", "/contexts", json=body)
@@ -717,12 +715,20 @@ class PbxClient:
             params["from"] = since
         return await self._items("call_logd", "/cdr", **params)
 
-    async def cdr_since(self, since: str, *, limit: int = 500, offset: int = 0) -> list[dict]:
+    async def cdr_since(
+        self, since: str, *, limit: int = 500, offset: int = 0
+    ) -> list[dict]:
         """Call logs started from ``since`` (ISO 8601), oldest first."""
         return await self._items(
             "call_logd",
             "/cdr",
-            **{"from": since, "order": "start", "direction": "asc", "limit": limit, "offset": offset},
+            **{
+                "from": since,
+                "order": "start",
+                "direction": "asc",
+                "limit": limit,
+                "offset": offset,
+            },
         )
 
     async def recording_media(self, cdr_id: int, recording_uuid: str) -> bytes:

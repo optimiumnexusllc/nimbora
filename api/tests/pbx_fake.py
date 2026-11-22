@@ -341,19 +341,26 @@ class FakePbx:
             items = [t for t in self.auth_tenants if search in (t["slug"] + t["name"])]
             return httpx.Response(200, json={"items": items, "total": len(items)})
         if path == "/api/auth/0.1/tenants" and method == "POST":
-            tenant = {"uuid": str(uuid.uuid4()), "name": body["name"], "slug": body.get("slug", "")}
+            tenant = {
+                "uuid": str(uuid.uuid4()),
+                "name": body["name"],
+                "slug": body.get("slug", ""),
+            }
             self.auth_tenants.append(tenant)
             return httpx.Response(200, json=tenant)
         m = re.fullmatch(r"/api/auth/0\.1/tenants/([^/]+)", path)
         if m and method == "DELETE":
             before = len(self.auth_tenants)
-            self.auth_tenants = [t for t in self.auth_tenants if t["uuid"] != m.group(1)]
+            self.auth_tenants = [
+                t for t in self.auth_tenants if t["uuid"] != m.group(1)
+            ]
             if len(self.auth_tenants) == before:
                 return httpx.Response(404, json={"message": "No such tenant"})
             return httpx.Response(204)
         if path == "/api/auth/0.1/policies" and method == "GET":
             items = [
-                p for p in self.auth_policies
+                p
+                for p in self.auth_policies
                 if p["tenant_uuid"] == tenant_header
                 and (request.url.params.get("search") or "") in p["name"]
             ]
@@ -364,15 +371,23 @@ class FakePbx:
             return httpx.Response(200, json=policy)
         if path == "/api/auth/0.1/users" and method == "GET":
             items = [
-                u for u in self.auth_users
+                u
+                for u in self.auth_users
                 if u["tenant_uuid"] == tenant_header
                 and (request.url.params.get("search") or "") in u["username"]
             ]
             return httpx.Response(200, json={"items": items, "total": len(items)})
         if path == "/api/auth/0.1/users" and method == "POST":
-            account = {**body, "uuid": str(uuid.uuid4()), "tenant_uuid": tenant_header, "policies": []}
+            account = {
+                **body,
+                "uuid": str(uuid.uuid4()),
+                "tenant_uuid": tenant_header,
+                "policies": [],
+            }
             self.auth_users.append(account)
-            return httpx.Response(200, json={k: v for k, v in account.items() if k != "password"})
+            return httpx.Response(
+                200, json={k: v for k, v in account.items() if k != "password"}
+            )
         m = re.fullmatch(r"/api/auth/0\.1/users/([^/]+)", path)
         if m and method == "DELETE":
             self.auth_users = [u for u in self.auth_users if u["uuid"] != m.group(1)]
@@ -448,7 +463,8 @@ class FakePbx:
             return httpx.Response(404, json=["Context not found"])
         if path == f"{prefix}/contexts":
             items = [
-                c for c in self.contexts
+                c
+                for c in self.contexts
                 if not tenant_header or c.get("tenant_uuid") == tenant_header
             ]
             return httpx.Response(200, json={"items": items, "total": len(items)})
@@ -533,7 +549,9 @@ class FakePbx:
         if path == f"{prefix}/asterisk/pjsip/global" and self.asterisk_master_only:
             # The real engine: global Asterisk settings need a master-tenant
             # token; a company's service account gets 401 (not 403).
-            return httpx.Response(401, json={"reason": ["Unauthorized"], "status_code": 401})
+            return httpx.Response(
+                401, json={"reason": ["Unauthorized"], "status_code": 401}
+            )
         if path == f"{prefix}/asterisk/pjsip/global" and method == "GET":
             return httpx.Response(200, json={"options": dict(self.pjsip)})
         if path == f"{prefix}/asterisk/pjsip/global" and method == "PUT":

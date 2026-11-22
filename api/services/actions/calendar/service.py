@@ -12,6 +12,8 @@ from datetime import UTC, date, datetime, timedelta
 from typing import Any
 from zoneinfo import ZoneInfo
 
+from loguru import logger
+
 from api.services.actions.calendar.providers import (
     CalDAVCalendar,
     CalendarError,
@@ -34,7 +36,6 @@ from api.services.actions.common import (
     check_outbound_url,
     load_credential,
 )
-from loguru import logger
 
 REFUSALS = {
     "too_soon": "This time is too soon to book. Offer a later slot.",
