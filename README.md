@@ -384,6 +384,8 @@ sudo ./install.sh --app-domain app.mondomaine.com --pbx-domain pbx.mondomaine.co
   --brand "NIMBORA" --company "Mon entreprise"
 ```
 
+Pour mettre à jour : `git pull` puis `sudo ./install.sh … --only nimbora`. Les migrations s'appliquent au démarrage de l'API. `GET /api/v1/health` renvoie `build_commit`, le commit dont l'image en service est construite, et le kit avertit si ce n'est pas celui du dépôt (« image non reconstruite ? »).
+
 Principaux réglages de la plateforme :
 
 | Variable | Rôle |

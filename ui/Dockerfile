@@ -74,5 +74,9 @@ USER nextjs
 # Expose the port Next.js runs on
 EXPOSE 3010
 
+# The commit this image was built from (see api/Dockerfile).
+ARG GIT_COMMIT=unknown
+ENV NIMBORA_BUILD_COMMIT=$GIT_COMMIT
+
 # Start the production server using the standalone Node.js server
 CMD sh -c "echo '🚀 Application ready at http://localhost:3010' && PORT=3010 node server.js"

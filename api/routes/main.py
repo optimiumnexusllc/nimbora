@@ -114,6 +114,8 @@ for _integration_router in all_routers():
 class HealthResponse(BaseModel):
     status: str
     version: str
+    # Commit the running API image was built from; null when not stamped.
+    build_commit: str | None = None
     backend_api_endpoint: str
     # Public URL the deployment is reachable at when it sits behind a Cloudflare
     # tunnel (the host has no public IP). null for a directly-reachable deployment.
@@ -137,6 +139,7 @@ async def health() -> HealthResponse:
         APP_VERSION,
         AUTH_PROVIDER,
         BACKEND_API_ENDPOINT,
+        BUILD_COMMIT,
         DEPLOYMENT_MODE,
         ENABLE_COTURN,
         ENABLE_SIGNUP,
@@ -162,6 +165,7 @@ async def health() -> HealthResponse:
     return HealthResponse(
         status="ok",
         version=APP_VERSION,
+        build_commit=BUILD_COMMIT,
         backend_api_endpoint=BACKEND_API_ENDPOINT,
         tunnel_url=tunnel_url,
         deployment_mode=DEPLOYMENT_MODE,

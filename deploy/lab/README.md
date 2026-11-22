@@ -140,8 +140,27 @@ sudo incus snapshot create nimbora-pbx avant-maj          # instantané du PBX
 ```
 
 Mise à jour de la plateforme : `git pull` puis `sudo ./install.sh --only nimbora` (les
-secrets du `.env` sont conservés). Mise à jour du moteur : dans le conteneur, comme sur un
-serveur dédié, puis `--only pbx` réapplique la marque et le NAT.
+secrets du `.env` sont conservés, les migrations de base s'appliquent au démarrage de
+l'API). Mise à jour du moteur : dans le conteneur, comme sur un serveur dédié, puis
+`--only pbx` réapplique la marque et le NAT.
+
+**Quelle version tourne ?** Les images portent le commit dont elles sont construites :
+
+```bash
+curl -s https://app.example.com/api/v1/health | python3 -m json.tool | grep build_commit
+git -C ~/nimbora log --oneline -1          # doit commencer par la même empreinte
+```
+
+`install.sh` construit les images sous le nom que la pile utilise (`REGISTRY` du `.env`,
+`nimbora` par défaut) et compare à la fin le commit de l'API en service avec celui du dépôt :
+« image non reconstruite ? » signale une API restée sur une version précédente (par exemple
+après `--no-build`, ou une image construite à la main sous un autre nom). Construire à la
+main demande `sudo` (ou le groupe `docker`) :
+
+```bash
+sudo docker build --build-arg GIT_COMMIT=$(git rev-parse --short=7 HEAD) \
+    -f api/Dockerfile -t "$(sudo grep -E '^REGISTRY=' /opt/nimbora-lab/.env | cut -d= -f2 || echo nimbora)/nimbora-api:latest" .
+```
 
 ## 6. Retirer le laboratoire
 
