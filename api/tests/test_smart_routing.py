@@ -292,13 +292,31 @@ async def test_answered_pbx_call_teaches_the_usual_advisor(db_session, monkeypat
         "call_direction": "inbound",
         "source_extension": PHONE,
         "source_name": "Awa",
-        "destination_extension": "1004",
+        # As the real engine writes it: the public number dialled, and the
+        # employee's own extension apart (seen on the lab PBX, 26.11).
+        "destination_extension": "2250700000001",
+        "destination_internal_extension": "1004",
         "destination_name": "Aya Bamba",
     }
     assert await pbx.handle_event(connection, "call_log_created", cdr) == "recorded"
     refreshed = await db_session.get_customer_profile(org.id, profile.id)
     advisor = refreshed.attributes["usual_advisor"]
     assert (advisor["extension"], advisor["name"]) == ("1004", "Aya Bamba")
+
+    # Outbound: the employee is the source's internal extension.
+    out = {
+        **cdr,
+        "id": 77002,
+        "call_direction": "outbound",
+        "source_extension": "2250700000001",
+        "source_internal_extension": "1006",
+        "source_name": "Yao K",
+        "destination_extension": PHONE,
+        "destination_name": "",
+    }
+    assert await pbx.handle_event(connection, "call_log_created", out) == "recorded"
+    refreshed = await db_session.get_customer_profile(org.id, profile.id)
+    assert refreshed.attributes["usual_advisor"]["extension"] == "1006"
 
     # A short call does not change the advisor.
     assert not await routing.remember_advisor(
