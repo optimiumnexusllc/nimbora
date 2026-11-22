@@ -439,7 +439,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Rappels automatiques, passation IA → humain avec fiche de contexte |
 | 🔜 | Catalogue : produits, biens, chambres… avec prix, stock et recherche par l'agent |
 | 🔜 | Prospects : qualification (besoin, budget), pipeline |
-| 🔜 | Routage intelligent (compétences, langue, client VIP, conseiller habituel) |
+| ✅ | **Routage intelligent** des passations IA → humain : client VIP, **conseiller habituel** (appris des appels du PBX), compétence demandée par l'IA, langue, destination par défaut — selon qui est libre **à l'instant** ; si personne n'est libre : file, rappel planifié ou l'IA continue ; **simulateur** qui explique chaque décision |
 
 ### Phase 4 — SaaS commercial
 
@@ -492,7 +492,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Par poste : **renvois** (toujours, si occupé, si pas de réponse), **ne pas déranger**, et destination quand personne ne décroche — dont un **agent IA qui répond à la place du collaborateur** |
 | ✅ | **Salles de conférence** : code participants et code organisateur (jamais renvoyés), places, annonces, enregistrement ; **en direct** : participants, durée, organisateurs, micro coupé ou rendu, exclusion ; numéro public vers une salle |
 | 🔜 | Horaires des routes sortantes, interception d'appel, parcage, interphone |
-| 🔜 | Compétences des agents et routage par compétence entre IA et conseillers |
+| ✅ | **Compétences et langues par poste**, routage par compétence entre IA et conseillers (file de la compétence, sinon un poste libre qui l'a et parle la langue) — 🧪 à valider sur le PBX réel |
 | ✅ | **Enregistrements des appels humains** : appels reçus, émis ou internes, sur tous les postes ou certains ; copie dans le stockage de la plateforme (webhook + rattrapage toutes les 10 min), retrait du PBX optionnel (copie unique), **transcription masquée** (cartes, CVV, IBAN, n° de sécurité sociale toujours masqués), recherche par mot prononcé, écoute par lien temporaire, conservation, accès et effacement RGPD |
 
 **5.3 Centre d'appels humain unifié**

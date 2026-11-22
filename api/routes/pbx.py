@@ -247,6 +247,72 @@ async def provision(user: UserModel = Depends(get_user)):
     return _to_response(connection)
 
 
+class RoutingSimulation(BaseModel):
+    caller_number: str | None = Field(default=None, max_length=32)
+    language: str | None = Field(default=None, max_length=8)
+    skill: str | None = Field(default=None, max_length=60)
+
+
+@router.get("/routing")
+async def read_routing(user: UserModel = Depends(get_user)) -> dict[str, Any]:
+    """Intelligent routing policy (VIP, usual advisor, skills, languages)."""
+    from api.services.contact_center import smart_routing
+
+    return await smart_routing.read_policy(_org(user))
+
+
+@router.put("/routing")
+async def save_routing(
+    request: dict[str, Any], user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    from api.services.contact_center import smart_routing
+
+    try:
+        return await smart_routing.save_policy(_org(user), request)
+    except (ValueError, TypeError) as error:
+        raise HTTPException(status_code=422, detail=str(error)) from error
+
+
+@router.post("/routing/simulate")
+async def simulate_routing(
+    request: RoutingSimulation, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    """Where a hand-off would go now, and why (nothing is dialled)."""
+    from api.services.contact_center import smart_routing
+
+    try:
+        decision = await smart_routing.route(
+            _org(user),
+            caller_number=request.caller_number,
+            language=request.language,
+            skill=request.skill,
+        )
+    except smart_routing.NoAgentAvailable as error:
+        policy = await smart_routing.read_policy(_org(user))
+        smart_routing.log_decision(
+            _org(user),
+            "simulation",
+            reason=f"unavailable/{policy['when_unavailable']}",
+            destination=None,
+            steps=error.steps,
+        )
+        return {
+            "destination": None,
+            "reason": "unavailable",
+            "explanation": str(error),
+            "steps": error.steps,
+            "when_unavailable": policy["when_unavailable"],
+        }
+    smart_routing.log_decision(
+        _org(user),
+        "simulation",
+        reason=decision.reason,
+        destination=decision.destination,
+        steps=decision.steps,
+    )
+    return decision.as_dict()
+
+
 @router.post("/connection/test", response_model=ConnectionResponse)
 async def test_connection(user: UserModel = Depends(get_user)):
     try:

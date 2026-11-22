@@ -142,7 +142,8 @@
             "group": "Contact Center",
             "pages": [
               "contact-center/overview",
-              "contact-center/supervision"
+              "contact-center/supervision",
+              "contact-center/smart-routing"
             ]
           },
           {

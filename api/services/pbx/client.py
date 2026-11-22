@@ -91,6 +91,15 @@ def _error_message(response: httpx.Response) -> str:
     return str(body)[:400]
 
 
+def _describe(error: httpx.HTTPError) -> str:
+    """The error class, and for DNS failures say so: « Name or service not
+    known » means the PBX address is a host name the API cannot resolve."""
+    text = str(error)
+    if "Name or service not known" in text or "nodename nor servname" in text:
+        return f"{error.__class__.__name__} (nom d'hôte du PBX non résolu)"
+    return error.__class__.__name__
+
+
 class PbxClient:
     def __init__(
         self,
@@ -128,7 +137,7 @@ class PbxClient:
             )
         except httpx.HTTPError as error:
             raise PbxUnavailable(
-                f"PBX injoignable : {error.__class__.__name__}"
+                f"PBX injoignable (auth) : {_describe(error)}"
             ) from error
         if response.status_code in (401, 403):
             raise PbxAuthError(
@@ -185,7 +194,7 @@ class PbxClient:
                 )
             except httpx.HTTPError as error:
                 raise PbxUnavailable(
-                    f"PBX injoignable : {error.__class__.__name__}"
+                    f"PBX injoignable ({service}) : {_describe(error)}"
                 ) from error
             if response.status_code == 401 and attempt == 0:
                 continue  # token expired or revoked: one fresh try

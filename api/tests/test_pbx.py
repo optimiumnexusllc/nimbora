@@ -607,3 +607,27 @@ def test_service_account_policy_grants_exactly_what_the_client_needs():
             matches(pattern, re.sub(r"\{[a-z_]+\}", "42", r))
             for r in REQUIRED_ACL.values()
         ), pattern
+
+
+async def test_an_unreachable_pbx_names_the_service_and_dns_failures():
+    import httpx
+
+    from api.services.pbx.client import PbxClient, PbxSettings, PbxUnavailable
+
+    def no_dns(request):
+        raise httpx.ConnectError(
+            "[Errno -2] Name or service not known", request=request
+        )
+
+    client = PbxClient(
+        PbxSettings(
+            base_url="https://pbx.introuvable.example", username="u", password="p"
+        ),
+        transport=httpx.MockTransport(no_dns),
+    )
+    with pytest.raises(PbxUnavailable) as error:
+        await client.agents()
+    await client.close()
+    assert "(auth)" in str(error.value) and "nom d'hôte du PBX non résolu" in str(
+        error.value
+    )

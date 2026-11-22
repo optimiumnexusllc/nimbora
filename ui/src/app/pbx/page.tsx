@@ -64,6 +64,7 @@ import { PbxActivation, SeatsBadge } from "@/components/pbx/PbxActivation";
 import { QueuesTab } from "@/components/pbx/QueuesTab";
 import { RecordingsTab } from "@/components/pbx/RecordingsTab";
 import { RestrictionsSection } from "@/components/pbx/RestrictionsSection";
+import { RoutingTab } from "@/components/pbx/RoutingTab";
 import { ScheduleDialog } from "@/components/pbx/ScheduleDialog";
 import { SoftphoneDialog } from "@/components/pbx/SoftphoneDialog";
 import { SoftphonesSection } from "@/components/pbx/SoftphonesSection";
@@ -128,7 +129,12 @@ export default function PbxPage() {
         conferences: [],
         live_error: null,
     });
+    // ?tab=routing (from the transfer tool's help) opens that tab directly.
     const [tab, setTab] = useState("calls");
+    useEffect(() => {
+        const wanted = new URLSearchParams(window.location.search).get("tab");
+        if (wanted) setTab(wanted);
+    }, []);
     const [menus, setMenus] = useState<PbxMenu[]>([]);
     const [voicemails, setVoicemails] = useState<PbxVoicemail[]>([]);
     const [lines, setLines] = useState<{
@@ -477,6 +483,7 @@ export default function PbxPage() {
                             <Cable className="size-3.5" /> Lignes opérateurs
                         </TabsTrigger>
                         <TabsTrigger value="recordings">Enregistrements</TabsTrigger>
+                        <TabsTrigger value="routing">Routage</TabsTrigger>
                         <TabsTrigger value="logs">Journal</TabsTrigger>
                     </TabsList>
 
@@ -777,6 +784,10 @@ export default function PbxPage() {
 
                     <TabsContent value="recordings">
                         <RecordingsTab users={inventory.users} />
+                    </TabsContent>
+
+                    <TabsContent value="routing">
+                        <RoutingTab queues={inventory.queues} users={inventory.users} />
                     </TabsContent>
 
                     <TabsContent value="logs">
