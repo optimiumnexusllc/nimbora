@@ -493,7 +493,7 @@ export function TrunksTab({
                                         </Badge>
                                     ))}
                                 </div>
-                                <label className="flex items-center gap-2 text-xs text-muted-foreground" title="Hors des horaires de « Mon entreprise », les appels sortants par cette route sont refusés">
+                                <label className="flex items-center gap-2 text-xs text-muted-foreground" title="Hors des horaires de « Mon entreprise », les appels sortants par cette route sont refusés. Un changement d'horaires y est repris automatiquement.">
                                     <Switch
                                         aria-label={`Heures d'ouverture seulement pour ${r.name}`}
                                         checked={!!r.opening_hours_only}
