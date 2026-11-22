@@ -24,12 +24,13 @@ import asyncio
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from loguru import logger
+
 from api.services.whatsapp_messaging.graph import (
     WhatsAppMessenger,
     WhatsAppSendError,
     message_text,
 )
-from loguru import logger
 
 IDLE_MINUTES = 30
 DEDUP_TTL_SECONDS = 24 * 3600

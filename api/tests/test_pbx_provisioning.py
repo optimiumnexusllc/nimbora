@@ -504,7 +504,10 @@ async def test_logins_on_the_shared_pbx_carry_the_tenant_slug(db_session, monkey
     assert shared["credentials"]["login"] == f"org{org.id}-poste1051"
     # An e-mail address stays the login, slug or not.
     mailed = await admin.create_extension(
-        org.id, admin.NewExtension(firstname="Aya", lastname="B", extension="1052", email="aya@example.com")
+        org.id,
+        admin.NewExtension(
+            firstname="Aya", lastname="B", extension="1052", email="aya@example.com"
+        ),
     )
     assert mailed["credentials"]["login"] == "aya@example.com"
     # The fake now refuses a duplicate login like the engine does.
@@ -542,7 +545,9 @@ class _EngineDefaults(_Accept):
         return response
 
 
-async def test_engine_default_contexts_get_their_missing_ranges(db_session, monkeypatch):
+async def test_engine_default_contexts_get_their_missing_ranges(
+    db_session, monkeypatch
+):
     monkeypatch.setattr(constants, "SAAS_MODE", False)
     fake = _EngineDefaults(username="nimbora-provisioning", password="operator-secret")
     fake.auth_users.append(
@@ -563,7 +568,9 @@ async def test_engine_default_contexts_get_their_missing_ranges(db_session, monk
     mine = {c["type"]: c for c in fake.contexts if c.get("tenant_uuid") == tenant}
     assert len([c for c in fake.contexts if c.get("tenant_uuid") == tenant]) == 3
     # Inbound numbers of 4 to 15 digits can now be routed.
-    assert [r["did_length"] for r in mine["incall"]["incall_ranges"]] == list(range(4, 16))
+    assert [r["did_length"] for r in mine["incall"]["incall_ranges"]] == list(
+        range(4, 16)
+    )
     # A range already set on the engine is kept; the empty ones are filled.
     assert mine["internal"]["user_ranges"] == [{"start": "1000", "end": "1099"}]
     assert mine["internal"]["queue_ranges"]

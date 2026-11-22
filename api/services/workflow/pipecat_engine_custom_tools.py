@@ -719,7 +719,10 @@ class CustomToolManager:
                     getattr(workflow_run, "initial_context", None) or {}
                 ).get("upstream_pbx")
                 destination_source = config.get("destination_source", "static")
-                if external_pbx_call or destination_source in {"context_mapping", "smart"}:
+                if external_pbx_call or destination_source in {
+                    "context_mapping",
+                    "smart",
+                }:
                     # Context routing and external-PBX lead-field mappings must
                     # see current conversation-derived values. This flush is
                     # repeatable because a failed transfer resumes the agent.

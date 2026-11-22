@@ -130,7 +130,9 @@ def test_google_vertex_llm_service_factory_uses_nimbora_service_class():
 
 
 def test_gemini_live_service_classes_use_nimbora_gemini_adapter_class():
-    assert NimboraGeminiLiveLLMService.adapter_class is NimboraGeminiLiveJSONSchemaAdapter
+    assert (
+        NimboraGeminiLiveLLMService.adapter_class is NimboraGeminiLiveJSONSchemaAdapter
+    )
     # Vertex Live inherits adapter_class from NimboraGeminiLiveLLMService via MRO.
     assert (
         NimboraGeminiLiveVertexLLMService.adapter_class
@@ -139,7 +141,9 @@ def test_gemini_live_service_classes_use_nimbora_gemini_adapter_class():
     # The Live adapter must keep upstream's tool-call-to-text conversion for
     # seeded contexts (GeminiLiveLLMAdapter) alongside the JSON Schema fix.
     assert issubclass(NimboraGeminiLiveJSONSchemaAdapter, GeminiLiveLLMAdapter)
-    assert issubclass(NimboraGeminiLiveJSONSchemaAdapter, NimboraGeminiJSONSchemaAdapter)
+    assert issubclass(
+        NimboraGeminiLiveJSONSchemaAdapter, NimboraGeminiJSONSchemaAdapter
+    )
     assert (
         NimboraGeminiLiveJSONSchemaAdapter.to_provider_tools_format
         is NimboraGeminiJSONSchemaAdapter.to_provider_tools_format

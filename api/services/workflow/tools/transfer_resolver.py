@@ -419,7 +419,8 @@ async def resolve_transfer_config(
 
         if organization_id is None:
             raise TransferResolutionError(
-                "no_organization_id", "Intelligent routing needs the call's organization"
+                "no_organization_id",
+                "Intelligent routing needs the call's organization",
             )
         try:
             decision = await resolve_for_transfer(
@@ -430,7 +431,9 @@ async def resolve_transfer_config(
             )
         except NoAgentAvailable as error:
             raise TransferResolutionError(
-                "callback_scheduled" if error.callback_scheduled else "no_agent_available",
+                "callback_scheduled"
+                if error.callback_scheduled
+                else "no_agent_available",
                 str(error),
             ) from error
         return ResolvedTransferConfig(

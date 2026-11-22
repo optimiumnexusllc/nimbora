@@ -24,10 +24,11 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
+from loguru import logger
+
 from api import constants
 from api.services.pbx.client import REQUIRED_ACL, PbxClient, PbxError, PbxSettings
 from api.services.pbx.service import PbxRouteError, new_webhook_token
-from loguru import logger
 
 POLICY_NAME = "nimbora-integration"
 _RANGE = re.compile(r"^\s*(\d+)\s*-\s*(\d+)\s*$")

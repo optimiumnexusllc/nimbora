@@ -54,6 +54,7 @@ async def get_redis():
     global _redis
     if _redis is None:
         import redis.asyncio as aioredis
+
         from api.constants import REDIS_URL
 
         _redis = aioredis.from_url(REDIS_URL, decode_responses=True)

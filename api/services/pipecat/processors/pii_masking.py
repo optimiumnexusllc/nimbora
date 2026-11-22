@@ -17,9 +17,10 @@ from __future__ import annotations
 from collections.abc import Iterable
 from typing import Any
 
-from api.services.privacy.redaction import redact_text
 from pipecat.frames.frames import InterimTranscriptionFrame, TranscriptionFrame
 from pipecat.processors.frame_processor import FrameDirection
+
+from api.services.privacy.redaction import redact_text
 
 
 def mask_frame(frame: Any, categories: tuple[str, ...]) -> int:

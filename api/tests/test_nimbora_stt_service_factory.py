@@ -103,7 +103,9 @@ def test_create_nimbora_supported_language_uses_flux_service_with_hint(language,
 )
 def test_nimbora_flux_sends_combined_language_hints_to_proxy(language, hints):
     config = SimpleNamespace(
-        stt=NimboraSTTService(api_key="mps-key", language=language, language_hints=hints)
+        stt=NimboraSTTService(
+            api_key="mps-key", language=language, language_hints=hints
+        )
     )
     service = create_stt_service(config, _audio_config(), correlation_id="corr-123")
 

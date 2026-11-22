@@ -19,7 +19,8 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     op.add_column(
-        "subscription_plans", sa.Column("included_human_minutes", sa.Integer(), nullable=True)
+        "subscription_plans",
+        sa.Column("included_human_minutes", sa.Integer(), nullable=True),
     )
     op.add_column(
         "subscription_plans",
