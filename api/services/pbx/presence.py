@@ -49,11 +49,17 @@ def from_engine(item: dict[str, Any]) -> str:
     state = str(item.get("state") or "").lower()
     if state == "away":
         return "away"
-    if state in {"unavailable", "invisible"}:
+    if state == "invisible":
         return "offline"
-    if line == "unavailable" and not item.get("connected") and not item.get("mobile"):
-        return "offline"
-    return "available"
+    # On the engine (26.11) a user who never set a chat presence stays
+    # "unavailable" for ever, phone registered or not: the line decides.
+    # Registered and idle → available; nothing registered, no app, no mobile
+    # → offline.
+    if line == "available":
+        return "available"
+    if item.get("connected") or item.get("mobile"):
+        return "available"
+    return "offline"
 
 
 def from_calls(calls: list[dict[str, Any]]) -> dict[str, str]:

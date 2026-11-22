@@ -20,6 +20,10 @@ from api.tests.test_softphone import _setup
         ({"line_state": "available", "do_not_disturb": True}, "dnd"),
         ({"line_state": "available", "state": "away"}, "away"),
         ({"line_state": "available", "state": "invisible"}, "offline"),
+        # Seen on the lab engine: registered phones whose user never set a chat
+        # presence have state "unavailable" — they are reachable, not offline.
+        ({"line_state": "available", "state": "unavailable", "connected": False}, "available"),
+        ({"line_state": "unavailable", "state": "unavailable", "connected": False}, "offline"),
         (
             {"line_state": "unavailable", "state": "available", "connected": False},
             "offline",
