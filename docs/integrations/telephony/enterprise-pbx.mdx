@@ -41,7 +41,7 @@ The install script:
 - leaves out the engine's own web UI;
 - installs the supervision dialplan (`nimbora-supervision`, used to listen to calls from NIMBORA, reachable by API only);
 - installs a deny-by-default nftables firewall: only SSH, HTTPS, SIP and RTP (`--sip-from`), the ARI (port 5039) from NIMBORA and, optionally, phone provisioning (`--phones-from`) are reachable; the AMI (port 5038), RabbitMQ, Postfix and the engine's internal services stay local to the server;
-- creates the service account. Its policy grants only the 113 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
+- creates the service account. Its policy grants only the 130 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
 
 See `deploy/pbx/README.md` for every option and what the white label changes.
 
@@ -261,6 +261,24 @@ The PBX keeps a single schedule per company. When the hours change, open the dia
 The PBX accepts only unaccented letters in group names, so "Équipe accueil" is saved as "Equipe accueil".
 
 Numbers, voice menu keys and fallbacks can all lead to a group.
+
+### Working as a team: pickup, parking, intercom
+
+**PBX → Équipe** gathers what lets colleagues share calls.
+
+| Feature | How it works |
+|---|---|
+| **Interception d'appel** | A pickup group gathers at least two extensions. A member dials **`*8`** (**Intercepter** on the Softphone keypad) to answer a call ringing on another member's phone. |
+| **Parcage** | A parking lot has a number (for example 700) and slots (701 to 720). Transfer a call to the lot's number (**Parquer** in the Softphone's transfer panel): it waits on a slot with music. Anyone dials the slot to take it back. The Softphone lists the parked calls in **Récents → Appels parqués**, and the console under the lot. A call left longer than the set delay rings back the person who parked it. |
+| **Interphone et annonces** | **`*11`** followed by the number rings the chosen phones, which answer by themselves. With one phone and two-way audio it is an intercom (« Bureau du directeur »); with several phones and one-way audio, an announcement. **Réservé à** limits who may call it. NIMBORA Softphone answers such calls by itself and shows « Interphone ». |
+
+Parked calls are read from Asterisk one lot at a time, by the lot's name (`parkinglot-<id>`), so a company never sees another company's parked calls on a shared PBX.
+
+### Outbound routes during opening hours
+
+Each outbound route in **Lignes** has an **Heures d'ouverture** switch. When it is on, outgoing calls through the route are refused outside the hours set in **Mon entreprise** (closures included). NIMBORA keeps a schedule of its own for this (`nimbora-horaires-sortie-<id>`): its closed destination refuses the call, while the inbound schedule sends callers to the AI agent. After changing the hours, switch the route off and on again to update it.
+
+API: `GET/POST/DELETE /api/v1/pbx/pickup-groups`, `/parking-lots`, `/pagings`; `GET /api/v1/pbx/parked-calls`; `PUT /api/v1/pbx/outbound-routes/{id}/hours` `{opening_hours_only}`.
 
 ### Forwards, do-not-disturb and unanswered calls
 

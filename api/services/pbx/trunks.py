@@ -368,6 +368,10 @@ async def list_outbound_routes(organization_id: int, **client_kwargs) -> list[di
             "name": o.get("name"),
             "enabled": o.get("enabled", True),
             "internal_caller_id": bool(o.get("internal_caller_id")),
+            "opening_hours_only": any(
+                str(x.get("name") or "").startswith("nimbora-horaires-sortie-")
+                for x in o.get("schedules") or []
+            ),
             "trunks": [
                 {
                     "id": t.get("id"),

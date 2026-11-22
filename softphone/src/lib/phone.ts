@@ -21,6 +21,8 @@ export type Call = {
     muted: boolean;
     held: boolean;
     endReason: string | null;
+    /** Rung by an intercom or an announcement (answered by the app). */
+    intercom?: boolean;
 };
 export type Snapshot = {
     registration: Registration;
@@ -37,7 +39,7 @@ export type Snapshot = {
 type Role = "main" | "consult";
 
 export type CallEvent =
-    | { type: "incoming"; id: string; number: string; name: string | null }
+    | { type: "incoming"; id: string; number: string; name: string | null; intercom?: boolean }
     | { type: "dialing"; id: string; number: string }
     | { type: "progress" }
     | { type: "accepted"; at: number }
@@ -65,6 +67,17 @@ export function endReasonLabel(cause: string | null | undefined): string | null 
     return END_REASONS[cause] ?? cause;
 }
 
+/**
+ * Is this INVITE from an intercom or an announcement? Paging asks phones to
+ * answer by themselves with Call-Info « answer-after=0 » or an Alert-Info
+ * « auto answer » / « intercom » (the header differs between phone makers).
+ */
+export function isIntercom(headers: { callInfo?: string | null; alertInfo?: string | null }): boolean {
+    const callInfo = (headers.callInfo || "").toLowerCase();
+    const alertInfo = (headers.alertInfo || "").toLowerCase();
+    return /answer-after\s*=\s*0/.test(callInfo) || /auto[-_ ]?answer|intercom|ring answer/.test(alertInfo);
+}
+
 export function reduceCall(call: Call | null, event: CallEvent): Call | null {
     switch (event.type) {
         case "incoming":
@@ -78,6 +91,7 @@ export function reduceCall(call: Call | null, event: CallEvent): Call | null {
                 muted: false,
                 held: false,
                 endReason: null,
+                intercom: !!event.intercom,
             };
         case "dialing":
             return {
@@ -227,7 +241,7 @@ export class Phone {
                 error: e.cause === "Authentication Error" ? AUTH_REFUSED : `Enregistrement impossible (${e.cause ?? "erreur"})`,
             }),
         );
-        ua.on("newRTCSession", (data: { session: RTCSession; originator: string }) => {
+        ua.on("newRTCSession", (data: { session: RTCSession; originator: string; request?: { getHeader?: (name: string) => string | undefined } }) => {
             const session = data.session;
             if (data.originator !== "remote") return;
             if (this.session) {
@@ -240,7 +254,16 @@ export class Phone {
             const id = String(session.id);
             const number = numberFromUri(session.remote_identity?.uri?.toString());
             const name = session.remote_identity?.display_name || null;
-            this.callEvent({ type: "incoming", id, number, name });
+            const intercom = isIntercom({
+                callInfo: data.request?.getHeader?.("Call-Info"),
+                alertInfo: data.request?.getHeader?.("Alert-Info"),
+            });
+            this.callEvent({ type: "incoming", id, number, name, intercom });
+            if (intercom && this.config.features.intercom_auto_answer !== false) {
+                // An intercom does not ring: it answers, like a desk phone's speaker.
+                this.answer();
+                return;
+            }
             if (this.snapshot.call && this.onIncoming) this.onIncoming(this.snapshot.call);
         });
         this.ua = ua;

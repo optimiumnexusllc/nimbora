@@ -292,3 +292,36 @@ describe("Phone · consultation, attended transfer, conference", () => {
         expect(phone.state.call?.status).toBe("active");
     });
 });
+
+describe("Phone · intercom", () => {
+    it("recognises intercom and announcement calls from their headers", async () => {
+        const { isIntercom } = await import("./phone");
+        expect(isIntercom({ callInfo: "<sip:pbx>;answer-after=0" })).toBe(true);
+        expect(isIntercom({ alertInfo: "<http://www.notused.com>;info=alert-autoanswer;delay=0" })).toBe(true);
+        expect(isIntercom({ alertInfo: "Ring Answer" })).toBe(true);
+        expect(isIntercom({ alertInfo: "<http://x>;info=intercom" })).toBe(true);
+        expect(isIntercom({ callInfo: "<sip:pbx>;purpose=icon" })).toBe(false);
+        expect(isIntercom({})).toBe(false);
+    });
+
+    it("answers an intercom call by itself, and lets a normal call ring", async () => {
+        const phone = new Phone(config, null, async () => fakeJsSIP);
+        const ringing = vi.fn();
+        phone.onIncoming = ringing;
+        await phone.start();
+        const intercom = new FakeSession();
+        const request = { getHeader: (name: string) => (name === "Call-Info" ? "<sip:pbx.example>;answer-after=0" : undefined) };
+        ua.fire("newRTCSession", { session: intercom, originator: "remote", request });
+        expect(intercom.answer).toHaveBeenCalled();
+        expect(phone.state.call).toMatchObject({ status: "active", intercom: true });
+        expect(ringing).not.toHaveBeenCalled();
+        phone.hangup();
+
+        const off = new Phone({ ...config, features: { ...config.features, intercom_auto_answer: false } }, null, async () => fakeJsSIP);
+        await off.start();
+        const call = new FakeSession();
+        ua.fire("newRTCSession", { session: call, originator: "remote", request });
+        expect(call.answer).not.toHaveBeenCalled();
+        expect(off.state.call?.status).toBe("ringing");
+    });
+});

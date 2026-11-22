@@ -166,6 +166,9 @@ async def device_config(device, **client_kwargs) -> dict[str, Any]:
     connection = await _connection(device.organization_id)
     async with client_for(connection, **client_kwargs) as client:
         account = await sip_account(client, connection, device.pbx_user_uuid)
+        from api.services.pbx.teamwork import PICKUP_CODE, parking_extensions
+
+        parking = await parking_extensions(client)
     b = brand()
     return {
         "brand": {
@@ -183,7 +186,16 @@ async def device_config(device, **client_kwargs) -> dict[str, Any]:
             **_transport(connection),
         },
         "ice_servers": _ice_servers(str(device.id)),
-        "features": {"voicemail_code": VOICEMAIL_CODE, "transfer": True, "dnd": True},
+        "features": {
+            "voicemail_code": VOICEMAIL_CODE,
+            "transfer": True,
+            "dnd": True,
+            # « Parquer » transfers the call to a lot; « Intercepter » dials *8.
+            "parking": parking,
+            "pickup_code": PICKUP_CODE,
+            # Calls from an intercom / announcement are answered by the app.
+            "intercom_auto_answer": True,
+        },
     }
 
 

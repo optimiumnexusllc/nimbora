@@ -9,6 +9,7 @@ import {
     createTrunkApiV1PbxTrunksPost,
     deleteOutboundRouteApiV1PbxOutboundRoutesOutcallIdDelete,
     deleteTrunkApiV1PbxTrunksTrunkIdDelete,
+    setOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPut,
     testDialApiV1PbxOutboundRoutesTestPost,
 } from "@/client/sdk.gen";
 import { PageSection } from "@/components/layout/PageLayout";
@@ -492,6 +493,25 @@ export function TrunksTab({
                                         </Badge>
                                     ))}
                                 </div>
+                                <label className="flex items-center gap-2 text-xs text-muted-foreground" title="Hors des horaires de « Mon entreprise », les appels sortants par cette route sont refusés">
+                                    <Switch
+                                        aria-label={`Heures d'ouverture seulement pour ${r.name}`}
+                                        checked={!!r.opening_hours_only}
+                                        onCheckedChange={async (on) => {
+                                            const response = await setOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPut({
+                                                path: { outcall_id: r.id },
+                                                body: { opening_hours_only: on },
+                                            });
+                                            if (response.error) {
+                                                toast.error(detailFromError(response.error, "Horaires non appliqués"));
+                                                return;
+                                            }
+                                            toast.success(on ? "Appels sortants limités aux heures d'ouverture" : "Appels sortants à toute heure");
+                                            onChanged();
+                                        }}
+                                    />
+                                    Heures d&apos;ouverture
+                                </label>
                                 <Button
                                     variant="ghost"
                                     size="sm"

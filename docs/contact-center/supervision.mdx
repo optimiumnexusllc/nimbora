@@ -152,7 +152,7 @@ The PBX computes these statistics every 6 hours, so the last hours may not be in
 
 ### Requirements on the PBX
 
-- The service account needs `calld.calls.create`, `amid.action.QueueStatus.create`, `call-logd.queues.statistics.read` and `call-logd.agents.statistics.read`. They are part of `deploy/pbx/integration-policy.json` (113 ACL). Re-run `scripts/create_service_account.py` after upgrading.
+- The service account needs `calld.calls.create`, `amid.action.QueueStatus.create`, `call-logd.queues.statistics.read` and `call-logd.agents.statistics.read`. They are part of `deploy/pbx/integration-policy.json` (130 ACL). Re-run `scripts/create_service_account.py` after upgrading.
 - The PBX kit installs the supervision dialplan. On a PBX installed another way, copy `nimbora-supervision.conf` to `/etc/asterisk/extensions_extra.d/` and run `asterisk -rx "dialplan reload"`.
 - For real time, the PBX must send call and agent events. On **Téléphonie d'entreprise**, click **Recevoir les événements**; if the PBX was connected before this version, click **Événements reçus** once more to subscribe to the new events. Without them, the console still refreshes the PBX every 10 seconds.
 

@@ -25,6 +25,7 @@ from api.services.pbx import (
     provisioning,
     recordings,
     softphone,
+    teamwork,
     trunks,
 )
 from api.services.pbx import service as pbx
@@ -1093,6 +1094,133 @@ async def save_call_settings(
 ) -> dict[str, Any]:
     """Forwards, do-not-disturb, and where unanswered calls go."""
     return await _call(forwards.save_user_settings(_org(user), user_id, request))
+
+
+# --------------------------------------------- pickup, parking, intercom
+
+
+class PickupGroupRequest(BaseModel):
+    name: str = Field(max_length=128)
+    members: list[str] = Field(
+        description="Extensions (user uuids) that pick up each other's calls"
+    )
+
+
+@router.get("/pickup-groups")
+async def list_pickup_groups(
+    user: UserModel = Depends(get_user),
+) -> list[dict[str, Any]]:
+    """Call pickup groups: members pick up a call ringing on a colleague's phone with *8."""
+    return await _call(teamwork.list_pickup_groups(_org(user)))
+
+
+@router.post("/pickup-groups", status_code=201)
+async def create_pickup_group(
+    request: PickupGroupRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    return await _call(
+        teamwork.create_pickup_group(
+            _org(user), teamwork.NewPickupGroup(**request.model_dump())
+        )
+    )
+
+
+@router.delete("/pickup-groups/{group_id}", status_code=204)
+async def delete_pickup_group(group_id: int, user: UserModel = Depends(get_user)):
+    await _call(teamwork.delete_pickup_group(_org(user), group_id))
+
+
+class ParkingLotRequest(BaseModel):
+    name: str = Field(default="", max_length=128)
+    extension: str = Field(description="Number calls are transferred to, to park them")
+    slots_start: str
+    slots_end: str
+    timeout: int = Field(
+        default=45, description="Seconds before a parked call rings back"
+    )
+
+
+@router.get("/parking-lots")
+async def list_parking_lots(
+    user: UserModel = Depends(get_user),
+) -> list[dict[str, Any]]:
+    return await _call(teamwork.list_parking_lots(_org(user)))
+
+
+@router.post("/parking-lots", status_code=201)
+async def create_parking_lot(
+    request: ParkingLotRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    return await _call(
+        teamwork.create_parking_lot(
+            _org(user), teamwork.NewParkingLot(**request.model_dump())
+        )
+    )
+
+
+@router.get("/parked-calls")
+async def list_parked_calls(
+    user: UserModel = Depends(get_user),
+) -> list[dict[str, Any]]:
+    """Calls waiting in the company's parking lots, with the slot to dial."""
+    return await _call(teamwork.organization_parked_calls(_org(user)))
+
+
+@router.delete("/parking-lots/{lot_id}", status_code=204)
+async def delete_parking_lot(lot_id: int, user: UserModel = Depends(get_user)):
+    await _call(teamwork.delete_parking_lot(_org(user), lot_id))
+
+
+class PagingRequest(BaseModel):
+    name: str = Field(max_length=128)
+    number: str = Field(description="Dialled after *11")
+    members: list[str] = Field(
+        description="Extensions (user uuids) whose phones answer by themselves"
+    )
+    callers: list[str] = Field(
+        default_factory=list, description="Who may call it; empty = everyone"
+    )
+    duplex: bool = Field(
+        default=True, description="Both ways (intercom) or one way (announcement)"
+    )
+
+
+@router.get("/pagings")
+async def list_pagings(user: UserModel = Depends(get_user)) -> list[dict[str, Any]]:
+    """Intercoms and announcements: *11 + number rings phones that answer by themselves."""
+    return await _call(teamwork.list_pagings(_org(user)))
+
+
+@router.post("/pagings", status_code=201)
+async def create_paging(
+    request: PagingRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    return await _call(
+        teamwork.create_paging(_org(user), teamwork.NewPaging(**request.model_dump()))
+    )
+
+
+@router.delete("/pagings/{paging_id}", status_code=204)
+async def delete_paging(paging_id: int, user: UserModel = Depends(get_user)):
+    await _call(teamwork.delete_paging(_org(user), paging_id))
+
+
+class OutboundHoursRequest(BaseModel):
+    opening_hours_only: bool = Field(
+        description="Outgoing calls only during the opening hours of « Mon entreprise »"
+    )
+
+
+@router.put("/outbound-routes/{outcall_id}/hours")
+async def set_outbound_route_hours(
+    outcall_id: int, request: OutboundHoursRequest, user: UserModel = Depends(get_user)
+) -> dict[str, Any]:
+    """Outside the opening hours, outgoing calls through this route are refused."""
+    return await _call(
+        teamwork.set_outbound_route_hours(
+            _org(user), outcall_id, request.opening_hours_only
+        )
+    )
 
 
 # ------------------------------------------------------ conferences

@@ -89,3 +89,18 @@ describe("CallScreen · transfer", () => {
         expect(screen.getByRole("status").textContent).toBe("Appel transféré");
     });
 });
+
+describe("CallScreen · parking", () => {
+    it("parks the call in a lot from the transfer panel", () => {
+        const h = handlers();
+        render(<CallScreen call={customer} canTransfer parking={[{ name: "Accueil", extension: "700" }]} {...h} />);
+        fireEvent.click(screen.getByRole("button", { name: /Transférer/ }));
+        fireEvent.click(screen.getByRole("button", { name: /Parquer · Accueil/ }));
+        expect(h.onTransfer).toHaveBeenCalledWith("700");
+    });
+
+    it("says when the call comes from an intercom", () => {
+        render(<CallScreen call={{ ...customer, intercom: true }} canTransfer {...handlers()} />);
+        expect(screen.getByTestId("call-status").textContent).toContain("Interphone");
+    });
+});

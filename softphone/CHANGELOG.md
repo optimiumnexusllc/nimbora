@@ -1,5 +1,17 @@
 # NIMBORA Softphone — journal des versions
 
+## 1.4.0 — 22 novembre 2026
+
+**Interception, parcage et interphone.**
+
+- **Intercepter** (clavier) : compose le code d'interception (`*8`) pour décrocher un appel qui
+  sonne chez un collègue du même groupe d'interception.
+- **Parquer** (panneau Transférer) : l'appel attend sur une place du parking ; **Récents →
+  Appels parqués** liste les appels en attente avec leur place et leur durée, un appui les
+  reprend (actualisé toutes les 10 s).
+- **Interphone et annonces** : un appel d'interphone (`*11…`) est décroché automatiquement par
+  l'application et affiché « Interphone ».
+
 ## 1.3.0 — 22 novembre 2026
 
 **Transfert avec consultation et conférence à trois.**
