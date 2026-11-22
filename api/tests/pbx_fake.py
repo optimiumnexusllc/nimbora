@@ -26,6 +26,7 @@ class FakePbx:
         self.token_requests = 0
         self.requests: list[tuple[str, str, dict]] = []
         self.down: set[str] = set()  # services answering 503
+        self.forbidden: set[str] = set()  # services refusing the account's ACL (403)
         self.contexts = [
             {"id": 1, "name": "from-extern", "type": "incall", "tenant_uuid": TENANT},
             {"id": 2, "name": "default", "type": "internal", "tenant_uuid": TENANT},
@@ -91,6 +92,27 @@ class FakePbx:
                 "extension": "1001",
                 "context": "default",
             }
+        ]
+        # chatd presence, as the engine reports it (u-1 is on the call below).
+        self.presences = [
+            {
+                "uuid": "u-1",
+                "state": "available",
+                "status": "",
+                "line_state": "talking",
+                "do_not_disturb": False,
+                "connected": True,
+                "mobile": False,
+            },
+            {
+                "uuid": "u-2",
+                "state": "available",
+                "status": "",
+                "line_state": "available",
+                "do_not_disturb": False,
+                "connected": True,
+                "mobile": False,
+            },
         ]
         self.calls = [
             {
@@ -293,6 +315,8 @@ class FakePbx:
         service = path.split("/")[2] if path.startswith("/api/") else ""
         if service in self.down:
             return httpx.Response(503, json={"message": "Service unavailable"})
+        if service in self.forbidden:
+            return httpx.Response(403, json={"message": "Unauthorized ACL"})
 
         if path == "/api/auth/0.1/token" and method == "POST":
             import base64
@@ -365,6 +389,13 @@ class FakePbx:
                 and (request.url.params.get("search") or "") in p["name"]
             ]
             return httpx.Response(200, json={"items": items, "total": len(items)})
+        m = re.fullmatch(r"/api/auth/0\.1/policies/([^/]+)", path)
+        if m and method == "PUT":
+            for policy in self.auth_policies:
+                if policy["uuid"] == m.group(1):
+                    policy.update(body)
+                    return httpx.Response(200, json=policy)
+            return httpx.Response(404, json={"message": "No such policy"})
         if path == "/api/auth/0.1/policies" and method == "POST":
             policy = {**body, "uuid": str(uuid.uuid4()), "tenant_uuid": tenant_header}
             self.auth_policies.append(policy)
@@ -1278,6 +1309,19 @@ class FakePbx:
             ]
             return httpx.Response(200, json={"items": items, "total": len(items)})
 
+        if path == "/api/chatd/1.0/users/presences" and method == "GET":
+            return httpx.Response(
+                200, json={"items": self.presences, "total": len(self.presences)}
+            )
+        m = re.fullmatch(r"/api/chatd/1\.0/users/([^/]+)/presences", path)
+        if m and method == "PUT":
+            for presence in self.presences:
+                if presence["uuid"] == m.group(1):
+                    presence.update(
+                        {k: body[k] for k in ("state", "status") if k in body}
+                    )
+                    return httpx.Response(204)
+            return httpx.Response(404, json={"message": "No such user"})
         if path == "/api/calld/1.0/calls" and method == "POST":
             source_user = (body.get("source") or {}).get("user")
             destination = body.get("destination") or {}

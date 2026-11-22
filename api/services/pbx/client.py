@@ -266,6 +266,9 @@ class PbxClient:
     async def create_policy(self, body: dict) -> dict:
         return await self.request("auth", "POST", "/policies", json=body)
 
+    async def update_policy(self, policy_uuid: str, body: dict) -> None:
+        await self.request("auth", "PUT", f"/policies/{policy_uuid}", json=body)
+
     async def auth_users(self, search: str) -> list[dict]:
         return await self._items("auth", "/users", search=search)
 
@@ -784,6 +787,18 @@ class PbxClient:
 
     # ------------------------------------------------- calls and agents
 
+    async def presences(self) -> list[dict]:
+        """Presence of the tenant's users (chatd): state, line state, DND."""
+        return await self._items("chatd", "/users/presences", recurse="false")
+
+    async def set_presence(self, user_uuid: str, state: str, status: str = "") -> None:
+        await self.request(
+            "chatd",
+            "PUT",
+            f"/users/{user_uuid}/presences",
+            json={"uuid": user_uuid, "state": state, "status": status},
+        )
+
     async def calls(self) -> list[dict]:
         return await self._items("calld", "/calls")
 
@@ -974,6 +989,8 @@ REQUIRED_ACL: dict[str, str] = {
     "user_forwards": "confd.users.{user_id}.forwards.read",
     "set_user_forwards": "confd.users.{user_id}.forwards.update",
     "user_services": "confd.users.{user_id}.services.read",
+    "presences": "chatd.users.presences.read",
+    "set_presence": "chatd.users.{user_uuid}.presences.update",
     "set_user_services": "confd.users.{user_id}.services.update",
     "user_fallbacks": "confd.users.{user_id}.fallbacks.read",
     "set_user_fallbacks": "confd.users.{user_id}.fallbacks.update",
@@ -1011,6 +1028,7 @@ PROVISIONING_ACL: dict[str, str] = {
     "delete_tenant": "auth.tenants.{tenant_uuid}.delete",
     "policies": "auth.policies.read",
     "create_policy": "auth.policies.create",
+    "update_policy": "auth.policies.{policy_uuid}.update",
     "auth_users": "auth.users.read",
     "create_auth_user": "auth.users.create",
     "delete_auth_user": "auth.users.{user_uuid}.delete",

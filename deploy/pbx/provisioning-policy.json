@@ -2,6 +2,7 @@
   "name": "nimbora-provisioning",
   "description": "Operator account of the shared PBX: creates each company's tenant, contexts and service account. Granted together with every ACL of integration-policy.json (an account can only hand out what it holds).",
   "acl": [
+    "auth.policies.*.update",
     "auth.policies.create",
     "auth.policies.read",
     "auth.tenants.*.delete",

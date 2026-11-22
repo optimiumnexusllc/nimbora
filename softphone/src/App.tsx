@@ -118,6 +118,22 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
         void loadRecents();
     }, [session, loadRecents]);
 
+    // Colleagues' presence changes all the time: refresh while Contacts is open.
+    useEffect(() => {
+        if (!session || tab !== "contacts") return;
+        const timer = setInterval(() => {
+            void session.api
+                .directory()
+                .then(setDirectory)
+                .catch(() => undefined);
+        }, 20_000);
+        return () => clearInterval(timer);
+    }, [session, tab]);
+    const searchCustomers = useCallback(
+        async (query: string) => (session ? ((await session.api.directory(query)).customers ?? null) : null),
+        [session],
+    );
+
     // A caller handed over by the AI comes with its card: fetch it as it rings.
     const incomingId = snapshot.call?.direction === "incoming" ? snapshot.call.id : null;
     const incomingNumber = snapshot.call?.number ?? "";
@@ -192,7 +208,12 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
     }
     const { config } = session;
     const registered = snapshot.registration === "registered";
-    const contactName = snapshot.call ? directory?.people.find((p) => p.extension === snapshot.call?.number)?.name : null;
+    const contactName = snapshot.call
+        ? (directory?.people.find((p) => p.extension === snapshot.call?.number)?.name ??
+          directory?.customers?.find((c) => c.number === snapshot.call?.number)?.name ??
+          null)
+        : null;
+    const myPresence = directory?.people.find((p) => p.me)?.presence;
 
     const answer = () => {
         phoneRef.current?.answer();
@@ -222,11 +243,20 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
             <div className="content">
                 {tab === "dial" && <Dialpad value={dial} onChange={setDial} onCall={call} disabled={!registered} voicemailCode={config.features.voicemail_code} />}
                 {tab === "recents" && <Recents calls={recents} loading={loadingRecents} onCall={call} onRefresh={() => void loadRecents()} />}
-                {tab === "contacts" && <Contacts directory={directory} onCall={call} />}
+                {tab === "contacts" && <Contacts directory={directory} onCall={call} onSearchCustomers={searchCustomers} />}
                 {tab === "settings" && (
                     <Settings
                         config={config}
                         status={status}
+                        presence={myPresence}
+                        onSavePresence={async (state, message) => {
+                            try {
+                                const saved = await session.api.savePresence(state, message);
+                                setDirectory((d) => d && { ...d, people: d.people.map((p) => (p.me ? { ...p, presence: saved } : p)) });
+                            } catch (e) {
+                                window.alert(e instanceof Error ? e.message : "Enregistrement impossible");
+                            }
+                        }}
                         onSaveStatus={async (dnd, forwardEnabled, forwardTo) => {
                             try {
                                 setStatus(await session.api.saveStatus(dnd, forwardEnabled, forwardTo));

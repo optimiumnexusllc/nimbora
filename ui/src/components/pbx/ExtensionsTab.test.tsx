@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     reset: vi.fn(),
     preview: vi.fn(),
     run: vi.fn(),
+    presence: vi.fn(),
     toast: { success: vi.fn(), error: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
@@ -18,6 +19,7 @@ vi.mock("@/client/sdk.gen", () => ({
     extensionPasswordResetApiV1PbxExtensionsPasswordResetPost: mocks.reset,
     previewImportApiV1PbxExtensionsImportPreviewPost: mocks.preview,
     runImportApiV1PbxExtensionsImportPost: mocks.run,
+    readPresenceApiV1PbxPresenceGet: mocks.presence,
 }));
 
 const created = {
@@ -32,6 +34,18 @@ beforeEach(() => {
     mocks.create.mockResolvedValue({ data: created });
     mocks.remove.mockResolvedValue({ data: undefined });
     mocks.reset.mockResolvedValue({ data: undefined });
+    mocks.presence.mockResolvedValue({
+        data: { live: true, extensions: { "1001": { state: "away", label: "Absent", status: "Déjeuner" } } },
+    });
+});
+
+describe("extensions presence", () => {
+    it("shows each extension's presence", async () => {
+        render(<ExtensionsTab users={users} onChanged={vi.fn()} />);
+        const badge = await screen.findByTestId("presence");
+        expect(badge.textContent).toContain("Absent");
+        expect(badge.textContent).toContain("Déjeuner");
+    });
 });
 
 describe("extensions tab", () => {

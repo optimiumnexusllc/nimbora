@@ -307,14 +307,27 @@ async def _ensure_service_account(client: PbxClient, username: str) -> tuple[str
         ),
         None,
     )
+    spec = {
+        "name": POLICY_NAME,
+        "description": "NIMBORA: administration et événements de l'entreprise",
+        "acl": integration_acl(),
+    }
     if policy is None:
-        policy = await client.create_policy(
-            {
-                "name": POLICY_NAME,
-                "description": "NIMBORA: administration et événements de l'entreprise",
-                "acl": integration_acl(),
-            }
-        )
+        policy = await client.create_policy(spec)
+    elif set(policy.get("acl") or []) != set(spec["acl"]):
+        # A newer NIMBORA needs other rights (presence, say): bring the
+        # company's policy up to date. The operator's account can only grant
+        # what it holds itself: if its own policy is older, keep going and
+        # say what to run.
+        try:
+            await client.update_policy(policy["uuid"], spec)
+        except PbxError as error:
+            logger.warning(
+                "PBX policy of {} not updated ({}): run create_service_account.py "
+                "--provisioner again on the operator's PBX",
+                username,
+                error,
+            )
     for user in await client.auth_users(search=username):
         if user.get("username") == username:
             # Left by an interrupted run: its password is unknown, start over.

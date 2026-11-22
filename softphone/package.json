@@ -1,7 +1,7 @@
 {
   "name": "nimbora-softphone",
   "private": true,
-  "version": "1.1.0",
+  "version": "1.2.0",
   "description": "NIMBORA Softphone — the enterprise PBX on Windows, macOS, Linux, Android, iOS and the browser",
   "type": "module",
   "license": "BSD-2-Clause",

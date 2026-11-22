@@ -388,6 +388,15 @@ async def read_inventory(user: UserModel = Depends(get_user)) -> dict[str, Any]:
     return await _call(pbx.inventory(_org(user)))
 
 
+@router.get("/presence")
+async def read_presence(user: UserModel = Depends(get_user)) -> dict[str, Any]:
+    """Presence of each extension: available, on a call, ringing, do not
+    disturb, away or offline."""
+    from api.services.pbx.presence import organization_presence
+
+    return await _call(organization_presence(_org(user)))
+
+
 @router.post("/routes", response_model=RouteResponse)
 async def route_number(request: RouteRequest, user: UserModel = Depends(get_user)):
     """Make a PBX number ring an AI agent."""

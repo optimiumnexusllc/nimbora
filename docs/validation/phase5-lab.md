@@ -489,6 +489,143 @@ l'adresse du PBX avec `--shared-pbx` ; tests.
 Name or service not known` vers `agentd`, `amid` et `auth` du PBX (hôte masqué par la
 rédaction des journaux), non reproduites pendant les tests ; à dater et expliquer.
 
+## Rapport d'étape 10 — présence des collègues et annuaire unifié (PR #7) (22 novembre 2026)
+
+Déployé : `feat/lot-b-presence-directory` (images `nimbora-lot-b7`), d'abord `fa6dbee` fusionnée
+avec `feat/lot-b-smart-routing` (`b948fa8`), puis la branche telle que réécrite par son auteur
+sur `c3bbc7d` (`8fdfa79`) ; les deux correctifs ci-dessous ont été rejoués dessus. Aucune nouvelle
+migration. Le Softphone web (`softphone/`, version 1.2.0) a été construit depuis la branche et
+servi en local, appairé au poste 1004. Sans fusion.
+
+### Préalable : postes appairables
+
+Les postes 1002 et 1003 sont des lignes SIP classiques : l'appairage répond 409 « pas de ligne
+navigateur », comme prévu. Les essais ont donc utilisé 1001 (ligne navigateur) et un nouveau
+poste navigateur 1004, créé après avoir porté le plafond de sièges humains du tenant 1 à 10
+(`PATCH /saas/admin/tenants/1`, `limit_overrides.max_human_seats`).
+
+| Étape demandée | Résultat |
+|---|---|
+| (2) **avant** la mise à jour des droits : `GET /softphone/directory` avec le jeton du poste 1004 | `presence_live: true` dès le départ : wazo-chatd 26.11 **ne fait pas respecter** `chatd.users.presences.read` (la politique à 110 ACL lisait déjà les présences). Le repli `presence_live: false` n'est donc pas observable sur ce moteur ; il reste couvert par les tests unitaires. Pendant un appel 1002 → 1003, les deux postes sont bien « En appel » |
+| (3) `create_service_account.py --provisioner` puis `POST /pbx/provision` org2 | ✅ compte opérateur **125 ACL** (112 + 13 : la PR #5 a ajouté `confd.contexts.*.update`, d'où 13 et non 12), compte dédié 112 ; la politique du tenant org2 contient `chatd.users.presences.read` (et `update`). org3 non réapprovisionné (politique à 110) |
+| (4) `GET /api/chatd/1.0/users/presences` avec le compte de service | ✅ forme : `items[] = {uuid, tenant_uuid, state (available/away/unavailable/invisible), status, line_state (available/unavailable/talking/ringing/holding), do_not_disturb, connected, mobile, last_activity, lines[{id, state}]}` |
+| (5) appel en cours entre deux postes | ✅ « En appel » sur 1002 et 1003 (API et console) |
+| (5) « Ne pas déranger » posé sur 1002 (`PUT /pbx/extensions/{id}/call-settings`) | ✅ « Ne pas déranger » (API, console, Softphone) |
+| (5) `PUT /api/v1/softphone/presence {"state":"away","status":"Déjeuner"}` depuis le poste 1001 | ✅ « Absent · Déjeuner » dans **PBX → Postes** (capture Chromium) et dans le **Softphone web** (liste Collègues : « Absent · Déjeuner / Ne pas déranger / Disponible ») |
+| (5) poste sans téléphone enregistré (1004 avant appairage) | ✅ « Hors ligne » |
+| (6) mémoire client activée : `GET /softphone/directory?q=Awa` et `?q=<fin du numéro>` | ✅ `customers: [Awa Koné (test), conseiller habituel Test 1003, 5 appels]` |
+| (6) mémoire client désactivée | ✅ `customers: null` (puis réactivée) |
+
+Bugs trouvés et corrigés sur la branche :
+
+| N° | Symptôme | Cause | Correction |
+|---|---|---|---|
+| 21 | Postes 1002 et 1003 enregistrés et libres affichés « Hors ligne » | sur le moteur, un utilisateur qui n'a jamais choisi de présence reste `state: unavailable` pour toujours, téléphone enregistré ou non ; le code traduisait `unavailable` en hors ligne sans regarder la ligne | `603b00d` : la ligne décide (`line_state: available` → disponible ; rien d'enregistré, pas d'application, pas de mobile → hors ligne) ; tests avec les formes vues sur le moteur |
+| 22 | Softphone web : « Identifiants SIP refusés par le PBX », `Failed to authenticate` dans les journaux Asterisk alors que le mot de passe servi par l'API est le bon | le moteur identifie le point de terminaison par l'utilisateur SIP de la requête (`identify_by = username`, c'est-à-dire le **nom du point de terminaison**) ; le nom d'authentification (`poste####`) ne sert qu'au défi ; le Softphone s'enregistrait en `sip:<nom d'authentification>@…` | `22c2290` : la configuration du poste porte `sip_identity` (nom du point de terminaison) ; l'application s'enregistre avec et passe le nom d'authentification en `authorization_user` (même réglage que la procédure Linphone du laboratoire). Après correction : Softphone « Disponible », plus aucun échec d'authentification côté moteur. Tests API et Vitest |
+
+Autres observations :
+
+- Un fichier `dump.rdb` (vidage Redis) était versionné dans la PR : retiré et ajouté à `.gitignore` (`22c2290`).
+- Le commit `c3bbc7d` de la PR #6 journalise désormais les décisions du simulateur : ligne
+  `[Routing org=1 simulation] skill → pbx-queue:1 | …` observée dans les journaux de l'API
+  (suite de la remarque de l'étape 9).
+- Le « Hors ligne » d'un poste navigateur dont l'application est fermée est normal : JsSIP se
+  désenregistre à la fermeture.
+- Écart de l'étape 9 daté : les traces `httpx.ConnectError: Name or service not known` viennent
+  de l'**amorçage d'organisation** (`organization_bootstrap.py`, « Failed to bootstrap
+  organization 1; will retry on a later request »), qui tente de créer un compte de facturation
+  hébergé sur `MPS_API_URL` (valeur par défaut `https://services.nimbora.example`, hôte
+  inexistant) et recommence à chaque requête. Sans rapport avec le PBX ni avec les PR validées ;
+  à neutraliser dans le kit (variable vide ou amorçage hébergé désactivé en auto-hébergement).
+  → **Corrigé** (branche `feat/lot-b-presence-directory`) : l'adresse par défaut est un exemple ;
+  avec elle (ou vide, ou `off`), les services hébergés sont coupés, l'amorçage ne contacte plus
+  rien et se termine (l'entreprise apporte ses clés IA). À revérifier : plus aucune trace
+  `Name or service not known` après redéploiement.
+
+### Écart `ConnectError` de l'étape 9 : expliqué (sans rapport avec le PBX)
+
+| Vérification | Résultat |
+|---|---|
+| (a) `pbx_connections` : `organization_id, managed, hôte` | `1 / f / 10.250.0.10`, `2 / t / 10.250.0.10`, `3 / t / 10.250.0.10` ; `PBX_PROVISIONING_URL` : hôte `10.250.0.10`. **Aucun nom d'hôte**, uniquement l'adresse privée du moteur, résolue à l'identique depuis le conteneur API (`getent hosts`) |
+| (b) dates | conteneur API courant démarré à 09:41:46 UTC (pointe réécrite de la PR #7) ; les deux lignes `Name or service not known` (une exception `httpcore` chaînée en `httpx`) sont à **09:42:34**, soit la première requête authentifiée après le redémarrage. Les journaux des conteneurs précédents ont disparu avec eux (`docker events` ne conserve pas les `start` sur 24 h) ; la trentaine de traces de l'étape 9 correspondait au même motif, une fois par bail d'amorçage |
+| (c) pile (fichiers NIMBORA) | `routes/public_embed.py:277 __call__` → `services/auth/depends.py:44 get_user` → `depends.py:321 _handle_oss_auth` → **`services/organization_bootstrap.py:100 ensure_organization_bootstrapped`** → `organization_bootstrap.py:183 _bootstrap_organization` → `organization_bootstrap.py:214 mint_managed_service_key` → `services/mps_service_key_client.py:226 create_service_key` → `httpx` → DNS. Message journalisé : « Failed to bootstrap organization 1; will retry on a later request » |
+| cause | l'organisation 1 n'a **aucune configuration de modèle** (pas de clé d'IA sur ce laboratoire) : l'amorçage tente alors de créer une clé de service hébergée sur `MPS_API_URL`, dont la valeur par défaut `https://services.nimbora.example` ne se résout pas. Rien à voir avec `agentd`, `amid` ou `auth` du PBX |
+| (d) libellé des erreurs PBX après `c3bbc7d` | non déclenchable ici (le PBX n'est joint que par adresse IP) ; le libellé « PBX injoignable (service) : ConnectError (nom d'hôte du PBX non résolu) » est couvert par `test_pbx.py` (cas `auth`) ; aucune erreur PBX dans les journaux depuis le redéploiement |
+
+Correction de l'auteur (`fb9acfc`) : `MPS_ENABLED` est faux quand `MPS_API_URL` est vide, `off`
+ou un hôte `.example` ; l'amorçage se termine alors sans contacter de service hébergé.
+Revérifié après redéploiement de `fb9acfc` (API démarrée à 10:17:27 UTC, `MPS_API_URL` non
+défini sur le laboratoire) : requêtes authentifiées (profil, inventaire, routage, clients,
+présence), journal : **0** `Name or service not known`, **0** « Failed to bootstrap », une ligne
+« Organization 1 bootstrapped without hosted services (MPS off) ». ✅ Les tests
+`test_organization_bootstrap.py` passent (78 tests sur les cinq fichiers concernés).
+Avec le même commit, « Hors ligne » choisi depuis le Softphone est envoyé en `invisible` :
+`PUT /softphone/presence {"state":"offline"}` sur 1001 → « Hors ligne » vu du poste 1004, puis
+retour « Disponible » ✅.
+
+### Journal du routage (PR #6, `c3bbc7d`)
+
+| Simulation | Ligne journalisée |
+|---|---|
+| `{"skill": "Facturation", "caller_number": <numéro de la cliente de test>}` | `[Routing org=1 simulation] usual_advisor → pbx-extension:1003 \| → Conseiller habituel disponible : Test 1003 (SIP, répondeur automatique)` |
+| `{"skill": "Technique"}` pendant un appel 1003 → 1002 (seul expert occupé) | `[Routing org=1 simulation] unavailable/queue → — \| Pas de conseiller habituel connu ; Personne de libre pour « Technique »` |
+
+Le numéro du client n'apparaît dans aucune de ces lignes (vérifié par `grep`).
+
+## Rapport d'étape 11 — « Hors ligne » choisi, services hébergés coupés, rotation des secrets SIP (22 novembre 2026)
+
+Déployé : `feat/lot-b-presence-directory` à `a5878bc` (`fb9acfc` inclus), image `nimbora-lot-b7`,
+API redémarrée à 10:17:27 UTC. Softphone web construit depuis la branche (1.2.0), appairé au
+poste 1004. Sans fusion.
+
+### 1. « Hors ligne » choisi dans le Softphone (envoyé en `invisible`)
+
+| Étape | Résultat |
+|---|---|
+| Softphone web 1004 ouvert (Chromium) : enregistrement | ✅ « Disponible » à 10:27:28 |
+| Réglages → Ma présence → **Hors ligne** (bouton `aria-pressed`) | ✅ pris en compte à 10:27:32 ; l'indicateur d'enregistrement reste « Disponible » |
+| Vu depuis le poste 1001 (`GET /softphone/directory` avec son jeton) | ✅ 1004 : « Hors ligne », `state: offline` |
+| Moteur : `pjsip show contacts` pendant la fenêtre | ✅ contact de l'endpoint du poste 1004 présent (téléphone **toujours enregistré**) |
+| Console PBX → Postes (Chromium, pendant la fenêtre) | ✅ 1004 « Hors ligne » (1001 « Hors ligne » car non enregistré, 1002 et 1003 « Disponible ») |
+| Après 70 s, Réglages → **Disponible** | ✅ « Disponible » à 10:28:46, téléphone resté enregistré pendant toute la séquence |
+
+### 2. Services hébergés coupés (`MPS_API_URL` à sa valeur d'exemple)
+
+`MPS_API_URL` n'est pas défini sur le laboratoire : la valeur par défaut (hôte `.example`) coupe
+les services hébergés (`MPS_ENABLED` faux).
+
+| Vérification | Résultat |
+|---|---|
+| 15 minutes d'usage (10:25:54 → 10:41:35 UTC) : boucle de 12 requêtes toutes les 25 s sur les trois organisations (profil, inventaire, routage, supervision, clients, journal d'appels, annuaire et configuration Softphone), plus sessions Chromium de la console (PBX → Postes, Routage) et du Softphone 1004 | 420 requêtes de la boucle, toutes en 200 ; 2 041 requêtes HTTP journalisées par l'API sur la fenêtre |
+| `docker logs --since 15m nimbora_api \| grep -c "Name or service not known"` | ✅ **0** (0 aussi depuis le démarrage de l'API) |
+| `grep -c "Failed to bootstrap organization"` sur la même fenêtre | ✅ **0** |
+| « bootstrapped without hosted services (MPS off) » | ✅ **une ligne par organisation** : 1, 2 et 3 |
+
+
+### 3. Rotation des mots de passe SIP de 1001 et 1004
+
+❌ **Non réalisée.** Trois obstacles, par ordre :
+
+- La console n'offre pas de régénération du mot de passe SIP : le bouton « Mot de passe » d'un
+  poste envoie un lien de réinitialisation du **mot de passe de connexion** (`POST
+  /pbx/extensions/password-reset`), et le secret SIP n'est montré qu'à la création
+  (`CredentialsDialog`).
+- Le compte de service NIMBORA ne peut pas le faire non plus : sa politique contient
+  `confd.endpoints.sip.*.read`, `create` et `delete`, mais **ni `confd.endpoints.sip.read`
+  (liste) ni `confd.endpoints.sip.*.update`** (vérifié sur le jeton, 174 ACL ; `GET
+  /endpoints/sip?name=…` → 401).
+- La rotation avec le compte d'administration du moteur (depuis l'intérieur du conteneur, via
+  `wazo-auth-cli`, puis `PUT /confd/1.1/endpoints/sip/{uuid}`) a été **refusée par le garde-fou
+  de la session** (action classée « accès non autorisé ») : à faire par l'opérateur, ou à
+  autoriser explicitement.
+
+Proposition : ajouter à la PR une action « Régénérer le mot de passe SIP » (route API +
+bouton dans Postes), avec `confd.endpoints.sip.*.update` dans les politiques de service et
+d'approvisionnement. Le Softphone appairé relit le secret en direct (`/softphone/config`) :
+aucun rejumelage ne serait nécessaire pour les postes navigateur, seuls les clients SIP
+configurés à la main (Linphone) seraient à mettre à jour. Le rejumelage de 1004 est reporté
+avec la rotation.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**

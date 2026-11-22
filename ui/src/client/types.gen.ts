@@ -8159,6 +8159,20 @@ export type SoftphoneCredentials = {
 };
 
 /**
+ * SoftphonePresenceRequest
+ */
+export type SoftphonePresenceRequest = {
+    /**
+     * State
+     */
+    state: 'available' | 'away' | 'offline';
+    /**
+     * Status
+     */
+    status?: string;
+};
+
+/**
  * SoftphoneSettingsRequest
  */
 export type SoftphoneSettingsRequest = {
@@ -23626,6 +23640,49 @@ export type ReadInventoryApiV1PbxInventoryGetResponses = {
 
 export type ReadInventoryApiV1PbxInventoryGetResponse = ReadInventoryApiV1PbxInventoryGetResponses[keyof ReadInventoryApiV1PbxInventoryGetResponses];
 
+export type ReadPresenceApiV1PbxPresenceGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/presence';
+};
+
+export type ReadPresenceApiV1PbxPresenceGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadPresenceApiV1PbxPresenceGetError = ReadPresenceApiV1PbxPresenceGetErrors[keyof ReadPresenceApiV1PbxPresenceGetErrors];
+
+export type ReadPresenceApiV1PbxPresenceGetResponses = {
+    /**
+     * Response Read Presence Api V1 Pbx Presence Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadPresenceApiV1PbxPresenceGetResponse = ReadPresenceApiV1PbxPresenceGetResponses[keyof ReadPresenceApiV1PbxPresenceGetResponses];
+
 export type RouteNumberApiV1PbxRoutesPostData = {
     body: RouteRequest;
     headers?: {
@@ -26693,7 +26750,12 @@ export type DirectoryApiV1SoftphoneDirectoryGetData = {
         authorization?: string | null;
     };
     path?: never;
-    query?: never;
+    query?: {
+        /**
+         * Q
+         */
+        q?: string;
+    };
     url: '/api/v1/softphone/directory';
 };
 
@@ -26722,6 +26784,45 @@ export type DirectoryApiV1SoftphoneDirectoryGetResponses = {
 };
 
 export type DirectoryApiV1SoftphoneDirectoryGetResponse = DirectoryApiV1SoftphoneDirectoryGetResponses[keyof DirectoryApiV1SoftphoneDirectoryGetResponses];
+
+export type SavePresenceApiV1SoftphonePresencePutData = {
+    body: SoftphonePresenceRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/softphone/presence';
+};
+
+export type SavePresenceApiV1SoftphonePresencePutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SavePresenceApiV1SoftphonePresencePutError = SavePresenceApiV1SoftphonePresencePutErrors[keyof SavePresenceApiV1SoftphonePresencePutErrors];
+
+export type SavePresenceApiV1SoftphonePresencePutResponses = {
+    /**
+     * Response Save Presence Api V1 Softphone Presence Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: string;
+    };
+};
+
+export type SavePresenceApiV1SoftphonePresencePutResponse = SavePresenceApiV1SoftphonePresencePutResponses[keyof SavePresenceApiV1SoftphonePresencePutResponses];
 
 export type HistoryApiV1SoftphoneHistoryGetData = {
     body?: never;
