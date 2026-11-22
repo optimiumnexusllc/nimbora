@@ -25,6 +25,7 @@ from api.db.pbx_client import (
 )
 from api.db.pbx_supervision_client import PbxSupervisionClient
 from api.db.privacy_client import PrivacyClient
+from api.db.quality_client import QualityClient
 from api.db.reports_client import ReportsClient
 from api.db.saas_client import SaasClient
 from api.db.softphone_client import SoftphoneClient
@@ -89,6 +90,7 @@ class DBClient(
     CatalogClient,
     LeadClient,
     BusinessHubClient,
+    QualityClient,
 ):
     """
     Unified database client that combines all specialized database operations.

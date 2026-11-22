@@ -2453,6 +2453,77 @@ class PbxCallRecordingModel(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
+class CallQualitySettingsModel(Base):
+    """The quality grid of a company for its human calls, and how calls are
+    picked for evaluation."""
+
+    __tablename__ = "call_quality_settings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer,
+        ForeignKey("organizations.id", ondelete="CASCADE"),
+        nullable=False,
+        unique=True,
+    )
+    # [{"key", "label", "description", "weight"}], in display order.
+    criteria = Column(JSON, nullable=False, default=list)
+    auto_evaluate = Column(Boolean, nullable=False, default=False)
+    sample_percent = Column(Integer, nullable=False, default=100)
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class CallQualityReviewModel(Base):
+    """The evaluation of one recorded human call: by the AI from the
+    transcript, then confirmed or corrected by a supervisor."""
+
+    __tablename__ = "call_quality_reviews"
+    __table_args__ = (
+        UniqueConstraint("recording_id", name="uq_call_quality_reviews_recording"),
+        Index("ix_call_quality_reviews_org_created", "organization_id", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    recording_id = Column(
+        Integer,
+        ForeignKey("pbx_call_recordings.id", ondelete="CASCADE"),
+        nullable=False,
+    )
+    # The advisor on the company side of the call (extension and name).
+    agent_extension = Column(String(64), nullable=True, index=True)
+    agent_name = Column(String(128), nullable=True)
+    # pending | evaluated | reviewed | failed
+    status = Column(String(16), nullable=False, default="pending")
+    # {criterion_key: {"answer": "yes|partial|no|na", "comment": str}}
+    ai_answers = Column(JSON, nullable=True)
+    ai_summary = Column(Text, nullable=True)
+    ai_score = Column(Float, nullable=True)
+    ai_error = Column(String(255), nullable=True)
+    reviewer_answers = Column(JSON, nullable=True)
+    reviewer_comment = Column(Text, nullable=True)
+    reviewed_by_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    reviewed_at = Column(DateTime(timezone=True), nullable=True)
+    # The score that counts: the supervisor's when reviewed, else the AI's.
+    score = Column(Float, nullable=True)
+    # A snapshot of the grid used, so later changes keep past scores readable.
+    criteria = Column(JSON, nullable=False, default=list)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
 class SoftphoneActivationModel(Base):
     """A one-time code that pairs a NIMBORA Softphone with a PBX extension."""
 

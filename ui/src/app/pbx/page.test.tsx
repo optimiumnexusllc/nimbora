@@ -37,6 +37,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ loading: false, user: { id: "u" } }) }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }), usePathname: () => "/pbx", useSearchParams: () => new URLSearchParams() }));
 vi.mock("@/client/sdk.gen", () => ({
     readMissedCallsApiV1PbxMissedCallsGet: async () => ({
         data: {

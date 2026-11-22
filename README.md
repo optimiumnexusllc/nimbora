@@ -460,7 +460,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Supervision en direct, centre d'appels humain |
 | ✅ | RGPD et PCI DSS |
 | ✅ | Tableau de bord « AI Business Hub » : conversations, appels IA et humains, prospects, rendez-vous, activité par canal, comparaison à la période précédente ([doc](docs/contact-center/business-hub.mdx)) |
-| 🔜 | Contrôle qualité des appels humains |
+| ✅ | Contrôle qualité des appels humains : grille par entreprise, évaluation par l'IA à partir de la transcription (à la demande ou automatique sur un échantillon), validation par un superviseur, note par conseiller et par critère ([doc](docs/contact-center/call-quality.mdx)) |
 | 🔜 | Tests des agents avec des clients simulés |
 
 ### Phase 5 — PBX d'entreprise en marque blanche (moteur Wazo Platform)

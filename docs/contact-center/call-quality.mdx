@@ -1,0 +1,60 @@
+---
+title: "Contrôle qualité des appels humains"
+description: "Une grille par entreprise, l'IA qui évalue chaque appel à partir de sa transcription, un superviseur qui valide, une note par conseiller."
+---
+
+<Frame>
+  <img src="/images/call-quality.png" alt="Évaluation d'un appel : réponses de l'IA et validation du superviseur" />
+</Frame>
+
+Le **contrôle qualité** (menu de gauche → *Contrôle qualité*) note les appels de vos conseillers selon **votre** définition d'un bon appel.
+
+## Comment ça marche
+
+1. Les appels humains sont **enregistrés sur le PBX**, copiés par la plateforme et **transcrits** (PBX → Enregistrements → « Transcrire »). Les numéros de carte sont masqués dans la transcription.
+2. Pour chaque appel, l'**IA lit la transcription** et répond, critère par critère, *Oui*, *En partie*, *Non* ou *Sans objet*, avec un commentaire qui s'appuie sur ce qui a été dit.
+3. Un **superviseur écoute** l'appel, compare avec les réponses de l'IA, corrige si besoin et **valide**. Sa note devient la note de l'appel ; celle de l'IA reste visible pour comparaison et n'écrase jamais une évaluation validée.
+
+Sans transcription, un superviseur peut quand même évaluer un appel **à l'écoute**.
+
+## La grille
+
+Onglet **Grille** : jusqu'à 15 critères, chacun avec ce qui est attendu et un **poids de 1 à 5**. La grille proposée au départ :
+
+| Critère | Poids |
+|---|---|
+| Accueil (se présenter, présenter l'entreprise) | 1 |
+| Écoute et reformulation | 2 |
+| Vérification de l'identité | 1 |
+| Réponse apportée (ou suite claire : délai, rappel, ticket) | 3 |
+| Ton et politesse | 2 |
+| Conclusion | 1 |
+
+Une modification de la grille s'applique aux **évaluations suivantes** ; chaque évaluation garde la grille avec laquelle elle a été faite.
+
+## La note sur 100
+
+La note est la part pondérée de ce qui était attendu et a été fait : *Oui* compte 1, *En partie* ½, *Non* 0. *Sans objet* ne compte ni pour ni contre (par exemple, pas de vérification d'identité pour une simple question d'horaires).
+
+## Évaluer
+
+- **Un appel** : PBX → Enregistrements → **Évaluer**. L'appel s'ouvre dans le contrôle qualité.
+- **Automatiquement** : onglet Grille → *Évaluer automatiquement*, avec la **part des appels** à évaluer (tirés au hasard). Chaque appel transcrit est alors évalué par l'IA dès son arrivée et attend la validation d'un superviseur (statut *À valider*).
+
+L'évaluation utilise le **modèle de langage configuré pour l'entreprise** (Modèles IA) ; sans modèle, l'IA ne peut pas évaluer et la console le dit.
+
+## Suivre
+
+- **Appels évalués** : note moyenne, appels à valider, échecs de l'IA, et la liste filtrable par statut.
+- **Conseillers** : note moyenne par conseiller et nombre d'appels validés ; **par critère**, la part des appels où le critère est respecté — pour savoir quoi travailler en formation.
+
+## API
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| `GET` / `PUT` | `/api/v1/quality/settings` | Grille et évaluation automatique |
+| `POST` | `/api/v1/quality/recordings/{id}/evaluate` | Évaluer un appel avec l'IA |
+| `POST` | `/api/v1/quality/recordings/{id}/review` | Ouvrir une évaluation à l'écoute |
+| `GET` | `/api/v1/quality/reviews` | Appels évalués (`status`, `agent`, `days`) |
+| `GET` / `PUT` | `/api/v1/quality/reviews/{id}` | Détail, validation par le superviseur |
+| `GET` | `/api/v1/quality/summary?days=30` | Par conseiller et par critère |

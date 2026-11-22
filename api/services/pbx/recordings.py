@@ -245,6 +245,9 @@ async def import_recording(
             )
         except PbxError:
             logger.opt(exception=True).warning("Recording kept on the PBX")
+    from api.services.quality.service import after_recording_import
+
+    await after_recording_import(organization_id, row)
     return row
 
 

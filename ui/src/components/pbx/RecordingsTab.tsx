@@ -1,14 +1,17 @@
 "use client";
 
-import { ChevronDown, ChevronUp, CircleCheck, Disc3, FileText, Loader2, Play, RefreshCw, Save, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { ChevronDown, ChevronUp, CircleCheck, ClipboardCheck, Disc3, FileText, Loader2, Play, RefreshCw, Save, Search, ShieldCheck, Trash2 } from "lucide-react";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
     deleteRecordingApiV1PbxRecordingsRecordingIdDelete,
+    evaluateRecordingApiV1QualityRecordingsRecordingIdEvaluatePost,
     listRecordingsApiV1PbxRecordingsGet,
     recordingAudioApiV1PbxRecordingsRecordingIdAudioGet,
     saveRecordingPolicyApiV1PbxRecordingsPolicyPut,
+    startManualReviewApiV1QualityRecordingsRecordingIdReviewPost,
     syncRecordingsApiV1PbxRecordingsSyncPost,
 } from "@/client/sdk.gen";
 import { PageSection } from "@/components/layout/PageLayout";
@@ -68,6 +71,8 @@ export function RecordingsTab({ users }: { users: PbxUser[] }) {
     const [saving, setSaving] = useState(false);
     const [syncing, setSyncing] = useState(false);
     const [audio, setAudio] = useState<Record<number, string>>({});
+    const [evaluating, setEvaluating] = useState<number | null>(null);
+    const router = useRouter();
     const [open, setOpen] = useState<number | null>(null);
 
     const load = useCallback(async (query = "") => {
@@ -283,6 +288,28 @@ export function RecordingsTab({ users }: { users: PbxUser[] }) {
                                             <Play /> Écouter
                                         </Button>
                                     )}
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        disabled={evaluating === r.id}
+                                        aria-label={`Évaluer l'appel ${r.id}`}
+                                        title={r.transcript ? "Évaluer avec l'IA selon la grille qualité" : "Pas de transcription : évaluation à l'écoute"}
+                                        onClick={async () => {
+                                            setEvaluating(r.id);
+                                            const path = { path: { recording_id: r.id } };
+                                            const response = r.transcript
+                                                ? await evaluateRecordingApiV1QualityRecordingsRecordingIdEvaluatePost(path)
+                                                : await startManualReviewApiV1QualityRecordingsRecordingIdReviewPost(path);
+                                            setEvaluating(null);
+                                            if (response.error || !response.data) {
+                                                toast.error(detailFromError(response.error, "Évaluation impossible"));
+                                                return;
+                                            }
+                                            router.push(`/quality?review=${(response.data as { id: number }).id}`);
+                                        }}
+                                    >
+                                        {evaluating === r.id ? <Loader2 className="animate-spin" /> : <ClipboardCheck />} Évaluer
+                                    </Button>
                                     <Button
                                         variant="ghost"
                                         size="sm"
