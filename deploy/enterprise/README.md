@@ -132,11 +132,16 @@ entreprise (aucune sortie vers le réseau téléphonique : pas de fraude possibl
 | État des services | `docker compose ps` |
 | Journaux | `docker compose logs -f api` |
 | Sauvegarde (base + enregistrements + config) | `./scripts/backup.sh` (cron conseillé, voir l'en-tête du script) |
+| Vérifier une sauvegarde | `./scripts/restore.sh /var/backups/nimbora/AAAAMMJJ-HHMMSS --check` |
 | Restauration | `./scripts/restore.sh /var/backups/nimbora/AAAAMMJJ-HHMMSS` |
 | Mise à jour | `git pull && docker compose build && docker compose up -d` (migrations automatiques) |
 | Console Asterisk | `docker compose exec asterisk asterisk -rvvv` |
 
-Sauvegardez aussi `/var/backups/nimbora` hors du serveur (rclone, borg, restic…).
+Dans `backup.env` (à côté de `docker-compose.yml`) : `BACKUP_PASSPHRASE_FILE` chiffre les
+archives (AES-256), `BACKUP_RSYNC_TARGET` copie chaque sauvegarde hors du serveur,
+`KEEP_DAYS` règle la rétention. Chaque sauvegarde a son `SHA256SUMS` ; la restauration
+refuse une sauvegarde altérée. Avec le node exporter, la fraîcheur de la dernière sauvegarde
+alimente l'alerte Prometheus `PlatformBackupTooOld` (voir `deploy/observability`).
 
 ## 7. Sécurité intégrée
 

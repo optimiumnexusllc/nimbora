@@ -1,0 +1,10 @@
+[
+  {
+    "targets": ["pbx.example.com:9100"],
+    "labels": {"role": "pbx"}
+  },
+  {
+    "targets": ["app.example.com:9100"],
+    "labels": {"role": "platform"}
+  }
+]

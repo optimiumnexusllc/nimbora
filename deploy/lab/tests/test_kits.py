@@ -270,3 +270,18 @@ def test_lab_kit_can_run_the_shared_pbx_of_the_operator():
     # The kit never exposes the ARI: the provisioning URL and ARI stay on the private bridge.
     assert 'PBX_PROVISIONING_URL "https://$PBX_IP"' in source
     assert 'PBX_PROVISIONING_ARI_ENDPOINT "http://$PBX_IP:5039"' in source
+
+
+def test_pbx_firewall_opens_metrics_only_to_prometheus():
+    assert "9100" not in render_pbx_firewall()
+    rules = render_pbx_firewall(metrics_from="10.0.0.5")
+    assert "ip saddr { 10.0.0.5 } tcp dport 9100 accept" in rules
+
+
+def test_pbx_install_schedules_the_nightly_backup():
+    script = (DEPLOY / "pbx" / "install.sh").read_text()
+    assert "40 2 * * * root ${KIT_DIR}/scripts/backup.sh" in script
+    assert "--no-backup) BACKUP=0" in script
+    # The settings file is written once, never overwritten (it may hold a key path).
+    assert 'if [[ ! -f "$STATE_DIR/backup.env" ]]; then' in script
+    assert "apply_backup\n" in script and "apply_monitoring\n" in script

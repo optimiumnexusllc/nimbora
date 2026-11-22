@@ -195,6 +195,7 @@
               "deployment/custom-domain",
               "deployment/scaling",
               "deployment/saas",
+              "deployment/backup-monitoring",
               "deployment/update",
               "deployment/heroku"
             ]

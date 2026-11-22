@@ -144,6 +144,12 @@ offre ; l'opérateur exporte chaque mois la consommation de toutes les entrepris
 
 <p align="center"><img src="docs/images/screenshots/superadmin-monthly-usage.webp" alt="Consommation du mois : minutes IA et minutes humaines par entreprise" width="88%"></p>
 
+**Exploitation** : sauvegarde **chiffrée** du PBX et de la plateforme chaque nuit (bases,
+configuration, messageries, enregistrements), copie hors serveur, restauration vérifiée qui
+refuse une sauvegarde altérée ; métriques **Prometheus** (PBX de chaque entreprise, alertes de
+supervision, minutes du mois, fraîcheur des sauvegardes), 13 règles d'alerte et un tableau de
+bord **Grafana** prêts à l'emploi ([sauvegarde et supervision](docs/deployment/backup-monitoring.mdx)).
+
 L'administration se fait aussi depuis NIMBORA :
 
 - **postes** en une action (ligne navigateur ou SIP, messagerie, accès, agent), à l'unité ou par
@@ -518,7 +524,10 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | PBX partagé de l'opérateur (`install.sh --operator`, compte d'approvisionnement aux droits minimaux) ou PBX dédié par client, selon l'offre (`pbx_shared`, `pbx_dedicated`) ; postes humains plafonnés par l'offre (conseillers du centre intégré + postes du PBX, import CSV limité aux postes restants, « Postes 4 / 15 » dans la console) |
 | 🧪 | Validation du multi-tenant sur un PBX réel : création de tenants et de contextes par l'API, ACL du compte d'approvisionnement, agents IA de plusieurs entreprises sur le même Asterisk |
 | ✅ | Facturation des minutes humaines avec les minutes IA : appels décrochés avec un client sur le PBX (hors appels internes et hors appels pris par l'IA), comptés à la fin de chaque appel et rattrapés toutes les heures depuis le journal des appels (jamais deux fois) ; minutes humaines incluses et prix du dépassement par offre ; consommation sur la page Abonnement ; rapport mensuel par entreprise (minutes IA, minutes humaines, dépassements) et export CSV pour la facturation |
-| 🔜 | Haute disponibilité, sauvegarde et restauration du PBX, métriques Prometheus |
+| ✅ | Sauvegarde et restauration du PBX et de la plateforme : chaque nuit, bases du moteur, configuration, secrets du kit, messageries, sons et enregistrements ; chiffrement AES-256, copie hors serveur, empreintes SHA-256, restauration vérifiée (`--check`) qui refuse une sauvegarde altérée |
+| ✅ | Métriques Prometheus d'exploitation : PBX de chaque entreprise (joignable, événements, alertes de supervision, rattrapage des minutes), abonnements, minutes IA et humaines du mois, fraîcheur des sauvegardes ; 13 règles d'alerte et tableau de bord Grafana « NIMBORA operations » |
+| 🧪 | Sauvegarde et restauration du PBX sur le moteur réel (laboratoire) |
+| 🔜 | Haute disponibilité du PBX (serveur de secours, bascule) |
 | 🔜 | **Stockage objet durable** : MinIO a retiré ses images publiques (quay.io et Docker Hub répondent 401 / accès refusé, constaté le 21 novembre 2026) ; la plateforme utilise le build Bitnami de la dernière version libre (`bitnamilegacy/minio:2025.4.22`, dépôt figé, plus mis à jour, épinglé par digest). À remplacer par une image MinIO construite par nos soins depuis les sources (AGPL-3.0) ou par Garage / SeaweedFS |
 
 **5.5 Marque blanche totale du PBX**

@@ -1,0 +1,56 @@
+---
+title: "Backups and monitoring"
+description: "Nightly encrypted backups of the PBX and the platform, verified restores, Prometheus metrics, alerts and Grafana dashboards."
+---
+
+## Backups
+
+| | PBX (`deploy/pbx`) | Platform (`deploy/enterprise`) |
+| --- | --- | --- |
+| Schedule | nightly at 02:40, installed by `install.sh` (`--no-backup` to skip) | add `scripts/backup.sh` to cron (03:15 suggested) |
+| Content | every engine database (`pg_dumpall`), engine and Asterisk configuration, kit state and secrets, firewall, certificates, voicemail, sounds, call recordings | PostgreSQL dump, call recordings (MinIO), `.env` and generated configuration |
+| Settings | `/etc/nimbora-pbx/backup.env` | `backup.env` next to `docker-compose.yml` |
+
+Both scripts share the same settings:
+
+| Setting | Role |
+| --- | --- |
+| `KEEP_DAYS` | local retention (14 days) |
+| `BACKUP_PASSPHRASE_FILE` | encrypt the archives with AES-256 (`openssl`, PBKDF2). Keep a copy of the file **off the server**: without it nothing can be restored |
+| `BACKUP_RSYNC_TARGET` | copy each backup to another server (`user@host:/path`, root's SSH key) |
+| `TEXTFILE_DIR` | where the freshness metric is written for the node exporter (`/var/lib/prometheus/node-exporter`) |
+
+Every backup carries a `SHA256SUMS` file (and, on the PBX, a `manifest.json` with the engine version).
+
+### Restore
+
+```bash
+# Check a backup without changing anything (integrity, decryption, archives readable)
+sudo ./scripts/restore.sh /var/backups/nimbora-pbx/20261121-024000 --check
+# Restore (asks to type RESTAURER / RESTORE; --yes for scripts)
+sudo ./scripts/restore.sh /var/backups/nimbora-pbx/20261121-024000
+```
+
+A backup whose checksum does not match is refused before anything is stopped. On the PBX the engine is stopped, its databases and files reloaded, then started again. To rebuild a lost PBX, install the same engine version on a new server with `install.sh` (`manifest.json` gives it), then restore.
+
+<Tip>Test a restore every quarter on a test server: a backup is only as good as its last successful restore.</Tip>
+
+## Monitoring
+
+`deploy/observability` contains an optional Prometheus + Grafana stack:
+
+| Job | What |
+| --- | --- |
+| `nimbora` — `/api/v1/metrics`, each worker | calls in progress, AI and response latencies, TTS cache |
+| `nimbora-business` — `/api/v1/metrics/business`, one API, every minute | `nimbora_pbx_up`, `nimbora_pbx_last_check_age_seconds`, `nimbora_pbx_events_connected`, `nimbora_pbx_alerts_active`, `nimbora_pbx_usage_sync_age_seconds` per company; `nimbora_subscriptions` by plan and status; `nimbora_ai_minutes_month`, `nimbora_human_minutes_month` per company |
+| `node` — `:9100` on each server | host metrics, `nimbora_pbx_backup_*` and `nimbora_platform_backup_*` (last success, last failure, size) |
+
+Both API endpoints need `ENABLE_PROMETHEUS_METRICS=true` and the `X-NIMBORA-Devops-Secret` header. On a PBX, `install.sh --metrics-from <Prometheus IP>` installs the node exporter and opens port 9100 to that address only.
+
+### Alerts
+
+`prometheus/alerts.yml`: PBX unreachable for 5 min, PBX not checked for 30 min, call events disconnected for 1 h, human minutes not read for 3 h (invoices would miss calls), supervision alert open for 30 min, no backup for 26 h or last backup failed (PBX and platform), business metrics stale, disk under 10 %. Route them with Alertmanager (e-mail, Slack, Teams…).
+
+### Dashboards
+
+**NIMBORA runtime** (calls, latencies) and **NIMBORA operations**: PBX reachable or not per company, supervision alerts, age of the last backups, top 10 companies by human and AI minutes of the month, companies by plan and status, free disk space.

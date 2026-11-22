@@ -5,7 +5,8 @@
 #   sudo ./install.sh --brand "NIMBORA" --nimbora-url https://app.example.com \
 #        --nimbora-ip 203.0.113.10 --company "Ivoire Immo" [--support-email ...] \
 #        [--ssh-from CIDR,…] [--sip-from CIDR,…|any|none] [--phones-from CIDR,…] \
-#        [--rtp-range 10000-20000] [--trusted-proxy CIDR,…] [--operator] [--firewall-only]
+#        [--rtp-range 10000-20000] [--trusted-proxy CIDR,…] [--operator] \
+#        [--metrics-from CIDR,…] [--backup-dir DIR|--no-backup] [--firewall-only]
 #
 # --operator: shared PBX of the platform operator. Also creates the
 # provisioning account the platform uses to open one tenant per company
@@ -15,6 +16,8 @@
 # fail2ban bans repeated authentication failures on the engine's API.
 # Re-runnable: secrets are generated once in /etc/nimbora-pbx/secrets.env.
 # --firewall-only re-applies firewall and fail2ban alone (after a change).
+# Nightly backup (scripts/backup.sh, 02:40) unless --no-backup; --metrics-from
+# opens the node exporter (9100) to Prometheus with the backup freshness metric.
 set -euo pipefail
 
 BRAND="NIMBORA"
@@ -34,11 +37,14 @@ RTP_RANGE="10000-20000"
 TRUSTED_PROXY="none"
 FIREWALL_ONLY=0
 OPERATOR=0
+METRICS_FROM="none"
+BACKUP_DIR="/var/backups/nimbora-pbx"
+BACKUP=1
 KIT_DIR="$(cd "$(dirname "$0")" && pwd)"
 STATE_DIR=/etc/nimbora-pbx
 WORK_DIR=/opt/nimbora-pbx
 
-usage() { sed -n '2,17p' "$0"; exit 1; }
+usage() { sed -n '2,20p' "$0"; exit 1; }
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --brand) BRAND="$2"; shift 2 ;;
@@ -58,6 +64,9 @@ while [[ $# -gt 0 ]]; do
     --trusted-proxy) TRUSTED_PROXY="$2"; shift 2 ;;
     --firewall-only) FIREWALL_ONLY=1; shift ;;
     --operator) OPERATOR=1; shift ;;
+    --metrics-from) METRICS_FROM="$2"; shift 2 ;;
+    --backup-dir) BACKUP_DIR="$2"; shift 2 ;;
+    --no-backup) BACKUP=0; shift ;;
     -h|--help) usage ;;
     *) echo "Option inconnue : $1"; usage ;;
   esac
@@ -70,7 +79,7 @@ DOMAIN="${NIMBORA_URL#https://}"; DOMAIN="${DOMAIN#http://}"; DOMAIN="${DOMAIN%%
 grep -q 'VERSION_CODENAME=bookworm' /etc/os-release || { echo "Debian 12 (bookworm) requis."; exit 1; }
 [[ "$COMPANY" != *[\"\'\\]* ]] || { echo "--company ne peut contenir ni guillemet ni barre oblique inverse."; exit 1; }
 [[ "$RTP_RANGE" =~ ^[0-9]+-[0-9]+$ ]] || { echo "--rtp-range attend début-fin (ex. 10000-20000)."; exit 1; }
-for v in SSH_FROM SIP_FROM PHONES_FROM TRUSTED_PROXY; do
+for v in SSH_FROM SIP_FROM PHONES_FROM TRUSTED_PROXY METRICS_FROM; do
   [[ "${!v}" =~ ^(any|none|([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?(,([0-9]{1,3}\.){3}[0-9]{1,3}(/[0-9]{1,2})?)*)$ ]] \
     || { flag="${v,,}"; echo "--${flag//_/-} attend any, none ou des adresses IPv4/CIDR séparées par des virgules."; exit 1; }
 done
@@ -111,6 +120,7 @@ $(nft_rule "$SIP_FROM" "udp dport 5060 accept")
 $(nft_rule "$SIP_FROM" "tcp dport { 5060, 5061 } accept")
 $(nft_rule "$SIP_FROM" "udp dport ${RTP_RANGE} accept")
 $(nft_rule "$PHONES_FROM" "tcp dport { 8667, 9498, 9499 } accept")
+$(nft_rule "$METRICS_FROM" "tcp dport 9100 accept")
   }
 }
 EOF
@@ -146,6 +156,41 @@ apply_fail2ban() {
   fi
   systemctl enable --now fail2ban >/dev/null
   systemctl reload fail2ban 2>/dev/null || systemctl restart fail2ban
+}
+
+# Prometheus node exporter (host metrics + the backup's freshness, written by
+# backup.sh in the textfile collector directory), reachable from --metrics-from.
+apply_monitoring() {
+  [[ "$METRICS_FROM" != "none" ]] || return 0
+  echo "==> Métriques Prometheus (node exporter, port 9100)"
+  dpkg -s prometheus-node-exporter >/dev/null 2>&1 || DEBIAN_FRONTEND=noninteractive apt-get install -yq prometheus-node-exporter
+  install -d -m 755 /var/lib/prometheus/node-exporter
+  systemctl enable --now prometheus-node-exporter >/dev/null
+}
+
+# Nightly backup of databases, configuration, voicemail and recordings.
+apply_backup() {
+  [[ "$BACKUP" == 1 ]] || { rm -f /etc/cron.d/nimbora-pbx-backup; return 0; }
+  echo "==> Sauvegarde chaque nuit dans ${BACKUP_DIR} (scripts/backup.sh)"
+  install -d -m 700 "$BACKUP_DIR"
+  if [[ ! -f "$STATE_DIR/backup.env" ]]; then
+    cat > "$STATE_DIR/backup.env" <<EOF
+# NIMBORA PBX kit: settings of scripts/backup.sh and scripts/restore.sh.
+BACKUP_DIR=${BACKUP_DIR}
+KEEP_DAYS=14
+# Encrypt the archives (keep a copy of this file OFF the server):
+#   openssl rand -base64 48 > ${STATE_DIR}/backup.key && chmod 600 ${STATE_DIR}/backup.key
+# BACKUP_PASSPHRASE_FILE=${STATE_DIR}/backup.key
+# Copy each backup to another server (SSH key of root):
+# BACKUP_RSYNC_TARGET=backup@203.0.113.20:/srv/nimbora-pbx
+EOF
+    chmod 600 "$STATE_DIR/backup.env"
+  fi
+  cat > /etc/cron.d/nimbora-pbx-backup <<EOF
+# NIMBORA PBX kit: nightly backup (see ${STATE_DIR}/backup.env).
+40 2 * * * root ${KIT_DIR}/scripts/backup.sh >> /var/log/nimbora-pbx-backup.log 2>&1
+EOF
+  chmod 644 /etc/cron.d/nimbora-pbx-backup
 }
 
 if [[ "$FIREWALL_ONLY" == 1 ]]; then
@@ -282,6 +327,8 @@ ansible-playbook -i "$WORK_DIR/inventory.ini" whitelabel.yml -e "@$STATE_DIR/bra
 
 apply_firewall
 apply_fail2ban
+apply_monitoring
+apply_backup
 
 echo "==> Compte de service de la plateforme (droits minimaux)"
 python3 "$KIT_DIR/scripts/create_service_account.py" --url https://localhost --insecure \
@@ -318,6 +365,8 @@ cat <<EOF
    websocket client   : nimbora
 
  Secrets : ${STATE_DIR}/secrets.env (root uniquement). Sauvegardez-le.
+ Sauvegarde : chaque nuit dans ${BACKUP_DIR} ($([[ "$BACKUP" == 1 ]] && echo "réglages : ${STATE_DIR}/backup.env" || echo "désactivée"))
+ Restauration : ${KIT_DIR}/scripts/restore.sh <répertoire de sauvegarde>
 ============================================================
 EOF
 if [[ "$OPERATOR" == 1 ]]; then
