@@ -1,12 +1,13 @@
 "use client";
 
-import { Apple, Globe, Laptop, Monitor, Save, Smartphone, Trash2 } from "lucide-react";
+import { Apple, Globe, Laptop, Monitor, Save, Smartphone, Trash2, Wrench } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
 import { toast } from "sonner";
 
 import {
     listSoftphoneDevicesApiV1PbxSoftphoneDevicesGet,
     readSoftphoneSettingsApiV1PbxSoftphoneSettingsGet,
+    repairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPost,
     revokeSoftphoneDeviceApiV1PbxSoftphoneDevicesDeviceIdDelete,
     saveSoftphoneSettingsApiV1PbxSoftphoneSettingsPut,
 } from "@/client/sdk.gen";
@@ -148,6 +149,28 @@ export function SoftphonesSection() {
                             }}
                         >
                             <Save /> Enregistrer
+                        </Button>
+                    </div>
+                    <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-3">
+                        <p className="max-w-xl text-sm text-muted-foreground">
+                            Un poste navigateur qui ne sonne jamais (le PBX répond « congestion ») a été créé avant un correctif : NIMBORA le répare quand son
+                            Softphone démarre, ou ici pour toutes les lignes d&apos;un coup.
+                        </p>
+                        <Button
+                            variant="outline"
+                            onClick={async () => {
+                                const response = await repairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPost();
+                                if (response.error || !response.data) {
+                                    toast.error(detailFromError(response.error, "Réparation impossible"));
+                                    return;
+                                }
+                                const { checked, repaired, failed } = response.data;
+                                if (failed.length) toast.error(`Non réparées : ${failed.join(", ")} (droits du compte de service à mettre à jour)`);
+                                else if (repaired.length) toast.success(`Lignes navigateur réparées : ${repaired.join(", ")}`);
+                                else toast.success(`${checked} ligne${checked > 1 ? "s" : ""} vérifiée${checked > 1 ? "s" : ""} : rien à réparer`);
+                            }}
+                        >
+                            <Wrench /> Vérifier les lignes navigateur
                         </Button>
                     </div>
                 </details>

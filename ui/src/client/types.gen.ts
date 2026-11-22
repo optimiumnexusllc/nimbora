@@ -10928,6 +10928,24 @@ export type VonageConfigurationRequest = {
 export type WebhookCredentialType = 'none' | 'api_key' | 'bearer_token' | 'basic_auth' | 'custom_header' | 'service_account';
 
 /**
+ * WebrtcRepairResponse
+ */
+export type WebrtcRepairResponse = {
+    /**
+     * Checked
+     */
+    checked: number;
+    /**
+     * Repaired
+     */
+    repaired: Array<string | null>;
+    /**
+     * Failed
+     */
+    failed: Array<string | null>;
+};
+
+/**
  * WhatsAppConfigurationRequest
  *
  * Credentials for one WhatsApp Business Account on the Cloud API.
@@ -24255,6 +24273,45 @@ export type RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostR
 };
 
 export type RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostResponse = RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostResponses[keyof RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostResponses];
+
+export type RepairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/maintenance/webrtc-lines';
+};
+
+export type RepairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RepairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPostError = RepairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPostErrors[keyof RepairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPostErrors];
+
+export type RepairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: WebrtcRepairResponse;
+};
+
+export type RepairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPostResponse = RepairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPostResponses[keyof RepairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPostResponses];
 
 export type ExtensionPasswordResetApiV1PbxExtensionsPasswordResetPostData = {
     body: ApiRoutesPbxLoginRequest;

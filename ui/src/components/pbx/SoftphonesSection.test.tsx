@@ -3,13 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 
 import { SoftphonesSection } from "./SoftphonesSection";
 
-const mocks = vi.hoisted(() => ({ list: vi.fn(), settings: vi.fn(), save: vi.fn(), revoke: vi.fn(), toast: { success: vi.fn(), error: vi.fn() } }));
+const mocks = vi.hoisted(() => ({ list: vi.fn(), settings: vi.fn(), save: vi.fn(), revoke: vi.fn(), repair: vi.fn(), toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
 vi.mock("@/client/sdk.gen", () => ({
     listSoftphoneDevicesApiV1PbxSoftphoneDevicesGet: mocks.list,
     readSoftphoneSettingsApiV1PbxSoftphoneSettingsGet: mocks.settings,
     saveSoftphoneSettingsApiV1PbxSoftphoneSettingsPut: mocks.save,
     revokeSoftphoneDeviceApiV1PbxSoftphoneDevicesDeviceIdDelete: mocks.revoke,
+    repairWebrtcLinesApiV1PbxMaintenanceWebrtcLinesPost: mocks.repair,
 }));
 
 beforeEach(() => {
@@ -39,5 +40,28 @@ describe("SoftphonesSection", () => {
             fireEvent.click(screen.getByRole("button", { name: /Enregistrer/ }));
         });
         expect(mocks.save).toHaveBeenCalledWith({ body: { wss_url: "wss://voix.example/ws", sip_domain: "" } });
+    });
+});
+
+describe("browser lines", () => {
+    it("repairs them on demand and says which ones", async () => {
+        mocks.repair.mockResolvedValue({ data: { checked: 4, repaired: ["1001", "1004"], failed: [] } });
+        render(<SoftphonesSection />);
+        await screen.findByTestId("softphone-settings");
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: /Vérifier les lignes navigateur/ }));
+        });
+        expect(mocks.repair).toHaveBeenCalled();
+        expect(mocks.toast.success).toHaveBeenCalledWith("Lignes navigateur réparées : 1001, 1004");
+    });
+
+    it("says when nothing needed repair", async () => {
+        mocks.repair.mockResolvedValue({ data: { checked: 1, repaired: [], failed: [] } });
+        render(<SoftphonesSection />);
+        await screen.findByTestId("softphone-settings");
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: /Vérifier les lignes navigateur/ }));
+        });
+        expect(mocks.toast.success).toHaveBeenCalledWith("1 ligne vérifiée : rien à réparer");
     });
 });
