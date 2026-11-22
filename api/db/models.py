@@ -2574,3 +2574,56 @@ class CatalogItemModel(Base):
         Index("ix_catalog_items_org_kind", "organization_id", "kind"),
         Index("ix_catalog_items_org_category", "organization_id", "category"),
     )
+
+
+class LeadModel(Base):
+    """A prospect: who they are, what they need, their budget, where they stand.
+
+    Agents fill it during calls (« Qualifier le prospect »); the team moves it
+    through the pipeline (Prospects page). One open lead per phone number: the
+    next call completes it instead of creating a duplicate.
+    """
+
+    __tablename__ = "leads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    customer_id = Column(
+        Integer, ForeignKey("customer_profiles.id", ondelete="SET NULL"), nullable=True
+    )
+    name = Column(String(128), nullable=True)
+    phone = Column(String(32), nullable=True)
+    email = Column(String(255), nullable=True)
+    company = Column(String(128), nullable=True)
+    need = Column(Text, nullable=True)
+    # Smallest unit of the currency, like the catalog.
+    budget_min = Column(BigInteger, nullable=True)
+    budget_max = Column(BigInteger, nullable=True)
+    currency = Column(String(3), nullable=False, default="XOF")
+    timeline = Column(String(128), nullable=True)  # « dans 3 mois », « urgent »
+    decision_maker = Column(Boolean, nullable=True)
+    interests = Column(JSON, nullable=False, default=list)  # catalog items, offers
+    # new, qualified, proposal, negotiation, won, lost
+    stage = Column(String(16), nullable=False, default="new")
+    score = Column(Integer, nullable=False, default=0)
+    source = Column(String(16), nullable=False, default="manual")
+    owner = Column(String(128), nullable=True)
+    notes = Column(Text, nullable=True)
+    lost_reason = Column(String(255), nullable=True)
+    next_action = Column(String(255), nullable=True)
+    next_action_at = Column(DateTime(timezone=True), nullable=True)
+    workflow_run_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+    closed_at = Column(DateTime(timezone=True), nullable=True)
+
+    __table_args__ = (
+        Index("ix_leads_org_stage", "organization_id", "stage"),
+        Index("ix_leads_org_phone", "organization_id", "phone"),
+    )

@@ -1,10 +1,10 @@
 "use client";
 
-import { CalendarCheck, Loader2, MessageSquareText, Package, Ticket } from "lucide-react";
+import { CalendarCheck, Loader2, MessageSquareText, Package, Target, Ticket } from "lucide-react";
 import { useState } from "react";
 
 import { previewSlotsApiV1ActionsCalendarsToolUuidPreviewPost } from "@/client/sdk.gen";
-import type { BookAppointmentConfig, CreateTicketConfig, SearchCatalogConfig, SendMessageConfig } from "@/client/types.gen";
+import type { BookAppointmentConfig, CreateTicketConfig, QualifyLeadConfig, SearchCatalogConfig, SendMessageConfig } from "@/client/types.gen";
 import { CredentialSelector } from "@/components/http";
 import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -641,6 +641,55 @@ export function SearchCatalogToolConfig({
                 <div className="flex items-center gap-3">
                     <Switch id="catalog-stock" checked={config.show_stock ?? true} onCheckedChange={(v) => set({ show_stock: v })} />
                     <Label htmlFor="catalog-stock">Tell how many are left (otherwise just « en stock »)</Label>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+// ------------------------------------------------------------------ leads
+
+export function QualifyLeadToolConfig({
+    config,
+    onChange,
+    ...common
+}: CommonProps & { config: QualifyLeadConfig; onChange: (config: QualifyLeadConfig) => void }) {
+    const set = (patch: Partial<QualifyLeadConfig>) => onChange({ ...config, ...patch });
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Target className="h-5 w-5" />
+                    Lead qualification
+                </CardTitle>
+                <CardDescription>
+                    The agent records the caller&apos;s need, budget, timeline, whether they decide, and what interests them. Each answer adds to a
+                    score out of 100; the tool tells the agent what is still unknown so it asks the next useful question. Leads appear in{" "}
+                    <a className="underline" href="/leads">
+                        Prospects
+                    </a>
+                    ; a caller&apos;s next call completes the same lead.
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <NameAndDescription
+                    {...common}
+                    hint="Say when to call it (e.g. « Record the caller's project as soon as they describe it, then after each new answer »)."
+                />
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Currency of budgets">
+                        <Input className="w-32" maxLength={3} value={config.currency ?? "XOF"} onChange={(e) => set({ currency: e.target.value.toUpperCase() })} />
+                    </Field>
+                    <Field label="Qualified from score" hint="A new lead reaching this score moves to « Qualifié ».">
+                        <Input
+                            className="w-32"
+                            type="number"
+                            min={10}
+                            max={100}
+                            value={config.qualified_score ?? 60}
+                            onChange={(e) => set({ qualified_score: Math.min(100, Math.max(10, Number(e.target.value) || 60)) })}
+                        />
+                    </Field>
                 </div>
             </CardContent>
         </Card>

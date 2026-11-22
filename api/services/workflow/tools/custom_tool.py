@@ -204,6 +204,7 @@ def tool_to_function_schema(tool: Any) -> dict[str, Any]:
         "send_message",
         "create_ticket",
         "search_catalog",
+        "qualify_lead",
     }:
         from api.services.actions.schemas import action_function_parameters
 

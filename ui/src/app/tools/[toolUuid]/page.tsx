@@ -15,6 +15,7 @@ import type {
     CreateTicketConfig,
     EndCallConfig,
     HttpApiToolDefinition,
+    QualifyLeadConfig,
     RecordingResponseSchema,
     ScheduleCallbackConfig,
     SearchCatalogConfig,
@@ -58,11 +59,12 @@ import { enterpriseApi } from "@/lib/enterpriseApi";
 import {
     BookAppointmentToolConfig,
     CreateTicketToolConfig,
+    QualifyLeadToolConfig,
     SearchCatalogToolConfig,
     SendMessageToolConfig,
 } from "./components/ActionToolConfigs";
 
-const ACTION_TOOL_TYPES = new Set<string>(["book_appointment", "send_message", "create_ticket", "search_catalog"]);
+const ACTION_TOOL_TYPES = new Set<string>(["book_appointment", "send_message", "create_ticket", "search_catalog", "qualify_lead"]);
 
 import {
     type ContextDestinationRuleRow,
@@ -1087,6 +1089,15 @@ const data = await response.json();`;
                         description={description}
                         onDescriptionChange={setDescription}
                         config={actionConfig as SendMessageConfig}
+                        onChange={(c) => setActionConfig(c as Record<string, unknown>)}
+                    />
+                ) : tool.category === "qualify_lead" ? (
+                    <QualifyLeadToolConfig
+                        name={name}
+                        onNameChange={setName}
+                        description={description}
+                        onDescriptionChange={setDescription}
+                        config={actionConfig as QualifyLeadConfig}
                         onChange={(c) => setActionConfig(c as Record<string, unknown>)}
                     />
                 ) : tool.category === "search_catalog" ? (

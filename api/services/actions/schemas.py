@@ -107,6 +107,50 @@ def action_function_parameters(definition: dict[str, Any]) -> tuple[dict, list[s
                 "enum": list(config["categories"]),
             }
         return properties, ["action"]
+    if kind == "qualify_lead":
+        return (
+            {
+                "need": {
+                    "type": "string",
+                    "description": "What the caller needs, in their words, precise.",
+                },
+                "budget_min": {
+                    "type": "number",
+                    "description": "Lowest budget mentioned, in the tool's currency.",
+                },
+                "budget_max": {
+                    "type": "number",
+                    "description": "Highest budget the caller can spend, in the tool's currency.",
+                },
+                "timeline": {
+                    "type": "string",
+                    "description": "When they want it (« dans 3 mois », « avant la rentrée »).",
+                },
+                "decision_maker": {
+                    "type": "boolean",
+                    "description": "true if they decide alone, false if someone else decides too.",
+                },
+                "interests": {
+                    "type": "array",
+                    "items": {"type": "string"},
+                    "description": "Items or offers they showed interest in (names from the catalog).",
+                },
+                "name": {"type": "string", "description": "Caller's full name."},
+                "email": {
+                    "type": "string",
+                    "description": "Caller's e-mail, spelled back first.",
+                },
+                "company": {
+                    "type": "string",
+                    "description": "Their company, for a business customer.",
+                },
+                "notes": {
+                    "type": "string",
+                    "description": "Anything else useful for the sales team.",
+                },
+            },
+            [],
+        )
     if kind == "search_catalog":
         return (
             {
