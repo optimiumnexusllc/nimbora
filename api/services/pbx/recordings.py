@@ -174,6 +174,49 @@ def _parse_time(value: Any) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
+def _party(cdr: dict, side: str) -> tuple[str | None, str | None]:
+    """(extension, name) of one side of a call log.
+
+    On the engine, ``<side>_extension`` of an outbound call's source (or an
+    inbound call's destination) is the public number the route presents or
+    the customer dialled; the employee's own extension is
+    ``<side>_internal_extension`` (lab steps 9 and 17, bugs n° 20 and n° 27).
+    A name that is only that number says nothing and is dropped.
+    """
+    internal = cdr.get(f"{side}_internal_extension")
+    extension = internal or cdr.get(f"{side}_extension")
+    if side == "destination" and not extension:
+        extension = cdr.get("requested_extension")
+    name = cdr.get(f"{side}_internal_name") or cdr.get(f"{side}_name")
+    digits = lambda v: "".join(ch for ch in str(v or "") if ch.isdigit())  # noqa: E731
+    if (
+        internal
+        and name
+        and digits(name)
+        and digits(name)
+        in {
+            digits(cdr.get(f"{side}_extension")),
+            digits(internal),
+        }
+    ):
+        name = None
+    return (
+        str(extension)[:64] if extension else None,
+        str(name)[:128] if name else None,
+    )
+
+
+def call_parties(cdr: dict) -> dict[str, str | None]:
+    source, source_name = _party(cdr, "source")
+    destination, destination_name = _party(cdr, "destination")
+    return {
+        "source": source,
+        "source_name": source_name,
+        "destination": destination,
+        "destination_name": destination_name,
+    }
+
+
 async def import_recording(
     connection, client: PbxClient, cdr: dict, recording: dict, policy: RecordingPolicy
 ):
@@ -215,20 +258,7 @@ async def import_recording(
             "started_at": started,
             "duration_seconds": duration,
             "direction": direction or None,
-            "source": (cdr.get("source_extension") or None)
-            and str(cdr["source_extension"])[:64],
-            "source_name": (cdr.get("source_name") or None)
-            and str(cdr["source_name"])[:128],
-            "destination": (
-                cdr.get("destination_extension")
-                or cdr.get("requested_extension")
-                or None
-            )
-            and str(cdr.get("destination_extension") or cdr.get("requested_extension"))[
-                :64
-            ],
-            "destination_name": (cdr.get("destination_name") or None)
-            and str(cdr["destination_name"])[:128],
+            **call_parties(cdr),
             "customer_phone": phone,
             "storage_backend": backend,
             "storage_key": key,

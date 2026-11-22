@@ -787,7 +787,7 @@ des comptes du laboratoire, console et Softphone web pilotés en Chromium. Sans 
 | (5) Évaluation par l'IA, « Réévaluer avec l'IA », évaluation automatique « À valider » après import | 🧪 clés fournisseur IA non disponibles (et transcription désactivée) |
 | (6) Remise en état | ✅ Enregistrements → corbeille sur l'enregistrement d'essai (« Enregistrement supprimé », son évaluation disparaît avec lui), politique d'enregistrement remise à son état initial (tout désactivé, 4 postes modifiés), aucun enregistrement ni évaluation restants |
 
-### 🐛 n° 27 — conseiller d'un appel sortant = numéro public (à corriger)
+### 🐛 n° 27 — conseiller d'un appel sortant = numéro public (corrigé, à revalider)
 
 Dans l'onglet Conseillers et sur la fiche, le conseiller de l'appel sortant est
 « 2250700000001 · 2250700000001 », c'est-à-dire le **numéro présenté par la route sortante**, et
@@ -799,6 +799,11 @@ Correction proposée : à l'import, préférer `source_internal_extension` / nom
 source d'un appel sortant (et `destination_internal_extension` pour un entrant), ou stocker
 l'extension interne à part ; test avec la forme réelle du CDR. Non corrigé ici : sans
 privilèges, ni redéploiement ni tests en conteneur possibles.
+
+**Correction** (après l'étape 17) : `recordings.call_parties` prend, de chaque côté de l'appel,
+`<côté>_internal_extension` avant `<côté>_extension`, et écarte un nom qui n'est que ce
+numéro ; test `test_the_advisor_is_the_internal_extension_not_the_public_number` avec la forme
+du CDR relevée au labo. Les enregistrements déjà importés gardent leur ancienne valeur.
 
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 

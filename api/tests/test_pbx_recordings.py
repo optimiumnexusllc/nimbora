@@ -294,3 +294,32 @@ async def test_routes(db_session, monkeypatch, storage, test_client_factory):
         assert (
             await client.delete(f"/api/v1/pbx/recordings/{item['id']}")
         ).status_code == 404
+
+
+def test_the_advisor_is_the_internal_extension_not_the_public_number():
+    """Lab step 17 (bug n° 27): an outbound call from 1004 through the route
+    showed the advisor as « 2250700000001 », the number the route presents."""
+    outbound = {
+        "call_direction": "outbound",
+        "source_extension": "2250700000001",
+        "source_name": "2250700000001",
+        "source_internal_extension": "1004",
+        "destination_extension": "0033612345678",
+        "destination_name": "",
+    }
+    parties = recordings.call_parties(outbound)
+    assert parties["source"] == "1004" and parties["source_name"] is None
+    assert parties["destination"] == "0033612345678"
+
+    inbound = {
+        "call_direction": "inbound",
+        "source_extension": "+2250700112233",
+        "source_name": "Awa",
+        "destination_extension": "2250700000001",
+        "destination_internal_extension": "1003",
+        "destination_name": "Koffi Yao",
+    }
+    parties = recordings.call_parties(inbound)
+    assert parties["destination"] == "1003"
+    assert parties["destination_name"] == "Koffi Yao"  # a real name is kept
+    assert parties["source"] == "+2250700112233" and parties["source_name"] == "Awa"
