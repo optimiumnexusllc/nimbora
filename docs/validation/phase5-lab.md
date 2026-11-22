@@ -531,6 +531,12 @@ Autres observations :
   (suite de la remarque de l'étape 9).
 - Le « Hors ligne » d'un poste navigateur dont l'application est fermée est normal : JsSIP se
   désenregistre à la fermeture.
+- Écart de l'étape 9 daté : les traces `httpx.ConnectError: Name or service not known` viennent
+  de l'**amorçage d'organisation** (`organization_bootstrap.py`, « Failed to bootstrap
+  organization 1; will retry on a later request »), qui tente de créer un compte de facturation
+  hébergé sur `MPS_API_URL` (valeur par défaut `https://services.nimbora.example`, hôte
+  inexistant) et recommence à chaque requête. Sans rapport avec le PBX ni avec les PR validées ;
+  à neutraliser dans le kit (variable vide ou amorçage hébergé désactivé en auto-hébergement).
 
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
