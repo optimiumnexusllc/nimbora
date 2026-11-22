@@ -145,7 +145,8 @@
             "pages": [
               "contact-center/overview",
               "contact-center/supervision",
-              "contact-center/smart-routing"
+              "contact-center/smart-routing",
+              "contact-center/business-hub"
             ]
           },
           {
