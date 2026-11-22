@@ -712,12 +712,20 @@ class PbxClient:
             params["from"] = since
         return await self._items("call_logd", "/cdr", **params)
 
-    async def cdr_since(self, since: str, *, limit: int = 500, offset: int = 0) -> list[dict]:
+    async def cdr_since(
+        self, since: str, *, limit: int = 500, offset: int = 0
+    ) -> list[dict]:
         """Call logs started from ``since`` (ISO 8601), oldest first."""
         return await self._items(
             "call_logd",
             "/cdr",
-            **{"from": since, "order": "start", "direction": "asc", "limit": limit, "offset": offset},
+            **{
+                "from": since,
+                "order": "start",
+                "direction": "asc",
+                "limit": limit,
+                "offset": offset,
+            },
         )
 
     async def recording_media(self, cdr_id: int, recording_uuid: str) -> bytes:
