@@ -1,0 +1,61 @@
+---
+title: "Search Catalog"
+description: "Let the agent search what you sell or rent (products, properties, rooms, services, vehicles) with prices, stock and characteristics, and quote only what it finds."
+---
+
+The **Catalogue** page holds what your company sells or rents. With a **Search Catalog** tool, the agent searches it during the call from the caller's words and budget, then quotes the name, the price, the availability and the characteristics of what it found. It never invents an item or a price.
+
+## The catalog
+
+Each item has:
+
+| Field | Example |
+|---|---|
+| Type | Produit, Bien immobilier, Chambre, Prestation, Véhicule, Autre |
+| Name, reference, category | « Chambre Délux vue mer », `CH-DLX`, « Chambres » |
+| Price, currency, unit | 85 000 XOF « la nuit » ; 12,50 EUR. Empty: « prix sur demande » |
+| Stock | 3 ; empty: not tracked (available while « Disponible » is on) ; 0: sold out |
+| Characteristics | `chambres: 4`, `surface: 180 m²`, `vue: mer` — any key and value |
+| Link | The item's page or photos, which the agent can send by message |
+
+Prices are stored in the currency's smallest unit: cents for EUR or USD, francs for XOF or XAF.
+
+**Importer un CSV** adds or updates many items at once. Separate columns with commas or semicolons. Use these column names, in French or English: `nom`, `reference`, `type`, `categorie`, `description`, `prix`, `devise`, `unite`, `stock`, `disponible`, `url`, `tags`. **Any other column becomes a characteristic.** A line whose reference already exists updates that item. Lines with errors are skipped and listed, and the others are saved. **Exporter** downloads the whole catalog in the same format.
+
+```csv
+reference;nom;type;categorie;prix;stock;disponible;chambres;quartier
+VIL-1;Villa Riviera;bien;Ventes;150 000 000;;oui;4;Riviera 3
+CH-DLX;Chambre Délux vue mer;chambre;Chambres;85 000;3;oui;;
+```
+
+## The tool
+
+Create a **Search Catalog** tool, add it to the agent, and say in its description when to use it, for example « Cherche nos chambres et leurs prix quand le client demande une disponibilité ou un tarif ».
+
+| Setting | Default |
+|---|---|
+| Items the agent may offer | The whole catalog. A hotel keeps only **Rooms**, an agency only **Properties**. |
+| Currency of budgets | XOF: « moins de 50 000 » is read in this currency |
+| Results per search | 5 (at most 10). When more match, the agent asks a question to narrow the choice. |
+| Leave out unavailable and sold-out items | On; the agent can still include them if the caller asks |
+| Tell how many are left | On: « en stock (3) ». Off: « en stock » |
+
+The agent can:
+
+- **search**: with key words, which are matched without accents or case (« chambre delux » finds « Chambre Délux »), a category, and a minimum or maximum price;
+- **details**: read the full description and every characteristic of one item it found.
+
+When nothing matches, the agent says so and offers to widen the search.
+
+**Essayer comme l'agent**, at the bottom of the Catalogue page, shows what the agent would get for a request and a budget.
+
+## API
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/v1/catalog/items?q=&kind=&category=` | List and search |
+| `POST` / `PUT` / `DELETE` | `/api/v1/catalog/items[/{id}]` | Add, change, delete |
+| `PATCH` | `/api/v1/catalog/items/{id}/stock` | Change the stock only |
+| `POST` | `/api/v1/catalog/import` | CSV import, returns `{created, updated, errors}` |
+| `GET` | `/api/v1/catalog/export.csv` | CSV export |
+| `POST` | `/api/v1/catalog/agent-preview` | What the agent would get |

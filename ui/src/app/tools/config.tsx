@@ -9,6 +9,7 @@ import {
     Globe,
     type LucideIcon,
     MessageSquareText,
+    Package,
     PhoneForwarded,
     PhoneOff,
     Puzzle,
@@ -44,6 +45,7 @@ export type ToolCategory =
     | "book_appointment"
     | "send_message"
     | "create_ticket"
+    | "search_catalog"
     | "native"
     | "integration"
     | "mcp";
@@ -231,6 +233,19 @@ export const TOOL_CATEGORIES: ToolCategoryConfig[] = [
         },
     },
     {
+        value: "search_catalog",
+        label: "Search Catalog",
+        description: "Search the company's catalog (products, properties, rooms…) with prices and stock",
+        icon: Package,
+        iconName: "package",
+        iconColor: "#14B8A6",
+        autoFill: {
+            name: "Search Catalog",
+            description:
+                "Search our catalog when the caller asks what we offer, a price or whether something is available. Quote only what the search returns.",
+        },
+    },
+    {
         value: "mcp",
         label: "MCP Server",
         description: "Connect a customer MCP server; its tools become available to the agent",
@@ -297,6 +312,8 @@ export function getToolTypeLabel(category: string): string {
             return "Send Message Tool";
         case "create_ticket":
             return "Create Ticket Tool";
+        case "search_catalog":
+            return "Search Catalog Tool";
         case "native":
             return "Native Tool";
         case "integration":
@@ -444,6 +461,7 @@ export function createToolDefinition(category: ToolCategory): ToolDefinition {
         case "book_appointment":
         case "send_message":
         case "create_ticket":
+        case "search_catalog":
             return { schema_version: 1, type: category, messages: [], config: {} } as unknown as ToolDefinition;
         case "http_api":
         default:

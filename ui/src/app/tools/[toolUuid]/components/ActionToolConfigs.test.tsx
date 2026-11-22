@@ -6,7 +6,7 @@ vi.mock("@/components/http", () => ({
 }));
 vi.mock("@/client/sdk.gen", () => ({ previewSlotsApiV1ActionsCalendarsToolUuidPreviewPost: vi.fn() }));
 
-import { CreateTicketToolConfig, parseRanges, SendMessageToolConfig } from "./ActionToolConfigs";
+import { CreateTicketToolConfig, parseRanges, SearchCatalogToolConfig, SendMessageToolConfig } from "./ActionToolConfigs";
 
 const common = { name: "T", onNameChange: vi.fn(), description: "", onDescriptionChange: vi.fn() };
 
@@ -37,5 +37,25 @@ describe("action tool editors", () => {
         rerender(<CreateTicketToolConfig {...common} config={{ provider: "zendesk" }} onChange={vi.fn()} />);
         expect(screen.getByText("Domain")).toBeTruthy();
         expect(screen.getByText("Zendesk API access")).toBeTruthy();
+    });
+});
+
+describe("SearchCatalogToolConfig", () => {
+    it("limits the kinds of items and the stock shown", () => {
+        const onChange = vi.fn();
+        render(
+            <SearchCatalogToolConfig
+                name="Catalogue"
+                onNameChange={vi.fn()}
+                description=""
+                onDescriptionChange={vi.fn()}
+                config={{ kinds: [], currency: "XOF", max_results: 5, available_only: true, show_stock: true }}
+                onChange={onChange}
+            />,
+        );
+        fireEvent.click(screen.getByRole("button", { name: "Rooms" }));
+        expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ kinds: ["room"] }));
+        fireEvent.click(screen.getByRole("switch", { name: /Tell how many are left/ }));
+        expect(onChange).toHaveBeenLastCalledWith(expect.objectContaining({ show_stock: false }));
     });
 });

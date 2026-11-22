@@ -1,12 +1,12 @@
 "use client";
 
-import { CalendarCheck, Loader2, MessageSquareText, Ticket } from "lucide-react";
+import { CalendarCheck, Loader2, MessageSquareText, Package, Ticket } from "lucide-react";
 import { useState } from "react";
 
 import { previewSlotsApiV1ActionsCalendarsToolUuidPreviewPost } from "@/client/sdk.gen";
-import type { BookAppointmentConfig, CreateTicketConfig, SendMessageConfig } from "@/client/types.gen";
+import type { BookAppointmentConfig, CreateTicketConfig, SearchCatalogConfig, SendMessageConfig } from "@/client/types.gen";
 import { CredentialSelector } from "@/components/http";
-import { Badge } from "@/components/ui/badge";
+import { Badge, badgeVariants } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -557,6 +557,90 @@ export function CreateTicketToolConfig({
                             onCheckedChange={(v) => set({ allow_lookup: v })}
                         />
                     </div>
+                </div>
+            </CardContent>
+        </Card>
+    );
+}
+
+// ---------------------------------------------------------------- catalog
+
+const CATALOG_KINDS: { value: NonNullable<SearchCatalogConfig["kinds"]>[number]; label: string }[] = [
+    { value: "product", label: "Products" },
+    { value: "property", label: "Properties" },
+    { value: "room", label: "Rooms" },
+    { value: "service", label: "Services" },
+    { value: "vehicle", label: "Vehicles" },
+    { value: "other", label: "Other" },
+];
+
+export function SearchCatalogToolConfig({
+    config,
+    onChange,
+    ...common
+}: CommonProps & { config: SearchCatalogConfig; onChange: (config: SearchCatalogConfig) => void }) {
+    const set = (patch: Partial<SearchCatalogConfig>) => onChange({ ...config, ...patch });
+    const kinds = config.kinds ?? [];
+    return (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Package className="h-5 w-5" />
+                    Catalog
+                </CardTitle>
+                <CardDescription>
+                    The agent searches the company&apos;s catalog (Catalogue page) with the caller&apos;s words and budget, and quotes only what it
+                    finds: name, price, availability, characteristics.{" "}
+                    <a className="underline" href="/catalog">
+                        Open the catalog
+                    </a>
+                </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                <NameAndDescription
+                    {...common}
+                    hint="Say what the catalog holds and when to search it (e.g. « Search our rooms and their prices when the caller asks for availability or a rate »)."
+                />
+                <Field label="Items the agent may offer" hint="None selected: the whole catalog.">
+                    <div className="flex flex-wrap gap-2">
+                        {CATALOG_KINDS.map((k) => {
+                            const on = kinds.includes(k.value);
+                            return (
+                                <button
+                                    key={k.value}
+                                    type="button"
+                                    aria-pressed={on}
+                                    className={badgeVariants({ variant: on ? "default" : "outline" })}
+                                    onClick={() => set({ kinds: on ? kinds.filter((x) => x !== k.value) : [...kinds, k.value] })}
+                                >
+                                    {k.label}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </Field>
+                <div className="grid gap-4 sm:grid-cols-2">
+                    <Field label="Currency of budgets" hint="« moins de 50 000 » is read in this currency.">
+                        <Input className="w-32" maxLength={3} value={config.currency ?? "XOF"} onChange={(e) => set({ currency: e.target.value.toUpperCase() })} />
+                    </Field>
+                    <Field label="Results per search">
+                        <Input
+                            className="w-32"
+                            type="number"
+                            min={1}
+                            max={10}
+                            value={config.max_results ?? 5}
+                            onChange={(e) => set({ max_results: Math.min(10, Math.max(1, Number(e.target.value) || 5)) })}
+                        />
+                    </Field>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Switch id="catalog-available" checked={config.available_only ?? true} onCheckedChange={(v) => set({ available_only: v })} />
+                    <Label htmlFor="catalog-available">Leave out unavailable and sold-out items</Label>
+                </div>
+                <div className="flex items-center gap-3">
+                    <Switch id="catalog-stock" checked={config.show_stock ?? true} onCheckedChange={(v) => set({ show_stock: v })} />
+                    <Label htmlFor="catalog-stock">Tell how many are left (otherwise just « en stock »)</Label>
                 </div>
             </CardContent>
         </Card>

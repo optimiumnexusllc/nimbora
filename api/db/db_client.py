@@ -5,6 +5,7 @@ from api.db.blocked_number_client import BlockedNumberClient
 from api.db.builder_run_client import BuilderRunClient
 from api.db.callback_client import CallbackClient
 from api.db.campaign_client import CampaignClient
+from api.db.catalog_client import CatalogClient
 from api.db.contact_center_client import ContactCenterClient
 from api.db.customer_memory_client import CustomerMemoryClient
 from api.db.embed_token_client import EmbedTokenClient
@@ -83,6 +84,7 @@ class DBClient(
     PbxCallRecordingClient,
     SoftphoneClient,
     PbxSupervisionClient,
+    CatalogClient,
 ):
     """
     Unified database client that combines all specialized database operations.

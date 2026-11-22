@@ -20,6 +20,7 @@ import {
   type LucideIcon,
   Megaphone,
   MessagesSquare,
+  Package,
   Phone,
   Plug,
   Radio,
@@ -167,6 +168,11 @@ const NAV_SECTIONS: SidebarNavSection[] = [
         title: "Clients",
         url: "/customers",
         icon: Users,
+      },
+      {
+        title: "Catalogue",
+        url: "/catalog",
+        icon: Package,
       },
       {
         title: "Conversations",

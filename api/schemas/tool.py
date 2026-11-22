@@ -38,6 +38,7 @@ ToolCategoryValue = Literal[
     "book_appointment",
     "send_message",
     "create_ticket",
+    "search_catalog",
     "native",
     "integration",
     "mcp",
@@ -959,6 +960,36 @@ class CreateTicketToolDefinition(ToolDefinitionBase):
     config: CreateTicketConfig = Field(default_factory=CreateTicketConfig)
 
 
+class SearchCatalogConfig(BaseModel):
+    """Search the company's catalog (Catalogue page) during the call."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    kinds: list[
+        Literal["product", "property", "room", "service", "vehicle", "other"]
+    ] = Field(
+        default_factory=list,
+        description="Only these kinds of items; empty = the whole catalog.",
+    )
+    currency: str = Field(
+        default="XOF",
+        pattern=r"^[A-Z]{3}$",
+        description="Currency the caller's budgets are understood in.",
+    )
+    max_results: int = Field(default=5, ge=1, le=10)
+    available_only: bool = Field(
+        default=True, description="Leave out unavailable and sold-out items by default."
+    )
+    show_stock: bool = Field(
+        default=True, description="Tell how many are left, or just « en stock »."
+    )
+
+
+class SearchCatalogToolDefinition(ToolDefinitionBase):
+    type: Literal["search_catalog"] = Field(description="Tool type.")
+    config: SearchCatalogConfig = Field(default_factory=SearchCatalogConfig)
+
+
 class McpToolDefinition(ToolDefinitionBase):
     """Persisted MCP tool definition."""
 
@@ -976,6 +1007,7 @@ ToolDefinition = Annotated[
     | BookAppointmentToolDefinition
     | SendMessageToolDefinition
     | CreateTicketToolDefinition
+    | SearchCatalogToolDefinition
     | McpToolDefinition,
     Field(discriminator="type"),
 ]

@@ -17,6 +17,7 @@ import type {
     HttpApiToolDefinition,
     RecordingResponseSchema,
     ScheduleCallbackConfig,
+    SearchCatalogConfig,
     SendMessageConfig,
     ToolResponse,
     TransferAgentConfig,
@@ -57,10 +58,11 @@ import { enterpriseApi } from "@/lib/enterpriseApi";
 import {
     BookAppointmentToolConfig,
     CreateTicketToolConfig,
+    SearchCatalogToolConfig,
     SendMessageToolConfig,
 } from "./components/ActionToolConfigs";
 
-const ACTION_TOOL_TYPES = new Set<string>(["book_appointment", "send_message", "create_ticket"]);
+const ACTION_TOOL_TYPES = new Set<string>(["book_appointment", "send_message", "create_ticket", "search_catalog"]);
 
 import {
     type ContextDestinationRuleRow,
@@ -1085,6 +1087,15 @@ const data = await response.json();`;
                         description={description}
                         onDescriptionChange={setDescription}
                         config={actionConfig as SendMessageConfig}
+                        onChange={(c) => setActionConfig(c as Record<string, unknown>)}
+                    />
+                ) : tool.category === "search_catalog" ? (
+                    <SearchCatalogToolConfig
+                        name={name}
+                        onNameChange={setName}
+                        description={description}
+                        onDescriptionChange={setDescription}
+                        config={actionConfig as SearchCatalogConfig}
                         onChange={(c) => setActionConfig(c as Record<string, unknown>)}
                     />
                 ) : tool.category === "create_ticket" ? (
