@@ -104,7 +104,6 @@ def test_public_endpoint_must_be_a_host(calls):
 def test_inline_links_carry_the_media_type(monkeypatch):
     """Through Traefik a .wav came back as application/octet-stream: the signed
     link must ask for the real media type when it is meant to play inline."""
-    from urllib.parse import parse_qs, urlparse
 
     import asyncio
 
@@ -121,7 +120,10 @@ def test_inline_links_carry_the_media_type(monkeypatch):
     fs.bucket_name = "voice-audio"
     fs.client = fs.public_client = _Client()
     asyncio.run(fs.aget_signed_url("recordings/42.wav", force_inline=True))
-    assert captured == {"response-content-disposition": "inline", "response-content-type": "audio/wav"}
+    assert captured == {
+        "response-content-disposition": "inline",
+        "response-content-type": "audio/wav",
+    }
     captured.clear()
     asyncio.run(fs.aget_signed_url("kb/doc.pdf", force_inline=True))
     assert captured == {"response-content-disposition": "inline"}
