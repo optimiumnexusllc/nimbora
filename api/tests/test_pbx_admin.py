@@ -78,10 +78,9 @@ async def test_create_extension_in_one_call(db_session, monkeypatch):
     line = body["lines"][0]
     assert line["context"] == "default"  # the PBX's internal context
     assert line["extensions"] == [{"exten": "1010", "context": "default"}]
-    assert [t["uuid"] for t in line["endpoint_sip"]["templates"]] == [
-        "tpl-webrtc",
-        "tpl-global",
-    ]
+    # The WebRTC template alone: it inherits « global » on the engine, and
+    # listing « global » too made it override the WebSocket transport.
+    assert [t["uuid"] for t in line["endpoint_sip"]["templates"]] == ["tpl-webrtc"]
     creds = result["credentials"]
     assert ["password", creds["sip_password"]] in line["endpoint_sip"][
         "auth_section_options"

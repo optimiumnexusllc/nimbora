@@ -108,13 +108,18 @@ async def _internal_context(client: PbxClient) -> str:
 async def _templates_for(client: PbxClient, line: str) -> list[dict]:
     templates = await client.sip_templates()
     by_label = {(t.get("label") or "").lower(): t for t in templates}
-    chosen = [by_label.get("global")]
     if line == "webrtc":
-        # The browser softphone needs the WebRTC template (DTLS, ICE, opus).
-        chosen.insert(0, by_label.get("webrtc"))
-        if chosen[0] is None:
+        # The browser softphone needs the WebRTC template (DTLS, ICE, opus and
+        # the WebSocket transport). On the engine it already inherits
+        # « global »: listing both made « global » win and forced
+        # transport-udp, so the engine could not ring the browser at all
+        # (« Unsuitable transport selected », lab step 14).
+        webrtc = by_label.get("webrtc")
+        if webrtc is None:
             raise PbxRouteError("Modèle SIP « webrtc » absent du PBX", 409)
-    return [{"uuid": t["uuid"]} for t in chosen if t]
+        return [{"uuid": webrtc["uuid"]}]
+    glob = by_label.get("global")
+    return [{"uuid": glob["uuid"]}] if glob else []
 
 
 def _user_body(
