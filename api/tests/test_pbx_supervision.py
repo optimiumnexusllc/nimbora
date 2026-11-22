@@ -460,3 +460,33 @@ def test_running_clocks_alone_are_not_a_change():
     assert stream._comparable(view) == stream._comparable(later)
     assert stream._comparable(view) != stream._comparable(changed)
     assert stream._comparable(None) == "null"
+
+
+async def test_waiting_callers_on_the_shared_pbx_go_through_the_operator(
+    db_session, monkeypatch
+):
+    """Lab step 15: wazo-amid refuses every action to a company's service
+    account (master tenant only), so « Support test » stayed live: false. On the
+    shared PBX the operator's account asks it, about the company's queues only."""
+    from api import constants
+
+    fake = FakePbx()
+    fake.amid_master_only = True
+    fake.operator_credentials = ("nimbora-provisioning", "operator-secret")
+    _, org = await _setup(db_session, monkeypatch, fake)
+
+    # Dedicated PBX: the company's own account is refused, the rest still works.
+    live = await supervision.live(org.id, use_cache=False)
+    assert live["queues"][0]["live"] is False and "waiting" in live["errors"]
+
+    # Shared PBX (the operator's): waiting callers are visible.
+    monkeypatch.setattr(constants, "PBX_PROVISIONING_URL", BASE)
+    monkeypatch.setattr(constants, "PBX_PROVISIONING_USERNAME", "nimbora-provisioning")
+    monkeypatch.setattr(constants, "PBX_PROVISIONING_PASSWORD", "operator-secret")
+    live = await supervision.live(org.id, use_cache=False)
+    queue = live["queues"][0]
+    assert queue["live"] is True and queue["waiting"] == 1
+    assert live["errors"] == {}
+    asked = [r for r in fake.requests if r[1].endswith("/action/QueueStatus")]
+    # The operator's token (no company tenant header) asked about one queue.
+    assert asked[-1][2]["x-auth-token"] in fake.master_tokens

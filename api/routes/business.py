@@ -1,6 +1,9 @@
 """Company card (business profile) and industry templates."""
 
+import asyncio
+
 from fastapi import APIRouter, Depends, HTTPException
+from loguru import logger
 from pydantic import BaseModel, Field
 
 from api.db.models import UserModel
@@ -88,7 +91,32 @@ async def read_profile(user: UserModel = Depends(get_user)):
 
 @router.put("/profile", response_model=BusinessProfile)
 async def update_profile(profile: BusinessProfile, user: UserModel = Depends(get_user)):
-    return await save_business_profile(_org(user), profile)
+    organization_id = _org(user)
+    before = await get_business_profile(organization_id)
+    saved = await save_business_profile(organization_id, profile)
+    await _refresh_pbx_hours(organization_id, before, saved)
+    return saved
+
+
+async def _refresh_pbx_hours(organization_id: int, before, after) -> None:
+    """New hours reach the PBX schedules already in place (numbers and
+    outbound routes) without re-applying them by hand. Never blocks the save:
+    a PBX that does not answer keeps its previous hours until the next change
+    or a manual « Appliquer »."""
+    from api.services.pbx.admin import refresh_schedules, schedule_from_profile
+
+    if schedule_from_profile(before) == schedule_from_profile(after):
+        return
+    try:
+        refreshed = await asyncio.wait_for(refresh_schedules(organization_id), 20)
+        if refreshed:
+            logger.info(
+                f"[PBX org={organization_id}] hours refreshed: {', '.join(refreshed)}"
+            )
+    except Exception as error:  # noqa: BLE001 - the card is saved regardless
+        logger.warning(
+            f"[PBX org={organization_id}] hours not refreshed on the PBX: {error}"
+        )
 
 
 @router.post("/profile/preview", response_model=ProfilePreview)

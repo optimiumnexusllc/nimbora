@@ -441,7 +441,8 @@ async def set_outbound_route_hours(
     organization_id: int, outcall_id: int, opening_hours_only: bool, **client_kwargs
 ) -> dict[str, Any]:
     """Outgoing calls through this route only during the opening hours (or
-    at any time). Re-run it after changing the hours to update them."""
+    at any time). Later changes of hours in « Mon entreprise » reach the
+    schedule on their own (``admin.refresh_schedules``)."""
     connection = await _connection(organization_id)
     async with client_for(connection, **client_kwargs) as client:
         outcall = next(
