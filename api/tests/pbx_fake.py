@@ -286,7 +286,7 @@ class FakePbx:
         self.callpickups: list[dict] = []
         self.parkinglots: list[dict] = []
         self.pagings: list[dict] = []
-        self.parked: list[dict] = []  # AMI ParkedCall events, every tenant
+        self.parked: list[dict] = []  # calld parked calls, keyed by lot_id
         self.participants: dict[int, list[dict]] = {}
         self.participant_actions: list[tuple[int, str, str]] = []
         self.user_settings: dict[str, dict] = {}
@@ -1481,15 +1481,25 @@ class FakePbx:
             parts = path.split("/")
             self.agent_actions.append((parts[-2], parts[-1], body or {}))
             return httpx.Response(204)
-        if path == "/api/amid/1.0/action/ParkedCalls" and method == "POST":
-            # Like the AMI: every tenant's parked calls unless a lot is named.
-            lot = body.get("ParkingLot")
-            events = [{"Response": "Success", "Message": "Parked calls will follow"}]
-            events += [
-                p for p in self.parked if lot is None or p.get("Parkinglot") == lot
-            ]
-            events.append({"Event": "ParkedCallsComplete", "Total": len(events) - 1})
-            return httpx.Response(200, json=events)
+        m = re.fullmatch(r"/api/calld/1.0/parkinglots/(\d+)", path)
+        if m and method == "GET":
+            # wazo-calld: the lot with its waiting calls, this tenant only.
+            lot = next(
+                (x for x in self.parkinglots if x["id"] == int(m.group(1))), None
+            )
+            if lot is None:
+                return httpx.Response(404, json={"message": "No such parking lot"})
+            calls = [p for p in self.parked if p.get("lot_id") == lot["id"]]
+            return httpx.Response(
+                200,
+                json={
+                    "id": lot["id"],
+                    "name": lot.get("name"),
+                    "slots_start": lot.get("slots_start"),
+                    "slots_end": lot.get("slots_end"),
+                    "calls": calls,
+                },
+            )
         if path == "/api/amid/1.0/action/QueueStatus" and method == "POST":
             name = (body or {}).get("Queue")
             known = {q["name"] for q in self.queues}
