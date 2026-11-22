@@ -36,3 +36,4 @@ docs/superpowers/
 deploy/enterprise/.env
 deploy/enterprise/generated/
 deploy/enterprise/asterisk/pjsip_trunks.conf
+dump.rdb

@@ -11,6 +11,8 @@ export type SoftphoneConfig = {
     account: {
         display_name: string;
         extension: string | null;
+        /** SIP user of the registration (the engine's endpoint name); defaults to username. */
+        sip_identity?: string;
         username: string;
         password: string;
         wss_url: string;

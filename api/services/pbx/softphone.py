@@ -104,6 +104,10 @@ async def sip_account(client: PbxClient, connection, user_uuid: str) -> dict[str
             continue
         extensions = line.get("extensions") or []
         return {
+            # The engine identifies the endpoint by the SIP user of the request
+            # (its name, `identify_by = username`); the auth username only
+            # answers the challenge. Both differ on NIMBORA-managed lines.
+            "sip_identity": endpoint.get("name") or auth["username"],
             "username": auth["username"],
             "password": auth["password"],
             "extension": (extensions[0].get("exten") if extensions else None)
@@ -173,6 +177,7 @@ async def device_config(device, **client_kwargs) -> dict[str, Any]:
         "account": {
             "display_name": account["display_name"],
             "extension": account["extension"],
+            "sip_identity": account["sip_identity"],
             "username": account["username"],
             "password": account["password"],
             **_transport(connection),

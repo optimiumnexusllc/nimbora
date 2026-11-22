@@ -59,6 +59,8 @@ def test_codes_are_readable_and_tokens_prefixed():
 
 async def test_pairing_and_live_configuration(db_session, monkeypatch):
     fake = FakePbx()
+    # Managed lines: the endpoint name (SIP identity) differs from the auth username.
+    fake.user_endpoints["sip-u1"]["name"] = "k0ff1y40"
     user, org = await _setup(db_session, monkeypatch, fake)
     activation = await softphone.create_activation(org.id, "u-1", created_by=user.id)
     assert (
@@ -79,6 +81,7 @@ async def test_pairing_and_live_configuration(db_session, monkeypatch):
     assert config["account"] == {
         "display_name": "Koffi Yao",
         "extension": "1001",
+        "sip_identity": "k0ff1y40",
         "username": "koffi1001",
         "password": "Sip-Secret-1001",
         "wss_url": "wss://pbx.ivoire-immo.ci/api/asterisk/ws",
