@@ -9,7 +9,7 @@ import { Settings } from "./components/Settings";
 import { ApiError, type Directory, forget, type HandoffCard, loadSaved, type RecentCall, save, SoftphoneApi, type SoftphoneConfig, type Status } from "./lib/api";
 import { parsePairingLink, type PairingLink } from "./lib/format";
 import { notify, onPairingLink, Ringtone } from "./lib/native";
-import { Phone, type Snapshot } from "./lib/phone";
+import { AUTH_REFUSED, Phone, type Snapshot } from "./lib/phone";
 
 type Tab = "dial" | "recents" | "contacts" | "settings";
 type Session = { api: SoftphoneApi; config: SoftphoneConfig; deviceName: string };
@@ -93,6 +93,24 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
             phoneRef.current = null;
         };
     }, [session]);
+
+    // The SIP secret was changed on the PBX (« Régénérer le mot de passe SIP »):
+    // the refused registration fetches the account again, once, and the phone
+    // restarts with the new secret. Never in the middle of a call.
+    const refetchedAfterRefusal = useRef(false);
+    useEffect(() => {
+        if (snapshot.registration === "registered") refetchedAfterRefusal.current = false;
+        if (!session || snapshot.error !== AUTH_REFUSED || snapshot.call || refetchedAfterRefusal.current) return;
+        refetchedAfterRefusal.current = true;
+        void session.api
+            .config()
+            .then((config) => {
+                if (config.account.password !== session.config.account.password || config.account.sip_identity !== session.config.account.sip_identity) {
+                    setSession({ ...session, config });
+                }
+            })
+            .catch(() => undefined);
+    }, [session, snapshot.registration, snapshot.error, snapshot.call]);
 
     useEffect(() => {
         if (snapshot.call?.status === "ringing") ringtone.start();

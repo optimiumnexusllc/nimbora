@@ -110,6 +110,7 @@
     "call-logd.cdr.*.recordings.*.media.read",
     "call-logd.cdr.*.recordings.*.media.delete",
     "confd.endpoints.sip.*.read",
+    "confd.endpoints.sip.*.update",
     "calld.calls.create",
     "amid.action.QueueStatus.create",
     "call-logd.queues.statistics.read",

@@ -1,5 +1,11 @@
 # NIMBORA Softphone — journal des versions
 
+## 1.2.1 — 22 novembre 2026
+
+- Après « Régénérer le mot de passe SIP » dans la console, l'application relit son compte dès
+  que le PBX refuse l'ancien secret et redémarre la ligne avec le nouveau : aucun rejumelage.
+  Une seule nouvelle lecture par refus, jamais pendant un appel.
+
 ## 1.2.0 — 22 novembre 2026
 
 **Qui est disponible, et tous vos contacts au même endroit.**

@@ -1,6 +1,6 @@
 "use client";
 
-import { FileUp, KeyRound, PhoneForwarded, Plus, Smartphone, Trash2, UserPlus } from "lucide-react";
+import { FileUp, KeyRound, KeySquare, PhoneForwarded, Plus, Smartphone, Trash2, UserPlus } from "lucide-react";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
 
@@ -9,9 +9,10 @@ import {
     deleteExtensionApiV1PbxExtensionsUserUuidDelete,
     extensionPasswordResetApiV1PbxExtensionsPasswordResetPost,
     previewImportApiV1PbxExtensionsImportPreviewPost,
+    rotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPost,
     runImportApiV1PbxExtensionsImportPost,
 } from "@/client/sdk.gen";
-import type { ExtensionResponse, ImportRow } from "@/client/types.gen";
+import type { ExtensionResponse, ImportRow, SipPasswordResponse } from "@/client/types.gen";
 import { PageSection } from "@/components/layout/PageLayout";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -33,6 +34,7 @@ import { detailFromError } from "@/lib/apiError";
 
 import { CredentialsDialog } from "./CredentialsDialog";
 import { PresenceBadge, useTeamPresence } from "./Presence";
+import { SipPasswordDialog } from "./SipPasswordDialog";
 import type { PbxUser } from "./types";
 
 const TEMPLATE_CSV = "prenom;nom;poste;email;ligne;messagerie;agent\nAwa;Diallo;1010;awa@exemple.ci;navigateur;oui;oui\n";
@@ -63,6 +65,7 @@ export function ExtensionsTab({
 }) {
     const presence = useTeamPresence();
     const [creating, setCreating] = useState(false);
+    const [sipSecret, setSipSecret] = useState<{ name: string; result: SipPasswordResponse } | null>(null);
     const [form, setForm] = useState<Form>(EMPTY);
     const [busy, setBusy] = useState(false);
     const [credentials, setCredentials] = useState<{ items: ExtensionResponse[]; csv?: string }>({ items: [] });
@@ -185,6 +188,19 @@ export function ExtensionsTab({
                                             <KeyRound /> Mot de passe
                                         </Button>
                                     )}
+                                    <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        aria-label={`Nouveau mot de passe SIP pour ${u.name}`}
+                                        onClick={async () => {
+                                            if (!window.confirm(`Générer un nouveau mot de passe SIP pour ${u.name} ? L'ancien cesse de fonctionner : un téléphone configuré à la main devra recevoir le nouveau.`)) return;
+                                            const response = await rotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPost({ path: { user_uuid: u.uuid } });
+                                            if (response.error) toast.error(detailFromError(response.error, "Changement impossible"));
+                                            else setSipSecret({ name: u.name, result: response.data as SipPasswordResponse });
+                                        }}
+                                    >
+                                        <KeySquare /> SIP
+                                    </Button>
                                     <Button
                                         variant="ghost"
                                         size="sm"
@@ -358,6 +374,7 @@ export function ExtensionsTab({
             </Dialog>
 
             <CredentialsDialog items={credentials.items} csv={credentials.csv} onClose={() => setCredentials({ items: [] })} />
+            <SipPasswordDialog result={sipSecret?.result ?? null} name={sipSecret?.name ?? ""} onClose={() => setSipSecret(null)} />
         </PageSection>
     );
 }

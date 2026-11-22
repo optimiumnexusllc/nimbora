@@ -517,6 +517,22 @@ class ExtensionCredentials(BaseModel):
     voicemail_pin: str | None
 
 
+class SipLineCredentials(BaseModel):
+    extension: str | None
+    sip_identity: str | None = Field(
+        description="Endpoint name: the SIP user a phone registers as"
+    )
+    sip_username: str | None = Field(description="Authentication user name")
+    sip_password: str
+
+
+class SipPasswordResponse(BaseModel):
+    uuid: str
+    lines: list[SipLineCredentials] = Field(
+        description="Shown once: the PBX keeps the secret, NIMBORA does not store it."
+    )
+
+
 class ExtensionResponse(BaseModel):
     uuid: str
     name: str
@@ -591,6 +607,15 @@ async def create_extension(
 async def delete_extension(user_uuid: str, user: UserModel = Depends(get_user)):
     await _call(admin.delete_extension(_org(user), user_uuid))
     return Response(status_code=204)
+
+
+@router.post("/extensions/{user_uuid}/sip-password", response_model=SipPasswordResponse)
+async def rotate_extension_sip_password(
+    user_uuid: str, user: UserModel = Depends(get_user)
+):
+    """A new SIP secret for the extension's lines, shown once. NIMBORA
+    Softphone picks it up by itself; phones configured by hand need it."""
+    return await _call(admin.rotate_sip_password(_org(user), user_uuid))
 
 
 @router.post("/extensions/password-reset", status_code=204)

@@ -101,6 +101,9 @@ type RTCSession = import("jssip/lib/RTCSession").RTCSession;
 
 type Listener = (snapshot: Snapshot) => void;
 
+/** Registration refused for bad credentials (the SIP secret was rotated, say). */
+export const AUTH_REFUSED = "Identifiants SIP refusés par le PBX";
+
 export class Phone {
     private ua: UA | null = null;
     private session: RTCSession | null = null;
@@ -163,7 +166,7 @@ export class Phone {
         ua.on("registrationFailed", (e: { cause?: string }) =>
             this.emit({
                 registration: "failed",
-                error: e.cause === "Authentication Error" ? "Identifiants SIP refusés par le PBX" : `Enregistrement impossible (${e.cause ?? "erreur"})`,
+                error: e.cause === "Authentication Error" ? AUTH_REFUSED : `Enregistrement impossible (${e.cause ?? "erreur"})`,
             }),
         );
         ua.on("newRTCSession", (data: { session: RTCSession; originator: string }) => {

@@ -143,6 +143,29 @@ describe("App", () => {
         expect(api.handoffAnswered).toHaveBeenCalledWith("card-7");
     });
 
+    it("restarts with the new SIP secret when the PBX refuses the old one", async () => {
+        localStorage.setItem("nimbora-softphone", JSON.stringify({ server: "https://api.example", token: "nsp_old", deviceName: "PC" }));
+        const api = fakeApi();
+        render(<App makeApi={() => api} />);
+        expect(await screen.findByText("Koffi Yao")).toBeTruthy();
+        expect(phones.created).toBe(1);
+        (api.config as ReturnType<typeof vi.fn>).mockResolvedValue({ ...config, account: { ...config.account, password: "rotated" } });
+        await act(async () => {
+            phones.last!.emit({ registration: "failed", error: "Identifiants SIP refusés par le PBX", call: null });
+        });
+        await vi.waitFor(() => expect(phones.created).toBe(2));
+        expect(api.config).toHaveBeenCalledTimes(2);
+        // Refused again with the same secret: no loop.
+        await act(async () => {
+            phones.last!.emit({ registration: "failed", error: "Identifiants SIP refusés par le PBX", call: null });
+        });
+        await act(async () => {
+            phones.last!.emit({ registration: "failed", error: "Identifiants SIP refusés par le PBX", call: null });
+        });
+        expect(api.config).toHaveBeenCalledTimes(3);
+        expect(phones.created).toBe(2);
+    });
+
     it("starts from a saved pairing and forgets a revoked device", async () => {
         localStorage.setItem("nimbora-softphone", JSON.stringify({ server: "https://api.example", token: "nsp_old", deviceName: "PC" }));
         const api = fakeApi();

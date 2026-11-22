@@ -235,6 +235,7 @@ class FakePbx:
         # SIP accounts of the seeded extensions: Koffi has a browser (WebRTC)
         # line, Aya a classic SIP desk phone.
         self.endpoints_sip: dict[str, dict] = {}  # trunks
+        self.endpoint_updates: list[str] = []
         self.user_endpoints: dict[str, dict] = {
             "sip-u1": {
                 "uuid": "sip-u1",
@@ -643,6 +644,8 @@ class FakePbx:
                 sip_uuid = str(uuid.uuid4())
                 self.user_endpoints[sip_uuid] = {
                     "uuid": sip_uuid,
+                    # The engine names the endpoint itself (random, ≠ auth user).
+                    "name": f"ep{sip_uuid.replace('-', '')[:8]}",
                     **(line.get("endpoint_sip") or {}),
                 }
                 created_lines.append(
@@ -953,6 +956,30 @@ class FakePbx:
             if endpoint is None:
                 return httpx.Response(404, json=["Resource Not Found - EndpointSIP"])
             return httpx.Response(200, json=endpoint)
+        if m and method == "PUT":
+            # Like the engine: the body replaces the endpoint's editable fields.
+            store = (
+                self.endpoints_sip
+                if m.group(1) in self.endpoints_sip
+                else self.user_endpoints
+            )
+            current = store.get(m.group(1))
+            if current is None:
+                return httpx.Response(404, json=["Resource Not Found - EndpointSIP"])
+            if "name" not in body:
+                return httpx.Response(400, json=["Input Error - name: Missing data"])
+            templates = {t["uuid"]: t for t in self.templates} | {
+                t["uuid"]: t for t in current.get("templates") or []
+            }
+            store[m.group(1)] = {
+                "uuid": current["uuid"],
+                **body,
+                "templates": [
+                    templates.get(t["uuid"], t) for t in body.get("templates") or []
+                ],
+            }
+            self.endpoint_updates.append(m.group(1))
+            return httpx.Response(204)
         if m and method == "DELETE":
             if self.endpoints_sip.pop(m.group(1), None) is None:
                 return httpx.Response(404, json=["Resource Not Found - EndpointSIP"])

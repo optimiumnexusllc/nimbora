@@ -80,7 +80,7 @@ The extension needs a **browser (WebRTC) line**. Extensions created with **Ligne
 
 - **A code works once.** It expires after 15 minutes. After 10 wrong attempts from one address in 10 minutes, that address is blocked for 10 minutes.
 - **Device token**: pairing returns a token that the app keeps on the device. The platform stores only its SHA-256 hash.
-- **SIP secret**: neither the platform nor the device stores it. The app reads it from the PBX each time it starts, over HTTPS with its device token, and keeps it in memory. When an administrator changes the line's secret on the PBX, the app uses the new one on its next start.
+- **SIP secret**: neither the platform nor the device stores it. The app reads it from the PBX each time it starts, over HTTPS with its device token, and keeps it in memory. When an administrator changes the line's secret (**Postes → SIP** in the console, or on the PBX), the app reads its account again as soon as the PBX refuses the old secret, and restarts the line with the new one, without pairing again. It does so once per refusal and never during a call (version 1.2.1).
 - **Revoking**: **Postes → Softphones** lists the paired devices with their platform, version and last connection. **Révoquer** cuts a device off at once. **Déconnecter cet appareil** in the app does the same. Deleting an extension revokes all its devices.
 - STUN and TURN servers come from the platform's configuration. The TURN credentials expire.
 

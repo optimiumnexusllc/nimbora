@@ -10,6 +10,7 @@ const mocks = vi.hoisted(() => ({
     preview: vi.fn(),
     run: vi.fn(),
     presence: vi.fn(),
+    rotate: vi.fn(),
     toast: { success: vi.fn(), error: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
@@ -20,6 +21,7 @@ vi.mock("@/client/sdk.gen", () => ({
     previewImportApiV1PbxExtensionsImportPreviewPost: mocks.preview,
     runImportApiV1PbxExtensionsImportPost: mocks.run,
     readPresenceApiV1PbxPresenceGet: mocks.presence,
+    rotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPost: mocks.rotate,
 }));
 
 const created = {
@@ -108,5 +110,31 @@ describe("extensions tab", () => {
         expect(mocks.run.mock.calls[0][0].body.content).toContain("Koffi;Yao;1001");
         expect(mocks.toast.error).toHaveBeenCalledWith("1 ligne(s) non importée(s) : corrigez-les et réimportez-les.");
         expect(await screen.findByTestId("credentials-row")).toBeTruthy();
+    });
+});
+
+describe("SIP password", () => {
+    it("asks first, then shows the new secret once", async () => {
+        mocks.rotate.mockResolvedValue({
+            data: { uuid: "u-1", lines: [{ extension: "1001", sip_identity: "koffi1001", sip_username: "koffi1001", sip_password: "N3w-Secret-abcdefghij" }] },
+        });
+        render(<ExtensionsTab users={users} onChanged={vi.fn()} />);
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: "Nouveau mot de passe SIP pour Koffi Yao" }));
+        });
+        expect(window.confirm).toHaveBeenCalled();
+        expect(mocks.rotate).toHaveBeenCalledWith({ path: { user_uuid: "u-1" } });
+        const shown = await screen.findByTestId("sip-password");
+        expect(shown.textContent).toContain("N3w-Secret-abcdefghij");
+        expect(shown.textContent).toContain("koffi1001");
+    });
+
+    it("does nothing when the admin cancels", async () => {
+        vi.spyOn(window, "confirm").mockReturnValue(false);
+        render(<ExtensionsTab users={users} onChanged={vi.fn()} />);
+        await act(async () => {
+            fireEvent.click(screen.getByRole("button", { name: "Nouveau mot de passe SIP pour Koffi Yao" }));
+        });
+        expect(mocks.rotate).not.toHaveBeenCalled();
     });
 });

@@ -8056,6 +8056,48 @@ export type SignupRequest = {
 };
 
 /**
+ * SipLineCredentials
+ */
+export type SipLineCredentials = {
+    /**
+     * Extension
+     */
+    extension: string | null;
+    /**
+     * Sip Identity
+     *
+     * Endpoint name: the SIP user a phone registers as
+     */
+    sip_identity: string | null;
+    /**
+     * Sip Username
+     *
+     * Authentication user name
+     */
+    sip_username: string | null;
+    /**
+     * Sip Password
+     */
+    sip_password: string;
+};
+
+/**
+ * SipPasswordResponse
+ */
+export type SipPasswordResponse = {
+    /**
+     * Uuid
+     */
+    uuid: string;
+    /**
+     * Lines
+     *
+     * Shown once: the PBX keeps the secret, NIMBORA does not store it.
+     */
+    lines: Array<SipLineCredentials>;
+};
+
+/**
  * SkillInfo
  */
 export type SkillInfo = {
@@ -24077,6 +24119,50 @@ export type DeleteExtensionApiV1PbxExtensionsUserUuidDeleteResponses = {
 };
 
 export type DeleteExtensionApiV1PbxExtensionsUserUuidDeleteResponse = DeleteExtensionApiV1PbxExtensionsUserUuidDeleteResponses[keyof DeleteExtensionApiV1PbxExtensionsUserUuidDeleteResponses];
+
+export type RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * User Uuid
+         */
+        user_uuid: string;
+    };
+    query?: never;
+    url: '/api/v1/pbx/extensions/{user_uuid}/sip-password';
+};
+
+export type RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostError = RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostErrors[keyof RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostErrors];
+
+export type RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: SipPasswordResponse;
+};
+
+export type RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostResponse = RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostResponses[keyof RotateExtensionSipPasswordApiV1PbxExtensionsUserUuidSipPasswordPostResponses];
 
 export type ExtensionPasswordResetApiV1PbxExtensionsPasswordResetPostData = {
     body: ApiRoutesPbxLoginRequest;
