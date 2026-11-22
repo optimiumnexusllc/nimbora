@@ -805,6 +805,32 @@ privilèges, ni redéploiement ni tests en conteneur possibles.
 numéro ; test `test_the_advisor_is_the_internal_extension_not_the_public_number` avec la forme
 du CDR relevée au labo. Les enregistrements déjà importés gardent leur ancienne valeur.
 
+### 17 bis — n° 27 et non-réimportation revalidés (`098737d`) (22 novembre 2026)
+
+Déployé par l'opérateur (images API et UI reconstruites depuis `098737d`, conteneurs recréés,
+`alembic current` = `b1c2d3e4f5a6`). Vérification sans privilèges que la nouvelle API répond
+bien : son `openapi.json` contient la nouvelle description de `DELETE /pbx/recordings/{id}`
+(« never comes back »). Un premier passage, fait alors que l'ancienne image tournait encore,
+avait montré l'ancien comportement (réimportation, source = numéro public) : il est sans objet.
+
+| Étape | Résultat |
+|---|---|
+| (1) Enregistrements 7, 8, 9, 10 (importés par l'ancienne image) supprimés depuis la console | ✅ confirmation « Supprimer définitivement cet enregistrement, **ici et sur le PBX** ? », toast « Enregistrement supprimé » ; deux « Synchroniser » : `seen 5, imported 0`, **aucun ne revient** |
+| (2) Nouvel appel sortant Softphone web 1004 → opérateur (37 s), « Synchroniser » | ✅ enregistrement 12 : **source `1004`** (plus le numéro public), destination `0033…`, client `+33…` |
+| (3) Appel entrant client → 1003 passé par l'opérateur (29 s) | ✅ enregistrement 11 : destination (conseiller) **`1003`** ; ❌ **sans son nom** → 🐛 n° 28 |
+| (4) PBX → Enregistrements → « Évaluer » sur l'appel sortant | ✅ fiche **« 1004 »** ; validation à l'écoute (mêmes réponses qu'à l'étape 17) → 77,8 / 100 ; page Qualité : Conseillers « 1004 », 1 appel validé |
+| (5) Remise en état | ✅ enregistrements 11 et 12 supprimés depuis la console, deux synchronisations sans retour (`seen 6, imported 0`), aucune évaluation restante, politique d'enregistrement remise à son état initial (4 postes modifiés) |
+
+### 🐛 n° 28 — le nom du conseiller disparaît quand il contient son numéro (corrigé sur la branche)
+
+Le filtre du n° 27 (« un nom qui n'est que le numéro ne dit rien ») comparait les **chiffres**
+du nom avec l'extension : « Test 1003 (SIP, répondeur automatique) » et « Poste 1004
+(navigateur, test présence) » perdaient donc leur nom. Correction : seul un nom qui n'est
+qu'un numéro, quelle que soit son écriture (« 2250700000001 », « +225 07 00 00 00 01 »,
+« 1004 »), est ignoré ; test unitaire complété. Vérifié sur les fonctions pures en dehors de la
+suite (pytest en conteneur impossible sans privilèges) : le nom des postes 1003 et 1004 est
+conservé, les numéros nus sont écartés. À redéployer pour le voir sur le laboratoire.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
