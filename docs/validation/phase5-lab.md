@@ -650,6 +650,7 @@ SIP avec `pjsip set logger on`).
 | Preuve | endpoint de 1004 remis sur le seul modèle `webrtc` (qui hérite déjà de `global`) → `transport-wss`, et 1004 sonne |
 | Correction (branche de la PR #10) | `admin.py::_templates_for` : ligne navigateur → `[webrtc]` seul, ligne SIP → `[global]` ; test `test_pbx_admin.py` ajusté. API reconstruite et déployée : un poste navigateur de contrôle (1005, supprimé ensuite) sort avec `transport-wss` |
 | Réparation du laboratoire | endpoints de 1001 et 1004 repassés sur `[webrtc]` (confd, compte de service). **Les installations existantes ont le même défaut sur toutes leurs lignes navigateur** : prévoir une réparation (à l'approvisionnement ou au démarrage de l'API) |
+| → Corrigé (`2808b03`, même branche) | chaque Softphone répare sa ligne en lisant son compte ; **Postes → Softphones → Vérifier les lignes navigateur** répare toutes les lignes de l'entreprise (`POST /pbx/maintenance/webrtc-lines`, idempotent). À revérifier : remettre 1004 sur `[webrtc, global]`, ouvrir le Softphone → `[webrtc]` seul et 1004 sonne |
 
 ### 1-4. Consultation, bascules, transfert assisté
 
@@ -693,6 +694,75 @@ erreur de page sur les deux derniers passages.
 Observation mineure : après le transfert « 1002 sonne encore », le moteur retransmet pendant
 ~30 s un `200 OK` (ré-INVITE d'attente dont l'ACK n'est pas parti avant la fin du dialogue) ;
 sans effet sur les appels.
+
+### 14 bis — réparation automatique des lignes navigateur (`2808b03`) (22 novembre 2026)
+
+Déployé : pointe `5d69d8c` de `feat/lot-b-attended-transfer`, images `nimbora-pr10` reconstruites
+(API et UI), kit lab `--only nimbora --no-build`, `/api/v1/health` 200. État de référence relevé
+avant les essais pour les quatre postes (nom d'endpoint, modèles confd, transport vu par
+Asterisk, utilisateur d'authentification, empreinte SHA-256 du secret).
+
+| Étape | Résultat |
+|---|---|
+| (2) Endpoint de 1004 remis à la main sur `[webrtc, global]` (confd, compte de service) | ✅ confd relit `['webrtc', 'global']`, secret et utilisateur inchangés |
+| (2) Softphone web 1004 ouvert (il relit `/softphone/config`) | ✅ journal de l'API : `Softphone: browser line v0sleb29 repaired (webrtc template alone)` ; confd : modèles `['webrtc']`, Asterisk : `transport-wss` |
+| (2) Appel 1002 → 1004 | ✅ 1004 sonne (canal `Ringing`) et décroche, pont établi |
+| (3) Endpoint de 1001 remis sur `[webrtc, global]`, puis Console → Postes → Softphones (bloc « Connexion des softphones au PBX ») → **Vérifier les lignes navigateur** | ✅ toast « **Lignes navigateur réparées : 1001** » ; journal : `[PBX org=1] browser lines repaired: 1001` ; `POST /pbx/maintenance/webrtc-lines` 200 |
+| (3) Second clic | ✅ « **4 lignes vérifiées : rien à réparer** » |
+| (3) Lignes SIP classiques 1002 et 1003 | ✅ inchangées : modèles `['global']`, `transport-udp` |
+| (4) Avant/après pour les quatre postes | ✅ **aucune différence** : noms d'endpoint, modèles (1001 et 1004 `['webrtc']`), transports, utilisateurs d'authentification et empreintes des secrets identiques à l'état de référence |
+
+Note de sécurité : un relevé intermédiaire de cette étape (commande de diagnostic sur le moteur)
+a affiché en clair les secrets SIP des quatre postes de test dans la sortie d'outil de la session
+d'assistance ; rien dans le dépôt ni dans ce journal. Ils peuvent être régénérés depuis la
+console (Postes → SIP) ; pour 1002 et 1003, les clients `baresip` du laboratoire sont alors à
+reconfigurer.
+
+## Rapport d'étape 15 — PR #11 « interception, parcage, interphone, horaires sortants » (Softphone 1.4.0) (22 novembre 2026)
+
+Déployé : `feat/lot-b-pickup-park-intercom` à `4ba3ae5`, **fusionnée localement avec la pointe de
+`feat/lot-b-attended-transfer` (`6f26753`)** : la PR avait été coupée avant la réparation
+automatique du bug n° 23 et le rapport 14 bis (conflits sur les fichiers générés — client UI et
+`openapi.json` — résolus par union). Images `nimbora-pr11` (API, UI), kit lab `--only nimbora
+--no-build`, aucune migration. Softphone web **1.4.0** construit depuis la branche (42 tests
+Vitest). Comptes de service relancés : dédié **130 ACL** (politique de la PR), opérateur 143,
+`POST /pbx/provision` org2 → 200. Sans fusion.
+
+Trois parties comme à l'étape 14 : client = `nimbora-operator` (numéro public pointé selon le
+scénario, remis sur 1003 ensuite), employé = 1004 (Softphone web piloté), collègue = 1002 (baresip).
+
+| Scénario | Résultat |
+|---|---|
+| **1. Interception** — groupe « Accueil » (1002 + 1004) créé via l'API (`*8`) ; appel client → 1002 (sonne) ; sur 1004 « Intercepter » (`*8`) | ✅ 1004 prend l'appel : pont client ↔ 1004, RTP dans les deux sens, 1002 cesse de sonner |
+| **2. Parcage** — parking « Accueil » 700, places 701-720, délai 120 s ; pendant un appel client sur 1004 : Transférer → « Parquer · Accueil » | ✅ le client attend en musique (« Started music on hold » sur son canal), pont `parkinglot-1` de type *parking* ; Asterisk : `parking show` → **`parkinglot-1`**, extension 700, places 701-720, contexte interne du tenant ; reprise en composant la place depuis 1002 (`ParkedCall`, pont client ↔ 1002, musique arrêtée) |
+| 2. Appel parqué visible dans NIMBORA | ❌ au premier passage : `GET /pbx/parked-calls` vide, Softphone et console vides → 🐛 n° 25 ; ✅ après correctif : API `{lot: Accueil, slot: 70x, number: 0123456789, parked_by: 1004, waiting_seconds}`, Softphone **Récents → Appels parqués** « Place 704 · Accueil · attend depuis 0:08 · Reprendre », console **PBX → Équipe** « Appels parqués — Place 705 — 0123456789 · 0 min 9 s · Accueil » |
+| **3. Interphone** — « Directeur », numéro 1 → 1004 ; depuis 1002 composer `*111` | ❌ au premier passage : le PBX raccroche (« Sorry you are not authorize to page this group : Unable to find paging caller entry ») → 🐛 n° 26 ; ✅ après correctif : le Softphone 1004 décroche seul (« Appel entrant » puis « **Interphone** » en moins d'une seconde), pont `softmix` (ConfBridge) 1002 ↔ 1004 avec RTP dans les deux sens |
+| 3. En-têtes de l'INVITE reçu par le Softphone (trace JsSIP, identifiants masqués) | `Alert-Info: info=alert-autoanswer` · `Alert-Info: intercom` · `Alert-Info: ring-answer` · `Alert-Info: xivo-autoanswer` · `Alert-Info: <http://wazo.community>;info=alert-autoanswer;delay=0` · **`Call-Info: ;answer-after=0`** · `Answer-Mode: Auto` · `From: "Poste 1002 (SIP, Linphone)"` · `User-Agent: NIMBORA-Voice` |
+| **4. Horaires sortants** — interrupteur « Heures d'ouverture » sur la route « Sortie test (lab) » (`PUT /outbound-routes/1/hours`), heures de Mon entreprise mises temporairement à lundi 09:00-10:00 (un dimanche) | ✅ appel sortant de 1002 (`0033…`, route `_00.`) **refusé** : `Congestion` après `check_schedule` |
+| 4. Dans les horaires (tous les jours 00:00-24:00) | ✅ l'appel **passe** jusqu'à l'opérateur (pont 1002 ↔ ligne opérateur, RTP) — à condition de **rebasculer l'interrupteur** après avoir changé les heures : l'horaire du PBX est construit au moment du basculement (la docstring le dit), un changement ultérieur des heures du profil n'est pas propagé tant qu'on ne le refait pas. Heures et interrupteur remis ensuite (profil vide, route sans horaire) |
+
+### 🐛 n° 25 — appels parqués invisibles : l'action AMI exige le tenant maître (corrigé)
+
+`wazo-amid` répond 401 `missing_permission_or_invalid_tenant` à toute action (`ParkedCalls`,
+mais aussi `Ping`, `QueueStatus`) demandée avec le compte de service d'une entreprise : ses
+ressources `/action/*` portent `@required_master_tenant()`. Correction : les appels parqués sont
+lus par **wazo-calld** (`GET /parkinglots/{id}`, propre au tenant : `call_id`, `caller_id_num`,
+`slot`, `parked_at`, `parker_caller_id_num`…) ; l'ACL `amid.action.ParkedCalls.create` est retirée
+de la politique au profit de `calld.parkings.*.read` (toujours 130 ACL) ; faux moteur et tests
+adaptés. Même cause pour la **supervision** : `QueueStatus` est refusé lui aussi (`live: false`
+sur la file « Support test ») — préexistant, hors PR, à traiter de la même façon (calld ou
+agentd).
+
+### 🐛 n° 26 — interphone refusé à tout le monde (corrigé)
+
+Le moteur n'autorise que les appelants **listés** à joindre un interphone : une liste vide ne veut
+pas dire « tout le monde », elle interdit tout le monde. Correction : à la création, « tout le
+monde » devient tous les postes de l'entreprise ; la liste est réaffichée vide dans NIMBORA quand
+elle couvre tout le monde. L'interphone « Directeur » du laboratoire a été recréé après le correctif.
+
+Objets laissés en place sur le laboratoire : groupe d'interception « Accueil », parking 700
+(701-720), interphone « Directeur » (*111). Tests API de la branche : 47 passés
+(`test_pbx_teamwork.py`, softphone, admin, PBX, dont le test de couverture des ACL).
 
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 

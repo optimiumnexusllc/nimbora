@@ -130,6 +130,13 @@ async def test_intercom_and_announcement(db_session, monkeypatch, test_client_fa
     assert intercom.json()["dial"] == "*111"
     assert announcement.status_code == 201
     assert duplicate.status_code == 409
+    # The engine only lets listed callers page: « everyone » is every extension.
+    by_number = {p["number"]: p for p in fake.pagings}
+    assert [u["uuid"] for u in by_number["1"]["callers"]["users"]] == ["u-1"]
+    assert sorted(u["uuid"] for u in by_number["9"]["callers"]["users"]) == sorted(
+        u["uuid"] for u in fake.users
+    )
+    assert [p["callers"] for p in listed if p["number"] == "9"] == [[]]
     kinds = {
         p["number"]: (
             p["kind"],
@@ -189,39 +196,47 @@ async def test_outbound_route_only_during_opening_hours(
 async def test_parked_calls_of_the_company_only(
     db_session, monkeypatch, test_client_factory
 ):
-    """The AMI sees every company on a shared PBX: only the company's own lots
-    are asked for, by name."""
+    """Read from wazo-calld, lot by lot: only the company's own lots exist for
+    its token (the AMI action is master-tenant only)."""
+    from datetime import datetime, timedelta, timezone
+
     fake = FakePbx()
     user, org, _ = await _setup(db_session, monkeypatch, fake)
     lot = await teamwork.create_parking_lot(
         org.id, teamwork.NewParkingLot("Accueil", "700", "701", "720")
     )
-    name = f"parkinglot-{lot['id']}"
+    parked_at = datetime.now(timezone.utc) - timedelta(seconds=35)
     fake.parked += [
         {
-            "Event": "ParkedCall",
-            "Parkinglot": name,
-            "ParkingSpace": "702",
-            "ParkeeCallerIDNum": "+2250700112233",
-            "ParkeeCallerIDName": "Awa Koné",
-            "ParkingDuration": "35",
+            "lot_id": lot["id"],
+            "call_id": "1795367056.124",
+            "slot": "702",
+            "caller_id_num": "+2250700112233",
+            "caller_id_name": "Awa Koné",
+            "parker_caller_id_num": "1004",
+            "parker_caller_id_name": "Poste 1004",
+            "parked_at": parked_at.isoformat(),
+            "timeout_at": (parked_at + timedelta(seconds=120)).isoformat(),
         },
-        {
-            "Event": "ParkedCall",
-            "Parkinglot": "parkinglot-999",
-            "ParkingSpace": "702",
-            "ParkeeCallerIDNum": "+33100000000",
+        {  # another company's lot: unknown to this tenant
+            "lot_id": 999,
+            "slot": "702",
+            "caller_id_num": "+33100000000",
+            "caller_id_name": "<unknown>",
+            "parked_at": parked_at.isoformat(),
         },
     ]
     async with test_client_factory(user) as client:
         parked = (await client.get("/api/v1/pbx/parked-calls")).json()
+    assert len(parked) == 1
+    waiting = parked[0].pop("waiting_seconds")
+    assert 34 <= waiting <= 37
     assert parked == [
         {
             "lot": "Accueil",
             "slot": "702",
             "number": "+2250700112233",
             "name": "Awa Koné",
-            "waiting_seconds": 35,
-            "parked_by": None,
+            "parked_by": "1004",
         }
     ]

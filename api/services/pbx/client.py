@@ -934,13 +934,11 @@ class PbxClient:
         )
         return [m for m in body or [] if isinstance(m, dict)]
 
-    async def parked_calls(self, parking_lot: str) -> list[dict]:
-        """Calls waiting in one parking lot (AMI ParkedCalls). The AMI is not
-        tenant aware: the lot is always named explicitly."""
-        body = await self.request(
-            "amid", "POST", "/action/ParkedCalls", json={"ParkingLot": parking_lot}
-        )
-        return [m for m in body or [] if isinstance(m, dict)]
+    async def parkinglot_calls(self, lot_id: int) -> dict:
+        """One parking lot with the calls waiting in it, from wazo-calld, which
+        is tenant aware. (The AMI ParkedCalls action only answers master-tenant
+        tokens, never a company's service account: lab step 15.)"""
+        return await self.request("calld", "GET", f"/parkinglots/{lot_id}")
 
     async def queue_statistics(self, **params) -> list[dict]:
         return await self._items("call_logd", "/queues/statistics", **params)
@@ -997,7 +995,7 @@ REQUIRED_ACL: dict[str, str] = {
     # supervision
     "originate": "calld.calls.create",
     "queue_status": "amid.action.QueueStatus.create",
-    "parked_calls": "amid.action.ParkedCalls.create",
+    "parkinglot_calls": "calld.parkings.{lot_id}.read",
     "queue_statistics": "call-logd.queues.statistics.read",
     "agent_statistics": "call-logd.agents.statistics.read",
     # administration
