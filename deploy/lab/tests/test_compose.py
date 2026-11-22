@@ -77,3 +77,9 @@ def test_root_compose_passes_the_saas_mode_switches_to_the_api():
     for name in ("SAAS_MODE", "SAAS_DEFAULT_PLAN", "SAAS_TRIAL_DAYS", "SAAS_GRACE_DAYS", "SAAS_PLATFORM_NAME"):
         assert name in env, name
     assert env["SAAS_MODE"] == "${SAAS_MODE:-false}"
+
+
+def test_root_compose_passes_the_private_pbx_allow_list():
+    """SAAS_MODE on: every call to the lab PBX (10.250.0.10) answered 502 "pas joignable
+    publiquement" until PBX_ALLOWED_HOSTS reached the container."""
+    assert "PBX_ALLOWED_HOSTS" in api_environment(REPO / "docker-compose.yaml")

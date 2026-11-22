@@ -300,6 +300,8 @@ if runs nimbora; then
         set_kv "$ENV" PBX_PROVISIONING_ARI_USER xivo
         set_kv "$ENV" PBX_PROVISIONING_ARI_PASSWORD "$ARI_PASSWORD"
         set_kv "$ENV" PBX_PROVISIONING_ARI_WS_CLIENT nimbora
+        # In SaaS mode the API refuses private PBX addresses unless allowed.
+        set_kv "$ENV" PBX_ALLOWED_HOSTS "$PBX_IP"
         ok "PBX partagé : réglages PBX_PROVISIONING_* écrits dans .env"
     fi
     if [[ -f "$SECRETS_FILE" ]]; then
