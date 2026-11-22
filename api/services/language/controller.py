@@ -14,6 +14,8 @@ from __future__ import annotations
 from datetime import UTC, datetime
 from typing import Any
 
+from loguru import logger
+
 from api.services.language.detection import (
     LanguageSwitchPolicy,
     language_directive,
@@ -26,7 +28,6 @@ from api.services.language.voices import (
     service_has_language,
     tts_provider,
 )
-from loguru import logger
 
 CONTEXT_LANGUAGE = "call_language"
 CONTEXT_DIRECTIVE = "call_language_directive"

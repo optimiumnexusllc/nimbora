@@ -122,9 +122,10 @@ async def switch_database(old: str = "minio", new: str = "s3") -> dict[str, int]
 def clients_from_settings():
     """(MinIO client, its bucket, S3 client, its bucket) from the API settings."""
     import boto3
-    from api import constants
     from botocore.config import Config
     from minio import Minio
+
+    from api import constants
 
     if not constants.S3_BUCKET:
         raise SystemExit(

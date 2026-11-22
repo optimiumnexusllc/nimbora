@@ -38,7 +38,9 @@ harness = fallback.harness
 async def test_goodbye_accepts_saves_before_deferring_result_delivery(
     simple_workflow, provider, recovered, ending
 ):
-    service_class = NimboraLLMService if provider == "nimbora" else NimboraGoogleLLMService
+    service_class = (
+        NimboraLLMService if provider == "nimbora" else NimboraGoogleLLMService
+    )
     service = service_class(api_key="offline-key")
     manager = TaskManager()
     await service.setup(

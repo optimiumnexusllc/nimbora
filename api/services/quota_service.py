@@ -217,7 +217,8 @@ def _oss_run_authorization_denied_result(
 def _service_uses_nimbora(service: Any) -> bool:
     provider = getattr(service, "provider", None)
     return (
-        provider == ServiceProviders.NIMBORA or provider == ServiceProviders.NIMBORA.value
+        provider == ServiceProviders.NIMBORA
+        or provider == ServiceProviders.NIMBORA.value
     )
 
 

@@ -17,8 +17,9 @@ import re
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
-from api.services.pbx.client import PbxError
 from loguru import logger
+
+from api.services.pbx.client import PbxError
 
 SOURCE = "pbx"
 # First catch-up of a connection: how far back to read the call logs.
