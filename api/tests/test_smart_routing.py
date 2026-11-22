@@ -4,6 +4,7 @@ import uuid
 from datetime import UTC, datetime, timedelta
 
 import pytest
+from loguru import logger
 
 from api.services.contact_center import smart_routing as routing
 from api.services.contact_center.smart_routing import LiveState, NoAgentAvailable
@@ -196,6 +197,8 @@ async def test_callback_mode_schedules_a_human_callback(db_session, monkeypatch)
         return _state()
 
     monkeypatch.setattr(routing, "live_state", nobody)
+    records = []
+    sink = logger.add(lambda message: records.append(message.record["message"]))
     with pytest.raises(NoAgentAvailable) as error:
         await routing.resolve_for_transfer(
             org.id,
@@ -203,7 +206,12 @@ async def test_callback_mode_schedules_a_human_callback(db_session, monkeypatch)
             gathered_context_vars={"call_language": "fr", "customer_name": "Awa"},
             arguments={"skill": "facturation"},
         )
+    logger.remove(sink)
     assert error.value.callback_scheduled
+    # One line per hand-off decision, with the skipped rules, without the number.
+    line = next(r for r in records if r.startswith(f"[Routing org={org.id} handoff]"))
+    assert "unavailable/callback → —" in line and "Facturation" in line
+    assert PHONE not in line
     callbacks = await db_session.list_callback_requests(org.id)
     assert len(callbacks) == 1
     assert "facturation" in callbacks[0].reason and callbacks[0].customer_name == "Awa"

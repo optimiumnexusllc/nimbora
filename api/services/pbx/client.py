@@ -91,6 +91,15 @@ def _error_message(response: httpx.Response) -> str:
     return str(body)[:400]
 
 
+def _describe(error: httpx.HTTPError) -> str:
+    """The error class, and for DNS failures say so: « Name or service not
+    known » means the PBX address is a host name the API cannot resolve."""
+    text = str(error)
+    if "Name or service not known" in text or "nodename nor servname" in text:
+        return f"{error.__class__.__name__} (nom d'hôte du PBX non résolu)"
+    return error.__class__.__name__
+
+
 class PbxClient:
     def __init__(
         self,
@@ -128,7 +137,7 @@ class PbxClient:
             )
         except httpx.HTTPError as error:
             raise PbxUnavailable(
-                f"PBX injoignable : {error.__class__.__name__}"
+                f"PBX injoignable (auth) : {_describe(error)}"
             ) from error
         if response.status_code in (401, 403):
             raise PbxAuthError(
@@ -185,7 +194,7 @@ class PbxClient:
                 )
             except httpx.HTTPError as error:
                 raise PbxUnavailable(
-                    f"PBX injoignable : {error.__class__.__name__}"
+                    f"PBX injoignable ({service}) : {_describe(error)}"
                 ) from error
             if response.status_code == 401 and attempt == 0:
                 continue  # token expired or revoked: one fresh try
@@ -267,9 +276,7 @@ class PbxClient:
         await self.request("auth", "DELETE", f"/users/{user_uuid}")
 
     async def set_auth_user_policy(self, user_uuid: str, policy_uuid: str) -> None:
-        await self.request(
-            "auth", "PUT", f"/users/{user_uuid}/policies/{policy_uuid}"
-        )
+        await self.request("auth", "PUT", f"/users/{user_uuid}/policies/{policy_uuid}")
 
     async def create_context(self, body: dict) -> dict:
         return await self.request("confd", "POST", "/contexts", json=body)
@@ -717,12 +724,20 @@ class PbxClient:
             params["from"] = since
         return await self._items("call_logd", "/cdr", **params)
 
-    async def cdr_since(self, since: str, *, limit: int = 500, offset: int = 0) -> list[dict]:
+    async def cdr_since(
+        self, since: str, *, limit: int = 500, offset: int = 0
+    ) -> list[dict]:
         """Call logs started from ``since`` (ISO 8601), oldest first."""
         return await self._items(
             "call_logd",
             "/cdr",
-            **{"from": since, "order": "start", "direction": "asc", "limit": limit, "offset": offset},
+            **{
+                "from": since,
+                "order": "start",
+                "direction": "asc",
+                "limit": limit,
+                "offset": offset,
+            },
         )
 
     async def recording_media(self, cdr_id: int, recording_uuid: str) -> bytes:

@@ -289,6 +289,13 @@ async def simulate_routing(
         )
     except smart_routing.NoAgentAvailable as error:
         policy = await smart_routing.read_policy(_org(user))
+        smart_routing.log_decision(
+            _org(user),
+            "simulation",
+            reason=f"unavailable/{policy['when_unavailable']}",
+            destination=None,
+            steps=error.steps,
+        )
         return {
             "destination": None,
             "reason": "unavailable",
@@ -296,6 +303,13 @@ async def simulate_routing(
             "steps": error.steps,
             "when_unavailable": policy["when_unavailable"],
         }
+    smart_routing.log_decision(
+        _org(user),
+        "simulation",
+        reason=decision.reason,
+        destination=decision.destination,
+        steps=decision.steps,
+    )
     return decision.as_dict()
 
 

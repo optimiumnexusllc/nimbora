@@ -404,6 +404,21 @@ async def route(
     )
 
 
+def log_decision(
+    organization_id: int,
+    source: str,
+    *,
+    reason: str,
+    destination: str | None,
+    steps: list[str],
+) -> None:
+    """One line per decision, hand-off or simulation alike (no phone number)."""
+    logger.info(
+        f"[Routing org={organization_id} {source}] {reason} → {destination or '—'}"
+        + (f" | {' ; '.join(steps)}" if steps else "")
+    )
+
+
 async def resolve_for_transfer(
     organization_id: int,
     *,
@@ -427,6 +442,13 @@ async def resolve_for_transfer(
             policy=policy,
         )
     except NoAgentAvailable as error:
+        log_decision(
+            organization_id,
+            "handoff",
+            reason=f"unavailable/{policy['when_unavailable']}",
+            destination=None,
+            steps=error.steps,
+        )
         if policy["when_unavailable"] == "callback" and caller:
             from api.services.contact_center.callbacks import create_or_update_callback
 
@@ -445,8 +467,12 @@ async def resolve_for_transfer(
                 callback_scheduled=True,
             ) from error
         raise
-    logger.info(
-        f"[Routing org={organization_id}] {decision.reason} → {decision.destination}"
+    log_decision(
+        organization_id,
+        "handoff",
+        reason=decision.reason,
+        destination=decision.destination,
+        steps=decision.steps,
     )
     return decision
 
