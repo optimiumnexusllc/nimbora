@@ -1,6 +1,8 @@
 # Optional monitoring stack: Prometheus (with the NIMBORA alert rules) and
 # Grafana (dashboards provisioned). See README.md.
-#   echo -n "$NIMBORA_DEVOPS_SECRET" > devops_secret && chmod 600 devops_secret
+#   echo -n "$NIMBORA_DEVOPS_SECRET" > devops_secret && chmod 644 devops_secret
+#   (Prometheus runs as "nobody": a 600 root-owned file is mounted unreadable and
+#   every nimbora target stays down; keep the directory itself private instead)
 #   docker compose up -d     → Grafana on http://localhost:3001 (admin / admin)
 services:
   prometheus:

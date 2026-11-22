@@ -196,6 +196,7 @@
               "deployment/scaling",
               "deployment/saas",
               "deployment/backup-monitoring",
+              "deployment/object-storage",
               "deployment/update",
               "deployment/heroku"
             ]

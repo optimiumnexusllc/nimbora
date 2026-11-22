@@ -205,12 +205,16 @@ services:
       S3_ENDPOINT_URL: "${S3_ENDPOINT_URL:-}"
       S3_SIGNATURE_VERSION: "${S3_SIGNATURE_VERSION:-}"
       S3_ADDRESSING_STYLE: "${S3_ADDRESSING_STYLE:-}"
+      # Address browsers use when S3_ENDPOINT_URL is internal (signed links).
+      S3_PUBLIC_ENDPOINT_URL: "${S3_PUBLIC_ENDPOINT_URL:-}"
 
       # MinIO
       MINIO_ENDPOINT: "minio:9000"
       # Full URL (with scheme) browsers use to reach MinIO. Defaults to
       # PUBLIC_BASE_URL for remote deployments (nginx proxies /voice-audio/) and to
       # http://localhost:9000 for local; override only for a separate object store.
+      # The bucket is private: links are signed for this exact host, so the
+      # proxy in front must keep the Host header (nginx, Caddy, Traefik do).
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-}"
       MINIO_ACCESS_KEY: "${MINIO_ROOT_USER:-minioadmin}"
       MINIO_SECRET_KEY: "${MINIO_ROOT_PASSWORD:-minioadmin}"
@@ -252,6 +256,14 @@ services:
       BRAND_DOMAIN: "${BRAND_DOMAIN:-}"
       BRAND_SIP_USER_AGENT: "${BRAND_SIP_USER_AGENT:-}"
 
+      # Multi-tenant SaaS operator mode (api/constants.py): plans, trials, the
+      # operator console and usage reports. Off = single-operator OSS install.
+      SAAS_MODE: "${SAAS_MODE:-false}"
+      SAAS_DEFAULT_PLAN: "${SAAS_DEFAULT_PLAN:-starter}"
+      SAAS_TRIAL_DAYS: "${SAAS_TRIAL_DAYS:-14}"
+      SAAS_GRACE_DAYS: "${SAAS_GRACE_DAYS:-3}"
+      SAAS_PLATFORM_NAME: "${SAAS_PLATFORM_NAME:-NIMBORA}"
+
       # Shared PBX of the operator (api/services/pbx/provisioning.py): one tenant
       # per company, created with the provisioning account of deploy/pbx --operator.
       PBX_PROVISIONING_URL: "${PBX_PROVISIONING_URL:-}"
@@ -267,6 +279,9 @@ services:
       PBX_PROVISIONING_ARI_USER: "${PBX_PROVISIONING_ARI_USER:-}"
       PBX_PROVISIONING_ARI_PASSWORD: "${PBX_PROVISIONING_ARI_PASSWORD:-}"
       PBX_PROVISIONING_ARI_WS_CLIENT: "${PBX_PROVISIONING_ARI_WS_CLIENT:-}"
+      # SaaS mode refuses private PBX addresses (SSRF) unless listed here: the
+      # operator's own PBX on an internal network, e.g. "10.250.0.10".
+      PBX_ALLOWED_HOSTS: "${PBX_ALLOWED_HOSTS:-}"
 
       # Langfuse — credentials can be set here or per-organization via the UI
       # at /settings. Tracing is automatically active when credentials are

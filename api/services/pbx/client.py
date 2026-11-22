@@ -272,6 +272,9 @@ class PbxClient:
     async def create_context(self, body: dict) -> dict:
         return await self.request("confd", "POST", "/contexts", json=body)
 
+    async def update_context(self, context_id: int, body: dict) -> None:
+        await self.request("confd", "PUT", f"/contexts/{context_id}", json=body)
+
     async def set_context_includes(self, context_id: int, included: list[int]) -> None:
         await self.request(
             "confd",
@@ -1005,4 +1008,5 @@ PROVISIONING_ACL: dict[str, str] = {
     "set_auth_user_policy": "auth.users.{user_uuid}.policies.{policy_uuid}.create",
     "create_context": "confd.contexts.create",
     "set_context_includes": "confd.contexts.{context_id}.contexts.update",
+    "update_context": "confd.contexts.{context_id}.update",
 }

@@ -171,6 +171,32 @@ class WorkflowRunClient(BaseDBClient):
             await session.commit()
             return True
 
+    async def reassign_storage_backend(self, old: str, new: str) -> dict[str, int]:
+        """Point every stored file from one storage backend to another.
+
+        Used once all objects were copied to the new store (see
+        services/filesystem/migration.py). Returns the rows changed per table.
+        """
+        from sqlalchemy import update
+
+        from api.db.models import PbxCallRecordingModel, WorkflowRecordingModel
+
+        changed: dict[str, int] = {}
+        async with self.async_session() as session:
+            for model in (
+                WorkflowRunModel,
+                WorkflowRecordingModel,
+                PbxCallRecordingModel,
+            ):
+                result = await session.execute(
+                    update(model)
+                    .where(model.storage_backend == old)
+                    .values(storage_backend=new)
+                )
+                changed[model.__tablename__] = result.rowcount or 0
+            await session.commit()
+        return changed
+
     async def get_all_workflow_runs(self) -> list[WorkflowRunModel]:
         async with self.async_session() as session:
             result = await session.execute(select(WorkflowRunModel))

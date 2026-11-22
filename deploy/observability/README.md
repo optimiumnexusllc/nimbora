@@ -13,7 +13,10 @@ dashboards (runtime and operations).
 
 1. In the API environment: `ENABLE_PROMETHEUS_METRICS=true` and a random
    `NIMBORA_DEVOPS_SECRET`.
-2. Here: `echo -n "<NIMBORA_DEVOPS_SECRET>" > devops_secret && chmod 600 devops_secret`.
+2. Here: `echo -n "<NIMBORA_DEVOPS_SECRET>" > devops_secret && chmod 644 devops_secret`
+   (Prometheus runs as `nobody` and reads the bind-mounted file: with `600` every
+   `nimbora` target stays down with "unable to read headers file"; protect the
+   directory instead, e.g. `chmod 750 .`).
 3. Targets: workers in `prometheus/targets.json`, one API in
    `prometheus/business-targets.json`, hosts in `prometheus/node-targets.json`.
 4. On each PBX: `install.sh … --metrics-from <Prometheus IP>` (installs the

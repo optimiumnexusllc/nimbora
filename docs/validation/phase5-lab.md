@@ -305,6 +305,10 @@ README du kit, page PBX de la console), images API et UI construites depuis la b
   test humain.
 - Les contextes entrants créés par le moteur pour `org2`/`org3` n'ont **aucune plage**
   (`incall_ranges: []`) : la création de numéros fonctionne quand même sur 26.11, à surveiller.
+  → **Corrigé** (branche `feat/lot-a-object-storage`) : le moteur crée ces contextes avec le
+  tenant ; le provisionnement (et `ensure_tenant_contexts.py`) complète désormais les plages
+  vides (entrants 4 à 15 chiffres, postes, groupes, files, conférences) sans toucher aux plages
+  déjà définies. À revérifier : `POST /pbx/provision` sur `org2` puis `confd/contexts` du tenant.
 
 
 ### 🐛 n° 8 — `PBX_PROVISIONING_*` (et `BRAND_*`) n'atteignaient pas le conteneur API
@@ -335,7 +339,6 @@ expected pattern », sur le tenant dédié comme sur les tenants partagés : auc
 `numbers.py`) : le numéro est écrit et comparé **sans son `+`** côté moteur (`pbx_exten`),
 NIMBORA et l'argument `called=` de Stasis gardent le +E.164, et l'inventaire retrouve les
 numéros confiés à l'IA sous les deux formes. Le faux PBX refuse le `+` comme le moteur.
-
 ## Rapport d'étape 7 — vérifications pour les PR #2 et #3 (21 novembre 2026)
 
 **Inscription publique.** Fermée depuis la création du compte administrateur :
@@ -376,6 +379,70 @@ d'authentification ; mes premiers essais avec le seul SIP username ont été ref
 matching endpoint ») et fail2ban `asterisk-wazo` a banni le conteneur de test après 15
 échecs, preuve que cette prison fonctionne. Amélioration proposée : renvoyer aussi le nom du
 point de terminaison dans la fiche d'identifiants d'un poste (`ExtensionCredentials`).
+
+## Rapport d'étape 8 — PR #3, #4 et #5 sur le laboratoire (21 novembre 2026)
+
+Branche `feat/lot-a-object-storage` (PR #5, qui contient #1, #3 et #4) fusionnée avec `main`,
+images construites (`REGISTRY=nimbora-lot-a5`), déployée par le kit lab ; migrations
+`c6d7e8f9a0b1` et `d7e8f9a0b1c2` appliquées (`alembic current` → `d7e8f9a0b1c2 (head)`).
+
+### Sécurité du bucket (PR #5)
+
+| Vérification | Résultat |
+|---|---|
+| Avant tout : `mc anonymous get local/voice-audio` → `private`, `GET /voice-audio/?list-type=2` via Traefik → **403** | ✅ (déjà privé) |
+| Bucket rendu volontairement public (`mc anonymous set download`, listage → 200) puis démarrage de l'API de la PR : politique → `private`, listage → **403** | ✅ l'API retire la politique anonyme au démarrage |
+| Lien signé (enregistrement de test déposé par la couche de stockage) à travers Traefik | ✅ 200, 16 044 octets |
+| Signature altérée / autre objet avec la même signature / chemin non signé | ✅ 403 / 403 / 403 |
+| Lien à 2 s de validité lu après 4 s | ✅ 403 (expiré) |
+| Type de contenu du lien « inline » : `application/octet-stream` au lieu de `audio/wav` | 🐛 n° 12, corrigé (`response-content-type` demandé comme sur S3), test unitaire |
+
+### Minutes humaines (PR #3) sur de vrais journaux d'appels
+
+Outils : conteneur `nimbora-siptest` (postes 1002 et 1003) et conteneur `nimbora-operator`
+(10.250.0.208) qui joue l'opérateur SIP : ligne opérateur par IP créée depuis NIMBORA,
+route sortante `_00.` (2 chiffres retirés), numéro public `2250700000001` vers le poste 1003.
+Constat : le moteur identifie les postes par `auth_username,username,ip`, le trunk par IP.
+
+| Vérification | Résultat |
+|---|---|
+| `duration` = décroché → raccroché (rapport d'étape 7 ; confirmé sur les nouveaux appels : 21 s et 14 s) | ✅ |
+| `GET /cdr?from=…&order=start&direction=asc&limit=2&offset=0/2/4` : identifiants 1-2, 3-4, 5-6, `total`/`filtered` = 7, départs croissants | ✅ pagination correcte |
+| Appel **sortant** par la ligne opérateur (1003 → 0033123456789, 22 s) : `call_direction: outbound`, `answered: true`, `duration: 21` | ✅ |
+| Appel **entrant** de l'opérateur vers le numéro public (→ 1003, 15 s) : `inbound`, `answered: true`, `duration: 14` | ✅ |
+| Appel interne 1002 → 1003 (29 s) et appel sortant non décroché | ✅ non facturables (interne / `answered: false`) |
+| `sync_human_minutes` : les deux appels externes déjà comptés par le webhook ; deux exécutions → toujours 2 lignes | ✅ aucun doublon |
+| Rattrapage : lignes effacées et `usage_synced_at` remis à zéro → `counted: 2` (exactement les deux externes), seconde exécution `counted: 0` | ✅ |
+| `GET /api/v1/saas/admin/usage?month=2026-11` : 404 tant que `SAAS_MODE` n'atteint pas le conteneur | 🐛 n° 13, corrigé (compose) |
+| Même appel après correction, `SAAS_MODE=true` : organisation 1 `human_minutes: 0.58` (35 s), 1 000 incluses, 0 dépassement ; CSV `;` identique | ✅ (`company_name` vide pour les organisations créées hors SaaS : à renseigner par l'opérateur) |
+| Nom saisi à l'inscription (`Awa Koné Test`) renvoyé par `/auth/me` | ✅ (organisation 4 de test créée pour cela, inscription refermée) |
+| `test_pbx_groups_conferences.py` (cassé sur `main` par 9969fa0, réparé dans la branche) | ✅ passe dans la suite de la branche |
+
+### Sauvegarde et restauration du PBX (PR #4)
+
+| Vérification | Résultat |
+|---|---|
+| `scripts/backup.sh` avec `BACKUP_PASSPHRASE_FILE` de test : `pg_dumpall`, archives chiffrées (`.enc`), `SHA256SUMS`, `manifest.json` (moteur `26.11~20261013…`) | ✅ 15,5 Mo |
+| Dossiers de Wazo 26.11 présents sur le moteur mais **absents de la liste** : `var/lib/wazo-auth-keys` (identifiants internes des services), `var/lib/asterisk/keys` (DTLS WebRTC), `var/lib/asterisk/astdb.sqlite3`, `var/lib/asterisk/sounds`, `var/spool/asterisk/recording`, états `wazo-call-logd`, `wazo-agentd`, `wazo-chatd`… | 🐛 n° 14, liste complétée (38 chemins sauvegardés), test |
+| `restore.sh --check` : intégrité, déchiffrement, archives lisibles, rien d'arrêté | ✅ |
+| **Restauration réelle** (`--yes`, instantané Incus pris avant) : moteur arrêté, bases rechargées, fichiers restaurés, redémarrage « Wazo fully booted », 58 s | ✅ |
+| Après restauration : 4 tenants, postes/files par tenant identiques (3/1, 1/0, 1/0), 18 services, 8 points de terminaison, pare-feu rechargé | ✅ |
+
+### Prometheus et Grafana (PR #4)
+
+| Vérification | Résultat |
+|---|---|
+| `install.sh --firewall-only --metrics-from 10.250.0.1` sur le PBX | 🐛 n° 15 : ouvrait 9100 sans installer l'exporteur ; corrigé, exporteur actif (1 405 séries) |
+| Exporteur de l'hôte, lié à la passerelle Docker `10.0.0.1:9100` seulement (3 400 séries) | ✅ |
+| `deploy/observability` : secret devops `chmod 600` illisible par Prometheus (`nobody`) → toutes les cibles `nimbora` « unable to read headers file » | 🐛 n° 16 : documentation et commentaire corrigés (`644`, dossier privé), test |
+| Prometheus relié au réseau de la pile avec `gw_priority` pour joindre le PBX par le pont connu du pare-feu | ✅ |
+| Cibles : `nimbora` ×2 workers, `nimbora-business`, `node` PBX et hôte → **5/5 up** ; 3 groupes, **11 alertes** chargées | ✅ |
+| Grafana 12 : dossier NIMBORA et tableau « NIMBORA operations » provisionnés ; capture prise (locale du navigateur requise, sinon « failed to load its application files ») | ✅ |
+| Kit lab : nouvelle phase `--observability` qui reproduit tout cela, test | ✅ |
+| Métrique de fraîcheur de la sauvegarde (`nimbora_pbx_backup_last_success_timestamp_seconds`) : absente de Prometheus, tableau « Dernière sauvegarde du PBX » à « No data » | 🐛 n° 17 : l'exporteur Debian démarre avec `ARGS=""` sans répertoire textfile → le kit le règle ; 🐛 n° 18 : fichier `.prom` écrit en `600` (umask du script) illisible par l'utilisateur `prometheus` → `644`. Après correction : métrique vue par Prometheus pour `10.250.0.10:9100` ; tests |
+
+Après la validation : `SAAS_MODE=true` reste actif sur le laboratoire (abonnements « Starter »
+en essai créés pour les 4 organisations).
 
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 

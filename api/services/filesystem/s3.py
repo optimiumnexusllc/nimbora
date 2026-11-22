@@ -17,6 +17,7 @@ class S3FileSystem(BaseFileSystem):
         endpoint_url: Optional[str] = None,
         signature_version: Optional[str] = None,
         addressing_style: Optional[str] = None,
+        public_endpoint_url: Optional[str] = None,
     ):
         """Initialize S3 filesystem.
 
@@ -29,10 +30,13 @@ class S3FileSystem(BaseFileSystem):
                 ``"s3v4"``). ``None`` keeps botocore's default signing behavior.
             addressing_style: Optional S3 addressing style (``"path"`` /
                 ``"virtual"`` / ``"auto"``). ``None`` keeps botocore's default.
+            public_endpoint_url: Optional address browsers use when
+                ``endpoint_url`` is internal: signed links are computed for it.
         """
         self.bucket_name = bucket_name
         self.region_name = region_name
         self.endpoint_url = endpoint_url
+        self.public_endpoint_url = public_endpoint_url
         self.session = aioboto3.Session()
 
         # Build a botocore Config only when an override is requested so that the
@@ -43,6 +47,13 @@ class S3FileSystem(BaseFileSystem):
         if addressing_style:
             config_kwargs["s3"] = {"addressing_style": addressing_style}
         self._config = Config(**config_kwargs) if config_kwargs else None
+
+    def _link_kwargs(self, internal: bool = False) -> Dict[str, Any]:
+        """Client kwargs for signing links: the public address for browsers."""
+        kwargs = self._client_kwargs()
+        if self.public_endpoint_url and not internal:
+            kwargs["endpoint_url"] = self.public_endpoint_url
+        return kwargs
 
     def _client_kwargs(self) -> Dict[str, Any]:
         """Common kwargs for every ``session.client("s3", ...)`` call.
@@ -92,7 +103,9 @@ class S3FileSystem(BaseFileSystem):
         disposition on the response.
         """
         try:
-            async with self.session.client("s3", **self._client_kwargs()) as s3_client:
+            async with self.session.client(
+                "s3", **self._link_kwargs(internal=use_internal_endpoint)
+            ) as s3_client:
                 params = {"Bucket": self.bucket_name, "Key": file_path}
 
                 # Make artifacts viewable inline in the browser when requested
@@ -155,7 +168,7 @@ class S3FileSystem(BaseFileSystem):
     ) -> Optional[str]:
         """Generate a presigned PUT URL for direct file upload."""
         try:
-            async with self.session.client("s3", **self._client_kwargs()) as s3_client:
+            async with self.session.client("s3", **self._link_kwargs()) as s3_client:
                 url = await s3_client.generate_presigned_url(
                     "put_object",
                     Params={

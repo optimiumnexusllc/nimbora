@@ -266,6 +266,8 @@ swahili, haoussa, yoruba, lingala…
   e-mails (même dictés), téléphones et adresses IP dans tout ce qui est conservé.
 - **Mode PCI** : l'agent IA n'entend jamais un numéro de carte, ni la supervision, ni les journaux.
 - **Durées de conservation** des enregistrements, transcriptions et de la mémoire client, purge quotidienne.
+- **Stockage privé** : enregistrements et documents dans un bucket fermé, chaque lien d'écoute ou
+  d'envoi est **signé et expire** ; sortie de MinIO vers un S3 maintenu en trois commandes.
 - **Droit d'accès et droit à l'effacement** à partir d'un numéro, avec registre des demandes,
   appels humains enregistrés sur le PBX compris.
 - **Numéros bloqués et opposition** : un client qui dit « ne m'appelez plus » n'est plus jamais
@@ -522,13 +524,16 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 |---|---|
 | ✅ | Tenant PBX créé automatiquement (à l'inscription ou en un clic « Activer la téléphonie ») sur le PBX partagé : tenant, contextes interne/entrant/sortant, compte de service limité au tenant, configuration ARI des agents IA (application Stasis propre), webhook d'événements ; idempotent (une reprise complète sans doublon) ; connexion gérée par la plateforme, invisible et non modifiable par l'entreprise ; retrait par l'opérateur |
 | ✅ | PBX partagé de l'opérateur (`install.sh --operator`, compte d'approvisionnement aux droits minimaux) ou PBX dédié par client, selon l'offre (`pbx_shared`, `pbx_dedicated`) ; postes humains plafonnés par l'offre (conseillers du centre intégré + postes du PBX, import CSV limité aux postes restants, « Postes 4 / 15 » dans la console) |
-| 🧪 | Validation du multi-tenant sur un PBX réel : création de tenants et de contextes par l'API, ACL du compte d'approvisionnement, agents IA de plusieurs entreprises sur le même Asterisk |
+| ✅ | Multi-tenant validé sur le moteur réel (26.11, laboratoire) : tenants, contextes, comptes de service et configuration ARI créés par l'API en ~1,3 s, reprise sans doublon, isolation (le compte d'une entreprise est refusé sur le tenant d'une autre), postes 1001 dans deux entreprises, ACL du compte d'approvisionnement ([journal](docs/validation/phase5-lab.md)) ; les contextes créés d'office par le moteur reçoivent leurs plages de numéros manquantes |
+| 🧪 | Agents IA de plusieurs entreprises sur le même Asterisk (une application Stasis chacune) et appel entre postes de deux tenants (doit échouer) : clés de fournisseur IA non disponibles |
 | ✅ | Facturation des minutes humaines avec les minutes IA : appels décrochés avec un client sur le PBX (hors appels internes et hors appels pris par l'IA), comptés à la fin de chaque appel et rattrapés toutes les heures depuis le journal des appels (jamais deux fois) ; minutes humaines incluses et prix du dépassement par offre ; consommation sur la page Abonnement ; rapport mensuel par entreprise (minutes IA, minutes humaines, dépassements) et export CSV pour la facturation |
 | ✅ | Sauvegarde et restauration du PBX et de la plateforme : chaque nuit, bases du moteur, configuration, secrets du kit, messageries, sons et enregistrements ; chiffrement AES-256, copie hors serveur, empreintes SHA-256, restauration vérifiée (`--check`) qui refuse une sauvegarde altérée |
 | ✅ | Métriques Prometheus d'exploitation : PBX de chaque entreprise (joignable, événements, alertes de supervision, rattrapage des minutes), abonnements, minutes IA et humaines du mois, fraîcheur des sauvegardes ; 13 règles d'alerte et tableau de bord Grafana « NIMBORA operations » |
-| 🧪 | Sauvegarde et restauration du PBX sur le moteur réel (laboratoire) |
+| ✅ | Sauvegarde et restauration du PBX validées sur le moteur réel (laboratoire) : sauvegarde chiffrée, `restore.sh --check`, restauration complète en 58 s (tenants, postes et files identiques) ; la sauvegarde couvre aussi l'état du moteur (clés des services, DTLS, `astdb`, sons) ; métrique de fraîcheur dans Prometheus, 5 cibles sur 5, tableau Grafana provisionné |
 | 🔜 | Haute disponibilité du PBX (serveur de secours, bascule) |
-| 🔜 | **Stockage objet durable** : MinIO a retiré ses images publiques (quay.io et Docker Hub répondent 401 / accès refusé, constaté le 21 novembre 2026) ; la plateforme utilise le build Bitnami de la dernière version libre (`bitnamilegacy/minio:2025.4.22`, dépôt figé, plus mis à jour, épinglé par digest). À remplacer par une image MinIO construite par nos soins depuis les sources (AGPL-3.0) ou par Garage / SeaweedFS |
+| ✅ | **Sécurité du stockage** : le bucket des enregistrements est désormais **privé** (la politique anonyme lecture/écriture/liste des versions précédentes, joignable par `/voice-audio/`, est retirée au démarrage) ; tous les liens de téléchargement et d'envoi sont **signés et expirent**, calculés pour l'adresse publique |
+| ✅ | **Sortie de MinIO vers un stockage S3 maintenu** (Scaleway, OVHcloud, Cloudflare R2, Wasabi, AWS, SeaweedFS, Garage) : outil `scripts/migrate_object_store.py` copy / verify / switch (reprise sans doublon, vérification des tailles, bascule de la base), liens signés pour l'adresse publique (`S3_PUBLIC_ENDPOINT_URL`) |
+| 🔜 | **Stockage objet auto-hébergé maintenu par défaut** : MinIO a retiré ses images publiques (constaté le 21 novembre 2026) ; la plateforme utilise encore le build Bitnami figé `bitnamilegacy/minio:2025.4.22` (épinglé par empreinte, plus mis à jour). Remplacement par SeaweedFS intégré au compose, à valider sur le laboratoire (recette dans [la documentation](docs/deployment/object-storage.mdx)) |
 
 **5.5 Marque blanche totale du PBX**
 

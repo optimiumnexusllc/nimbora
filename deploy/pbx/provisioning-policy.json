@@ -12,6 +12,7 @@
     "auth.users.create",
     "auth.users.read",
     "confd.contexts.*.contexts.update",
+    "confd.contexts.*.update",
     "confd.contexts.create"
   ]
 }
