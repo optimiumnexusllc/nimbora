@@ -489,6 +489,49 @@ l'adresse du PBX avec `--shared-pbx` ; tests.
 Name or service not known` vers `agentd`, `amid` et `auth` du PBX (hôte masqué par la
 rédaction des journaux), non reproduites pendant les tests ; à dater et expliquer.
 
+## Rapport d'étape 10 — présence des collègues et annuaire unifié (PR #7) (22 novembre 2026)
+
+Déployé : `feat/lot-b-presence-directory` (images `nimbora-lot-b7`), d'abord `fa6dbee` fusionnée
+avec `feat/lot-b-smart-routing` (`b948fa8`), puis la branche telle que réécrite par son auteur
+sur `c3bbc7d` (`8fdfa79`) ; les deux correctifs ci-dessous ont été rejoués dessus. Aucune nouvelle
+migration. Le Softphone web (`softphone/`, version 1.2.0) a été construit depuis la branche et
+servi en local, appairé au poste 1004. Sans fusion.
+
+### Préalable : postes appairables
+
+Les postes 1002 et 1003 sont des lignes SIP classiques : l'appairage répond 409 « pas de ligne
+navigateur », comme prévu. Les essais ont donc utilisé 1001 (ligne navigateur) et un nouveau
+poste navigateur 1004, créé après avoir porté le plafond de sièges humains du tenant 1 à 10
+(`PATCH /saas/admin/tenants/1`, `limit_overrides.max_human_seats`).
+
+| Étape demandée | Résultat |
+|---|---|
+| (2) **avant** la mise à jour des droits : `GET /softphone/directory` avec le jeton du poste 1004 | `presence_live: true` dès le départ : wazo-chatd 26.11 **ne fait pas respecter** `chatd.users.presences.read` (la politique à 110 ACL lisait déjà les présences). Le repli `presence_live: false` n'est donc pas observable sur ce moteur ; il reste couvert par les tests unitaires. Pendant un appel 1002 → 1003, les deux postes sont bien « En appel » |
+| (3) `create_service_account.py --provisioner` puis `POST /pbx/provision` org2 | ✅ compte opérateur **125 ACL** (112 + 13 : la PR #5 a ajouté `confd.contexts.*.update`, d'où 13 et non 12), compte dédié 112 ; la politique du tenant org2 contient `chatd.users.presences.read` (et `update`). org3 non réapprovisionné (politique à 110) |
+| (4) `GET /api/chatd/1.0/users/presences` avec le compte de service | ✅ forme : `items[] = {uuid, tenant_uuid, state (available/away/unavailable/invisible), status, line_state (available/unavailable/talking/ringing/holding), do_not_disturb, connected, mobile, last_activity, lines[{id, state}]}` |
+| (5) appel en cours entre deux postes | ✅ « En appel » sur 1002 et 1003 (API et console) |
+| (5) « Ne pas déranger » posé sur 1002 (`PUT /pbx/extensions/{id}/call-settings`) | ✅ « Ne pas déranger » (API, console, Softphone) |
+| (5) `PUT /api/v1/softphone/presence {"state":"away","status":"Déjeuner"}` depuis le poste 1001 | ✅ « Absent · Déjeuner » dans **PBX → Postes** (capture Chromium) et dans le **Softphone web** (liste Collègues : « Absent · Déjeuner / Ne pas déranger / Disponible ») |
+| (5) poste sans téléphone enregistré (1004 avant appairage) | ✅ « Hors ligne » |
+| (6) mémoire client activée : `GET /softphone/directory?q=Awa` et `?q=<fin du numéro>` | ✅ `customers: [Awa Koné (test), conseiller habituel Test 1003, 5 appels]` |
+| (6) mémoire client désactivée | ✅ `customers: null` (puis réactivée) |
+
+Bugs trouvés et corrigés sur la branche :
+
+| N° | Symptôme | Cause | Correction |
+|---|---|---|---|
+| 21 | Postes 1002 et 1003 enregistrés et libres affichés « Hors ligne » | sur le moteur, un utilisateur qui n'a jamais choisi de présence reste `state: unavailable` pour toujours, téléphone enregistré ou non ; le code traduisait `unavailable` en hors ligne sans regarder la ligne | `603b00d` : la ligne décide (`line_state: available` → disponible ; rien d'enregistré, pas d'application, pas de mobile → hors ligne) ; tests avec les formes vues sur le moteur |
+| 22 | Softphone web : « Identifiants SIP refusés par le PBX », `Failed to authenticate` dans les journaux Asterisk alors que le mot de passe servi par l'API est le bon | le moteur identifie le point de terminaison par l'utilisateur SIP de la requête (`identify_by = username`, c'est-à-dire le **nom du point de terminaison**) ; le nom d'authentification (`poste####`) ne sert qu'au défi ; le Softphone s'enregistrait en `sip:<nom d'authentification>@…` | `22c2290` : la configuration du poste porte `sip_identity` (nom du point de terminaison) ; l'application s'enregistre avec et passe le nom d'authentification en `authorization_user` (même réglage que la procédure Linphone du laboratoire). Après correction : Softphone « Disponible », plus aucun échec d'authentification côté moteur. Tests API et Vitest |
+
+Autres observations :
+
+- Un fichier `dump.rdb` (vidage Redis) était versionné dans la PR : retiré et ajouté à `.gitignore` (`22c2290`).
+- Le commit `c3bbc7d` de la PR #6 journalise désormais les décisions du simulateur : ligne
+  `[Routing org=1 simulation] skill → pbx-queue:1 | …` observée dans les journaux de l'API
+  (suite de la remarque de l'étape 9).
+- Le « Hors ligne » d'un poste navigateur dont l'application est fermée est normal : JsSIP se
+  désenregistre à la fermeture.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
