@@ -20,8 +20,9 @@ from datetime import datetime
 from typing import Any
 
 import aiohttp
-from api.constants import ASTERISK_ARI_PASSWORD, ASTERISK_ARI_URL, ASTERISK_ARI_USER
 from loguru import logger
+
+from api.constants import ASTERISK_ARI_PASSWORD, ASTERISK_ARI_URL, ASTERISK_ARI_USER
 
 SPY_MODES = {
     # q: no beep/announce, d: DTMF 4/5/6 switch modes, E: stop with the call

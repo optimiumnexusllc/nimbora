@@ -20,6 +20,8 @@ from email.utils import formataddr, make_msgid
 from typing import Any
 
 import httpx
+from loguru import logger
+
 from api.services.actions.common import (
     ActionContext,
     ActionError,
@@ -28,7 +30,6 @@ from api.services.actions.common import (
     load_credential,
     render_template,
 )
-from loguru import logger
 
 EMAIL_RE = re.compile(r"^[A-Za-z0-9._%+\-]+@[A-Za-z0-9.\-]+\.[A-Za-z]{2,}$")
 MAX_SMS_CHARS = 1000

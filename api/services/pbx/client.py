@@ -267,9 +267,7 @@ class PbxClient:
         await self.request("auth", "DELETE", f"/users/{user_uuid}")
 
     async def set_auth_user_policy(self, user_uuid: str, policy_uuid: str) -> None:
-        await self.request(
-            "auth", "PUT", f"/users/{user_uuid}/policies/{policy_uuid}"
-        )
+        await self.request("auth", "PUT", f"/users/{user_uuid}/policies/{policy_uuid}")
 
     async def create_context(self, body: dict) -> dict:
         return await self.request("confd", "POST", "/contexts", json=body)

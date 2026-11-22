@@ -17,6 +17,9 @@ from pipecat.utils.enums import EndTaskReason
 
 from api.db import db_client
 from api.enums import TelephonyCallStatus, WorkflowRunMode
+from api.services.contact_center.handoff import (
+    CHANNEL_VARIABLE as HANDOFF_CHANNEL_VARIABLE,
+)
 from api.services.telephony.base import (
     CallInitiationResult,
     NormalizedInboundData,
@@ -26,9 +29,6 @@ from api.services.telephony.base import (
 from api.services.telephony.providers.ari.channel_registry import (
     register_channel,
     unregister_channel,
-)
-from api.services.contact_center.handoff import (
-    CHANNEL_VARIABLE as HANDOFF_CHANNEL_VARIABLE,
 )
 from api.services.telephony.providers.ari.dial_string import (
     DEFAULT_DIAL_STRING_TEMPLATE,

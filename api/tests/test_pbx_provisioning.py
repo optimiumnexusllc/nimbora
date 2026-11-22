@@ -504,7 +504,10 @@ async def test_logins_on_the_shared_pbx_carry_the_tenant_slug(db_session, monkey
     assert shared["credentials"]["login"] == f"org{org.id}-poste1051"
     # An e-mail address stays the login, slug or not.
     mailed = await admin.create_extension(
-        org.id, admin.NewExtension(firstname="Aya", lastname="B", extension="1052", email="aya@example.com")
+        org.id,
+        admin.NewExtension(
+            firstname="Aya", lastname="B", extension="1052", email="aya@example.com"
+        ),
     )
     assert mailed["credentials"]["login"] == "aya@example.com"
     # The fake now refuses a duplicate login like the engine does.

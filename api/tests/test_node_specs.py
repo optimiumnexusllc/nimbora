@@ -477,8 +477,14 @@ def test_tuner_cost_rate_fields_use_typed_renderer_options():
 @pytest.mark.parametrize(
     ("spec_name", "expected_docs_url"),
     [
-        ("paygent", "https://github.com/optimiumnexusllc/nimbora/blob/main/docs/integrations/paygent.mdx"),
-        ("tuner", "https://github.com/optimiumnexusllc/nimbora/blob/main/docs/integrations/tuner.mdx"),
+        (
+            "paygent",
+            "https://github.com/optimiumnexusllc/nimbora/blob/main/docs/integrations/paygent.mdx",
+        ),
+        (
+            "tuner",
+            "https://github.com/optimiumnexusllc/nimbora/blob/main/docs/integrations/tuner.mdx",
+        ),
     ],
 )
 def test_integration_node_docs_url(spec_name: str, expected_docs_url: str):
