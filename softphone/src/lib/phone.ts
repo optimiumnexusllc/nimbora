@@ -121,6 +121,8 @@ export class Phone {
     private ua: UA | null = null;
     private session: RTCSession | null = null;
     private consultSession: RTCSession | null = null;
+    /** Hanging up our own legs after the PBX accepted a transfer: no unhold, no promotion. */
+    private transferring = false;
     private mixer: ConferenceMixer;
     private listeners = new Set<Listener>();
     private snapshot: Snapshot = { registration: "disconnected", error: null, call: null, consult: null, conference: false, notice: null };
@@ -159,7 +161,7 @@ export class Phone {
         }
         this.emit({ call: reduceCall(this.snapshot.call, event) });
         if (event.type !== "ended") return;
-        if (this.consultSession && this.snapshot.consult && this.snapshot.consult.status !== "ended") {
+        if (!this.transferring && this.consultSession && this.snapshot.consult && this.snapshot.consult.status !== "ended") {
             // The customer hung up while the colleague is on the line: the
             // colleague's call simply becomes the call.
             void this.endConference();
@@ -179,8 +181,8 @@ export class Phone {
         this.consultSession = null;
         void this.endConference();
         this.emit({ consult: null, conference: false });
-        // Back to the customer.
-        if (this.session && this.snapshot.call?.status === "active") {
+        // Back to the customer (unless we are hanging up after a transfer).
+        if (!this.transferring && this.session && this.snapshot.call?.status === "active") {
             if (this.snapshot.call.held) this.session.unhold();
             this.listenTo(this.session);
         }
@@ -422,7 +424,26 @@ export class Phone {
         const options = {
             eventHandlers: {
                 failed: () => this.emit({ notice: "Transfert refusé par le PBX" }),
-                accepted: () => this.emit({ notice: "Appel transféré" }),
+                accepted: () => {
+                    // The PBX has connected the two others (NOTIFY 200 OK): the
+                    // employee's own legs are over. Hang them up here rather than
+                    // wait for the PBX's BYE, which came 8 s later on the lab and
+                    // left a phantom "active" call that refused new callers.
+                    this.emit({ notice: "Appel transféré" });
+                    this.transferring = true;
+                    try {
+                        for (const session of [consult, main]) {
+                            if (typeof session.isEnded === "function" && session.isEnded()) continue;
+                            try {
+                                session.terminate();
+                            } catch {
+                                /* already gone */
+                            }
+                        }
+                    } finally {
+                        this.transferring = false;
+                    }
+                },
             },
         };
         void this.endConference();

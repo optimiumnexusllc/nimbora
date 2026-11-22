@@ -211,6 +211,20 @@ describe("Phone · consultation, attended transfer, conference", () => {
         expect(phone.state.notice).toBe("Transfert refusé par le PBX");
     });
 
+    it("hangs up its own two legs once the PBX has accepted the transfer", async () => {
+        const { phone, customer } = await onACall();
+        phone.consult("1002");
+        const colleague = ua.lastCall!;
+        colleague.fire("accepted");
+        phone.completeTransfer();
+        const options = customer.refer.mock.calls[0][1] as unknown as { eventHandlers: { accepted: () => void } };
+        options.eventHandlers.accepted();
+        expect(phone.state.notice).toBe("Appel transféré");
+        expect(colleague.terminate).toHaveBeenCalled();
+        expect(customer.terminate).toHaveBeenCalled();
+        expect(phone.state.call?.status ?? "ended").toBe("ended");
+    });
+
     it("transfers to a colleague whose phone still rings (blind, through the PBX)", async () => {
         const { phone, customer } = await onACall();
         phone.consult("1002");

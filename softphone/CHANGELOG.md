@@ -13,7 +13,10 @@
   - **Conférence** : les trois s'entendent, mixage dans l'application ; le micro coupé l'est pour
     les deux appels ; **Se retirer** laisse le client et le collègue ensemble ;
   - **Annuler** (ou le bouton rouge) raccroche avec le collègue et reprend le client.
-- Si le client raccroche pendant la consultation, l'appel du collègue continue normalement.
+- Si le client raccroche pendant la consultation, l'appel du collègue continue
+- Dès que le PBX a relié le client et le collègue (transfert ou « Se retirer »), l'application
+  raccroche elle-même ses deux appels : le poste est libre immédiatement au lieu d'attendre le
+  raccroché du PBX (validation en laboratoire, étape 14). normalement.
 - **Transférer directement** reste disponible (transfert aveugle).
 
 ## 1.2.1 — 22 novembre 2026
