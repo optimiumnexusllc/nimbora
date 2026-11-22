@@ -440,3 +440,40 @@ async def test_directory_includes_customers_when_memory_is_on(db_session, monkey
         "customers"
     ]
     assert [c["number"] for c in by_number] == ["+2250500998877"]
+
+
+async def test_the_app_repairs_its_browser_line_when_it_reads_its_account(
+    db_session, monkeypatch
+):
+    fake = FakePbx()
+    _, _, device = await _paired(db_session, monkeypatch, fake)
+    # Pairing already reads the account (and repairs the line): break it again,
+    # as on an installation made before the fix.
+    fake.user_endpoints["sip-u1"]["templates"] = [
+        {"uuid": "tpl-webrtc", "label": "webrtc"},
+        {"uuid": "tpl-global", "label": "global"},
+    ]
+    config = await softphone.device_config(device)
+    assert config["account"]["password"] == "Sip-Secret-1001"
+    assert [t["uuid"] for t in fake.user_endpoints["sip-u1"]["templates"]] == [
+        "tpl-webrtc"
+    ]
+
+
+async def test_an_account_without_the_update_right_still_gets_its_config(
+    db_session, monkeypatch
+):
+    fake = FakePbx()
+    _, _, device = await _paired(db_session, monkeypatch, fake)
+    original = fake.handle
+
+    def no_update(request):
+        if request.method == "PUT" and "/endpoints/sip/" in request.url.path:
+            import httpx
+
+            return httpx.Response(403, json={"message": "Unauthorized"})
+        return original(request)
+
+    fake.handle = no_update
+    config = await softphone.device_config(device)
+    assert config["account"]["username"] == "koffi1001"

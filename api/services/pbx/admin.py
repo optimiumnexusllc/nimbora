@@ -15,6 +15,7 @@ from typing import Any, Literal
 from loguru import logger
 
 from api.services.branding import brand
+from api.services.pbx import endpoints
 from api.services.pbx.client import PbxClient, PbxError
 from api.services.pbx.service import (
     PbxRouteError,
@@ -244,38 +245,6 @@ async def send_password_reset(
         await client.send_password_reset_email(login)
 
 
-# Fields of a SIP endpoint the engine accepts back on PUT (the rest is read-only
-# or derived). Templates and transport are references: only their uuid goes.
-_ENDPOINT_FIELDS = (
-    "name",
-    "label",
-    "asterisk_id",
-    "aor_section_options",
-    "auth_section_options",
-    "endpoint_section_options",
-    "identify_section_options",
-    "registration_section_options",
-    "registration_outbound_auth_section_options",
-    "outbound_auth_section_options",
-)
-
-
-def _endpoint_with_password(endpoint: dict, password: str) -> dict:
-    body = {k: endpoint[k] for k in _ENDPOINT_FIELDS if k in endpoint}
-    auth = [list(o) for o in endpoint.get("auth_section_options") or []]
-    if any(o[0] == "password" for o in auth):
-        auth = [[k, password if k == "password" else v] for k, v in auth]
-    else:
-        auth.append(["password", password])
-    body["auth_section_options"] = auth
-    body["templates"] = [
-        {"uuid": t["uuid"]} for t in endpoint.get("templates") or [] if t.get("uuid")
-    ]
-    if (endpoint.get("transport") or {}).get("uuid"):
-        body["transport"] = {"uuid": endpoint["transport"]["uuid"]}
-    return body
-
-
 async def rotate_sip_password(
     organization_id: int, user_uuid: str, **client_kwargs
 ) -> dict[str, Any]:
@@ -300,7 +269,7 @@ async def rotate_sip_password(
             endpoint = await client.endpoint_sip(line["endpoint_sip"]["uuid"])
             password = _secret(20)
             await client.update_endpoint_sip(
-                endpoint["uuid"], _endpoint_with_password(endpoint, password)
+                endpoint["uuid"], endpoints.with_password(endpoint, password)
             )
             # Read back: a PUT the engine accepted but did not apply must not
             # hand out a secret that does not work.
@@ -327,6 +296,48 @@ async def rotate_sip_password(
         f"[PBX org={organization_id}] SIP password rotated for {len(rotated)} line(s)"
     )
     return {"uuid": user_uuid, "lines": rotated}
+
+
+async def repair_webrtc_lines(organization_id: int, **client_kwargs) -> dict[str, Any]:
+    """Give every browser line the « webrtc » template alone (bug 23).
+
+    Lines created before the fix could not be rung by the engine. Idempotent:
+    lines already right are left alone.
+    """
+    connection = await _connection(organization_id)
+    checked, repaired, failed = 0, [], []
+    async with client_for(connection, **client_kwargs) as client:
+        for user in await client.users():
+            try:
+                detail = await client.user(user["uuid"])
+            except PbxError:
+                continue
+            for line in detail.get("lines") or []:
+                sip_uuid = (line.get("endpoint_sip") or {}).get("uuid")
+                if not sip_uuid:
+                    continue
+                checked += 1
+                extension = user.get("extension")
+                try:
+                    endpoint = await client.endpoint_sip(sip_uuid)
+                    fixed = endpoints.repair_templates(endpoint)
+                    if fixed is None:
+                        continue
+                    await client.update_endpoint_sip(
+                        sip_uuid, endpoints.endpoint_body(endpoint, fixed)
+                    )
+                    repaired.append(extension)
+                except PbxError as error:
+                    logger.warning(
+                        f"[PBX org={organization_id}] browser line {extension} "
+                        f"not repaired: {error}"
+                    )
+                    failed.append(extension)
+    if repaired:
+        logger.info(
+            f"[PBX org={organization_id}] browser lines repaired: {', '.join(map(str, repaired))}"
+        )
+    return {"checked": checked, "repaired": repaired, "failed": failed}
 
 
 # ---------------------------------------------------------- CSV import
