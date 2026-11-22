@@ -89,6 +89,18 @@ def test_only_answered_customer_calls_not_taken_by_ai_are_billed():
         billing.billable_call(_cdr(call_direction="internal"), ai_routed=False) is None
     )
     assert billing.billable_call(_cdr(source_extension="1002"), ai_routed=False) is None
+    # An employee on the other end, whatever number is shown: internal.
+    assert (
+        billing.billable_call(
+            _cdr(source_extension="2250700000001", source_internal_extension="1004"),
+            ai_routed=False,
+        )
+        is None
+    )
+    # Lab step 16: a customer with a withheld number is still a customer.
+    for withheld in ("anonymous", "operator", "", None):
+        row = billing.billable_call(_cdr(source_extension=withheld), ai_routed=False)
+        assert row is not None and row["billable_seconds"] == 120, withheld
     assert billing.billable_call(_cdr(duration=0), ai_routed=False) is None
     assert billing.billable_call(_cdr(start=None), ai_routed=False) is None
     assert billing.billable_call(_cdr(id=None), ai_routed=False) is None

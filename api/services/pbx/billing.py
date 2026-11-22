@@ -46,14 +46,22 @@ def billable_call(cdr: dict[str, Any], *, ai_routed: bool) -> dict[str, Any] | N
         return None
     direction = (cdr.get("call_direction") or cdr.get("call_drection") or "").lower()
     if direction == "inbound":
+        side = "source"
         external, staff = cdr.get("source_extension"), cdr.get("destination_name")
     elif direction == "outbound":
+        side = "destination"
         external = cdr.get("destination_extension") or cdr.get("requested_extension")
         staff = cdr.get("source_name")
     else:
         return None  # internal calls are free
-    if len(re.sub(r"\D", "", str(external or ""))) < 6:
+    if cdr.get(f"{side}_internal_extension") or cdr.get(f"{side}_user_uuid"):
+        return None  # the other end is an employee: an internal call
+    digits = re.sub(r"\D", "", str(external or ""))
+    if 0 < len(digits) < 6:
         return None  # a short number is another extension, not a customer
+    # No digits at all: a customer with a withheld number (« anonymous »,
+    # « unknown », the trunk's own name). Still a customer call (lab step 16:
+    # such a call was left out of the human minutes and of the hub).
     seconds = int(float(cdr.get("duration") or 0))
     started = _parse_time(cdr.get("start"))
     if seconds <= 0 or started is None:
