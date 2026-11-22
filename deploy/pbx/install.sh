@@ -5,8 +5,11 @@
 #   sudo ./install.sh --brand "NIMBORA" --nimbora-url https://app.example.com \
 #        --nimbora-ip 203.0.113.10 --company "Ivoire Immo" [--support-email ...] \
 #        [--ssh-from CIDR,…] [--sip-from CIDR,…|any|none] [--phones-from CIDR,…] \
-#        [--rtp-range 10000-20000] [--trusted-proxy CIDR,…] [--firewall-only]
+#        [--rtp-range 10000-20000] [--trusted-proxy CIDR,…] [--operator] [--firewall-only]
 #
+# --operator: shared PBX of the platform operator. Also creates the
+# provisioning account the platform uses to open one tenant per company
+# (PBX_PROVISIONING_* settings printed at the end).
 # Firewall: only SSH, HTTPS, SIP/RTP (from --sip-from, default any) and the ARI
 # from the platform are open; everything else the engine listens on is closed.
 # fail2ban bans repeated authentication failures on the engine's API.
@@ -30,11 +33,12 @@ PHONES_FROM="none"
 RTP_RANGE="10000-20000"
 TRUSTED_PROXY="none"
 FIREWALL_ONLY=0
+OPERATOR=0
 KIT_DIR="$(cd "$(dirname "$0")" && pwd)"
 STATE_DIR=/etc/nimbora-pbx
 WORK_DIR=/opt/nimbora-pbx
 
-usage() { sed -n '2,14p' "$0"; exit 1; }
+usage() { sed -n '2,17p' "$0"; exit 1; }
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --brand) BRAND="$2"; shift 2 ;;
@@ -53,6 +57,7 @@ while [[ $# -gt 0 ]]; do
     --rtp-range) RTP_RANGE="$2"; shift 2 ;;
     --trusted-proxy) TRUSTED_PROXY="$2"; shift 2 ;;
     --firewall-only) FIREWALL_ONLY=1; shift ;;
+    --operator) OPERATOR=1; shift ;;
     -h|--help) usage ;;
     *) echo "Option inconnue : $1"; usage ;;
   esac
@@ -185,6 +190,9 @@ API_CLIENT_PASSWORD=$(gen)
 SERVICE_PASSWORD=$(gen)
 EOF
 fi
+# Added by a later version of the kit: appended to an existing secrets file.
+grep -q '^PROVISIONING_PASSWORD=' "$STATE_DIR/secrets.env" \
+  || echo "PROVISIONING_PASSWORD=$(openssl rand -base64 33 | tr -d '/+=' | cut -c1-32)" >> "$STATE_DIR/secrets.env"
 # shellcheck disable=SC1091
 source "$STATE_DIR/secrets.env"
 
@@ -284,6 +292,13 @@ echo "==> Contextes du tenant (postes, numéros, appels sortants)"
 python3 "$KIT_DIR/scripts/ensure_tenant_contexts.py" --url https://localhost --insecure \
   --root-password "$ROOT_PASSWORD" --tenant-name "$COMPANY"
 
+if [[ "$OPERATOR" == 1 ]]; then
+  echo "==> Compte d'approvisionnement de l'opérateur (PBX partagé)"
+  python3 "$KIT_DIR/scripts/create_service_account.py" --url https://localhost --insecure \
+    --root-password "$ROOT_PASSWORD" --password "$PROVISIONING_PASSWORD" --provisioner \
+    | tee "$STATE_DIR/provisioning-account.json"
+fi
+
 PUBLIC_IP="$(hostname -I | awk '{print $1}')"
 cat <<EOF
 
@@ -305,3 +320,17 @@ cat <<EOF
  Secrets : ${STATE_DIR}/secrets.env (root uniquement). Sauvegardez-le.
 ============================================================
 EOF
+if [[ "$OPERATOR" == 1 ]]; then
+  cat <<EOF
+
+ PBX partagé : dans le fichier .env de ${BRAND}, ajoutez
+   PBX_PROVISIONING_URL=https://<nom-de-ce-serveur>
+   PBX_PROVISIONING_USERNAME=nimbora-provisioning
+   PBX_PROVISIONING_PASSWORD=<PROVISIONING_PASSWORD de ${STATE_DIR}/secrets.env>
+   PBX_PROVISIONING_ARI_ENDPOINT=http://${PUBLIC_IP}:5039
+   PBX_PROVISIONING_ARI_USER=xivo
+   PBX_PROVISIONING_ARI_PASSWORD=<ARI_PASSWORD de ${STATE_DIR}/secrets.env>
+   PBX_PROVISIONING_ARI_WS_CLIENT=nimbora
+   PBX_PROVISIONING_ON_SIGNUP=true   # tenant créé dès l'inscription
+EOF
+fi

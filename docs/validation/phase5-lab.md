@@ -269,6 +269,73 @@ création idempotente d'un contexte interne (postes 1000-1999, groupes 2000-2999
 15 chiffres : le moteur exige début et fin de même longueur) et d'un contexte sortant inclus
 par l'interne. Commit `4478631`, test `test_tenant_contexts_cover_what_the_platform_reads_by_type`.
 
+## Rapport d'étape 6 — PBX partagé de l'opérateur, PR #1 `feat/lot-a-saas-tenants` (21 novembre 2026)
+
+Branche récupérée, fusionnée avec `main` (trois conflits résolus : options du kit,
+README du kit, page PBX de la console), images API et UI construites depuis la branche
+(`REGISTRY=nimbora-lot-a` dans le `.env` du laboratoire pour les distinguer de celles de
+`main`), migration `b5c6d7e8f9a0` appliquée au démarrage.
+
+| Étape | Résultat |
+|---|---|
+| `create_service_account.py --provisioner` dans le conteneur : compte `nimbora-provisioning` dans le tenant principal, politique = intégration (110) + approvisionnement (11) = **121 ACL** | ✅ |
+| `PBX_PROVISIONING_*` côté NIMBORA : URL privée `https://10.250.0.10` (certificat non vérifié), ARI `http://10.250.0.10:5039`, `ON_SIGNUP=false` | ✅ après 🐛 n° 8 (variables non transmises par compose) |
+| Deux entreprises de test créées (inscription ouverte quelques minutes puis refermée), administrateur passé super-admin pour l'API opérateur | ✅ organisations 2 et 3 |
+| `GET /pbx/plan` : `shared: true`, `shared_available: true` (hors SaaS, tout est permis) | ✅ |
+| `POST /pbx/provision` entreprise A : tenant `org2` (« Entreprise 2 (#org2) »), contextes interne/entrant/sortant, compte `nimbora-org2`, configuration ARI n° 2 « PBX de la plateforme (agents IA) », abonnement webhook, connexion `managed: true`, `status: ok`, moteur 26.11 | ✅ en 1,3 s |
+| `POST /pbx/provision` entreprise B : tenant `org3`, même chose, ARI n° 3 | ✅ en 1,2 s |
+| Second `POST /pbx/provision` sur chacune : même tenant, même ARI, rien de doublé (idempotence) | ✅ |
+| L'entreprise modifie sa connexion gérée (`PUT /pbx/connection`) | ✅ refusé 409 « géré par la plateforme » |
+| Isolation côté moteur : jeton du compte de service d'« Entreprise test » sur le tenant `org2` → **401**, sur son propre tenant → 200 (ses 2 postes seulement) ; le compte d'approvisionnement voit les 4 tenants | ✅ |
+| Création du poste 1001 dans A puis dans B | ❌ 502 « 409 Conflict … /auth/0.1/users » → 🐛 n° 9 |
+| Création d'un numéro public `+2250700000002` dans A | ❌ 502 « exten: String does not match expected pattern » → 🐛 n° 10 (bogue de `main`, pas de la PR) ; sans `+` : ✅ |
+| Après correctifs (image API reconstruite depuis la branche fusionnée) : poste 1001 dans A **et** dans B, identifiants `org2-poste1001` / `org3-poste1001` ; « Entreprise test » garde `poste1001` et `poste1002` ; chaque tenant ne contient que ses postes (`confd/users` par tenant) | ✅ |
+| Inventaire de A : son seul poste 1001 et son numéro ; inventaire de B : idem ; aucun ne voit l'autre | ✅ |
+| Numéro public `+2250700000003` dans B après le correctif n° 10 : créé (`2250700000003` sur le moteur), visible seulement dans B | ✅ |
+| Kit lab : `--shared-pbx` (moteur `--operator`, compte d'approvisionnement, `PBX_PROVISIONING_*` dans le `.env`) rejoué sur le laboratoire avec `--only nimbora` | ✅ |
+| Tests : branche 91 tests PBX/provisioning/SaaS, `main` 89 + kits 22 et 24 ; `test_stream_pushes_changes_on_pbx_events` échoue dans la suite complète et passe seul (connu, antérieur à la PR) | ✅ |
+
+### Reste à valider pour la PR (🧪)
+
+- ACL exactes du compte d'approvisionnement : vérifiées par l'usage réel (tenants, contextes,
+  politiques, comptes, inclusion de contextes) ; `auth.users.*.policies.*.create` a fonctionné.
+- Agents IA de deux entreprises sur le même Asterisk (deux applications Stasis) : non
+  vérifiable sans clé de fournisseur IA.
+- Appel humain réel entre deux postes de tenants différents (doit échouer) : à faire lors du
+  test humain.
+- Les contextes entrants créés par le moteur pour `org2`/`org3` n'ont **aucune plage**
+  (`incall_ranges: []`) : la création de numéros fonctionne quand même sur 26.11, à surveiller.
+
+
+### 🐛 n° 8 — `PBX_PROVISIONING_*` (et `BRAND_*`) n'atteignaient pas le conteneur API
+
+Le service `api` de `docker-compose.yaml` liste ses variables une à une : celles du `.env`
+qui n'y figurent pas sont ignorées. Aucun `PBX_PROVISIONING_*` n'était transmis, la
+plateforme ne « voyait » donc pas de PBX partagé ; les `BRAND_*` de la marque blanche non
+plus. Correction : les deux fichiers compose transmettent chaque variable lue par
+`api/constants.py` (test qui compare les deux listes), et `branding.py` traite une variable
+vide comme absente (compose transmet `${VAR:-}` vide). Commits `32e1456` (main) et
+`edc0466` (branche).
+
+### 🐛 n° 9 — identifiants `poste1001` non uniques entre tenants
+
+Les identifiants de connexion (wazo-auth) sont uniques sur **tout le moteur**, pas par
+tenant : le `poste1001` d'« Entreprise test » bloque celui de l'entreprise A (409), et le
+moteur annule bien la création (aucun utilisateur orphelin). Correction (`admin.py`) : sur
+une connexion gérée par la plateforme, l'identifiant par défaut devient `org2-poste1001` ;
+un PBX dédié garde `poste1001` ; une adresse e-mail reste l'identifiant. Le faux PBX des
+tests refuse désormais un identifiant en double. Test
+`test_logins_on_the_shared_pbx_carry_the_tenant_slug`.
+
+### 🐛 n° 10 — le moteur refuse le `+` des numéros publics
+
+`POST /confd/1.1/extensions` avec `exten: "+2250700000002"` → « String does not match
+expected pattern », sur le tenant dédié comme sur les tenants partagés : aucun numéro en
++E.164 ne pouvait être créé depuis NIMBORA. Correction (`main`, `service.py` et
+`numbers.py`) : le numéro est écrit et comparé **sans son `+`** côté moteur (`pbx_exten`),
+NIMBORA et l'argument `called=` de Stasis gardent le +E.164, et l'inventaire retrouve les
+numéros confiés à l'IA sous les deux formes. Le faux PBX refuse le `+` comme le moteur.
+
 ## Rapport d'étape 7 — vérifications pour les PR #2 et #3 (21 novembre 2026)
 
 **Inscription publique.** Fermée depuis la création du compte administrateur :

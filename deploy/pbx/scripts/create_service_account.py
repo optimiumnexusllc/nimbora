@@ -9,6 +9,14 @@ Standard library only, so it runs on the PBX host right after the install:
 Creates (or reuses) the policy from ../integration-policy.json and an
 ``external_api`` user holding it, in the company's tenant, then prints the
 values to enter in the platform (PBX connection page).
+
+With ``--provisioner`` (shared PBX of an operator), creates instead the
+operator's provisioning account in the top tenant: it holds every ACL of
+integration-policy.json plus ../provisioning-policy.json, so the platform can
+create one tenant per company with its own least-privilege service account:
+
+    python3 create_service_account.py --url https://localhost --insecure \
+        --root-password '...' --password '...' --provisioner
 """
 
 from __future__ import annotations
@@ -57,32 +65,64 @@ class Api:
         return json.loads(payload) if payload else None
 
 
+def build_policy(args) -> dict:
+    """The integration policy, or the operator's provisioning policy."""
+    integration = json.loads(Path(args.policy_file).read_text())
+    if not args.provisioner:
+        return integration
+    extra = json.loads(Path(args.provisioning_policy_file).read_text())
+    return {
+        "name": extra["name"],
+        "description": extra["description"],
+        "acl": sorted(set(integration["acl"]) | set(extra["acl"])),
+    }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--url", default="https://localhost")
     parser.add_argument("--insecure", action="store_true", help="certificat autosigné")
     parser.add_argument("--root-user", default="root")
     parser.add_argument("--root-password", required=True)
-    parser.add_argument("--tenant-name", required=True)
-    parser.add_argument("--username", default="nimbora-integration")
+    parser.add_argument("--tenant-name")
+    parser.add_argument("--username")
+    parser.add_argument(
+        "--provisioner",
+        action="store_true",
+        help="compte d'approvisionnement de l'opérateur (PBX partagé)",
+    )
     parser.add_argument("--password", required=True)
     parser.add_argument(
         "--policy-file",
         default=str(Path(__file__).resolve().parent.parent / "integration-policy.json"),
     )
+    parser.add_argument(
+        "--provisioning-policy-file",
+        default=str(Path(__file__).resolve().parent.parent / "provisioning-policy.json"),
+    )
     args = parser.parse_args()
+    if not args.provisioner and not args.tenant_name:
+        parser.error("--tenant-name est requis (sauf avec --provisioner)")
+    args.username = args.username or (
+        "nimbora-provisioning" if args.provisioner else "nimbora-integration"
+    )
 
     api = Api(args.url, args.insecure)
     token = api.call("POST", "/token", {"expiration": 600}, basic=(args.root_user, args.root_password))
     api.token = token["data"]["token"]
 
-    tenants = api.call("GET", "/tenants", query={"search": args.tenant_name})["items"]
-    tenant = next((t for t in tenants if t.get("name") == args.tenant_name), None)
-    if tenant is None:
-        sys.exit(f"Tenant « {args.tenant_name} » introuvable")
-    api.tenant = tenant["uuid"]
+    if args.provisioner:
+        # The root's own (top) tenant: no Wazo-Tenant header.
+        metadata = token["data"].get("metadata") or {}
+        tenant = {"uuid": metadata.get("tenant_uuid"), "name": "(tenant principal)"}
+    else:
+        tenants = api.call("GET", "/tenants", query={"search": args.tenant_name})["items"]
+        tenant = next((t for t in tenants if t.get("name") == args.tenant_name), None)
+        if tenant is None:
+            sys.exit(f"Tenant « {args.tenant_name} » introuvable")
+        api.tenant = tenant["uuid"]
 
-    policy_spec = json.loads(Path(args.policy_file).read_text())
+    policy_spec = build_policy(args)
     policies = api.call("GET", "/policies", query={"search": policy_spec["name"]})["items"]
     policy = next((p for p in policies if p.get("name") == policy_spec["name"]), None)
     if policy is None:

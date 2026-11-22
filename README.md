@@ -131,6 +131,13 @@ en-têtes SIP, page d'accueil. Depuis NIMBORA, vous suivez les appels en cours, 
 files, vous **routez un numéro du PBX vers un agent IA** en un clic, et chaque appel humain
 rejoint l'historique client, à côté des appels IA, de WhatsApp et du chat web.
 
+**Deux façons de l'obtenir, selon l'offre** : un **espace sur le PBX partagé de la plateforme**,
+créé en un clic (« Activer la téléphonie ») ou dès l'inscription — tenant isolé, compte de
+service aux droits minimaux, agents IA reliés, rien à installer — ou **son propre PBX** sur un
+serveur dédié. Les **postes humains** (conseillers et postes du PBX) sont plafonnés par l'offre.
+
+<p align="center"><img src="docs/images/screenshots/pbx-activation.webp" alt="Activer la téléphonie sur le PBX de la plateforme" width="88%"></p>
+
 L'administration se fait aussi depuis NIMBORA :
 
 - **postes** en une action (ligne navigateur ou SIP, messagerie, accès, agent), à l'unité ou par
@@ -501,8 +508,9 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 
 | Statut | Fonctionnalité |
 |---|---|
-| 🔜 | Tenant PBX créé automatiquement à l'inscription d'une entreprise ; postes plafonnés par l'offre |
-| 🔜 | PBX partagé de l'opérateur (multi-tenant) ou PBX dédié par client, selon l'offre |
+| ✅ | Tenant PBX créé automatiquement (à l'inscription ou en un clic « Activer la téléphonie ») sur le PBX partagé : tenant, contextes interne/entrant/sortant, compte de service limité au tenant, configuration ARI des agents IA (application Stasis propre), webhook d'événements ; idempotent (une reprise complète sans doublon) ; connexion gérée par la plateforme, invisible et non modifiable par l'entreprise ; retrait par l'opérateur |
+| ✅ | PBX partagé de l'opérateur (`install.sh --operator`, compte d'approvisionnement aux droits minimaux) ou PBX dédié par client, selon l'offre (`pbx_shared`, `pbx_dedicated`) ; postes humains plafonnés par l'offre (conseillers du centre intégré + postes du PBX, import CSV limité aux postes restants, « Postes 4 / 15 » dans la console) |
+| 🧪 | Validation du multi-tenant sur un PBX réel : création de tenants et de contextes par l'API, ACL du compte d'approvisionnement, agents IA de plusieurs entreprises sur le même Asterisk |
 | 🔜 | Facturation des minutes humaines (journal des appels) avec les minutes IA |
 | 🔜 | Haute disponibilité, sauvegarde et restauration du PBX, métriques Prometheus |
 | 🔜 | **Stockage objet durable** : MinIO a retiré ses images publiques (quay.io et Docker Hub répondent 401 / accès refusé, constaté le 21 novembre 2026) ; la plateforme utilise le build Bitnami de la dernière version libre (`bitnamilegacy/minio:2025.4.22`, dépôt figé, plus mis à jour, épinglé par digest). À remplacer par une image MinIO construite par nos soins depuis les sources (AGPL-3.0) ou par Garage / SeaweedFS |

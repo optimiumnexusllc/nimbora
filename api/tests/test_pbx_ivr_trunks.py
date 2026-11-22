@@ -452,7 +452,9 @@ async def test_number_destinations_and_ai_adoption(db_session, monkeypatch, spok
         await numbers.set_number_destination(org.id, "abc", ivr.MenuAction())
     assert await numbers.remove_number(org.id, "+22527000077")
     assert not await numbers.remove_number(org.id, "+22527000077")
-    assert not any(e["exten"] in ("+22527000077", "22527000077") for e in fake.extensions)
+    assert not any(
+        e["exten"] in ("+22527000077", "22527000077") for e in fake.extensions
+    )
 
 
 # ------------------------------------------------------- operator lines

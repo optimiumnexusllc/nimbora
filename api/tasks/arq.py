@@ -60,6 +60,7 @@ REDIS_SETTINGS = RedisSettings(
 
 from api.services.contact_center.callbacks import run_callback_scheduler
 from api.services.pbx.alerts import run_alert_checks
+from api.services.pbx.provisioning import provision_pbx_tenant
 from api.services.pbx.recordings import import_pbx_recordings, sync_all_recordings
 from api.services.privacy.service import run_retention_sweep
 from api.services.whatsapp_messaging.service import close_idle_conversations
@@ -94,6 +95,7 @@ class WorkerSettings:
         complete_inactive_text_chat_session,
         finalize_completed_text_chat,
         func(import_pbx_recordings, timeout=600),
+        func(provision_pbx_tenant, timeout=300),
     ]
     cron_jobs = [
         # GDPR retention: purge recordings, transcripts and customer memory

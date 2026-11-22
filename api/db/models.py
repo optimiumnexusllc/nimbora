@@ -2296,6 +2296,10 @@ class PbxConnectionModel(Base):
     supervision_settings = Column(JSONB, nullable=False, default=dict)
     # Missed calls called back by an AI agent. See services/pbx/missed_calls.
     missed_call_policy = Column(JSONB, nullable=False, default=dict)
+    # Tenant created by NIMBORA on the operator's shared PBX (not editable by
+    # the company). See services/pbx/provisioning.
+    managed = Column(Boolean, nullable=False, default=False)
+    provisioning = Column(JSONB, nullable=False, default=dict)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
     updated_at = Column(
         DateTime(timezone=True),
@@ -2457,7 +2461,9 @@ class PbxSupervisionSessionModel(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     __table_args__ = (
-        Index("ix_pbx_supervision_sessions_org_created", "organization_id", "created_at"),
+        Index(
+            "ix_pbx_supervision_sessions_org_created", "organization_id", "created_at"
+        ),
     )
 
 

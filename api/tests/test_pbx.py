@@ -108,10 +108,19 @@ def test_brand_comes_from_environment(monkeypatch):
 def test_brand_treats_empty_variables_as_unset(monkeypatch):
     """Compose passes `${BRAND_PBX_NAME:-}` as "" when .env has no value: that must
     not produce an empty PBX name or SIP User-Agent."""
-    for name in ("BRAND_NAME", "BRAND_PBX_NAME", "BRAND_DOMAIN", "BRAND_SIP_USER_AGENT"):
+    for name in (
+        "BRAND_NAME",
+        "BRAND_PBX_NAME",
+        "BRAND_DOMAIN",
+        "BRAND_SIP_USER_AGENT",
+    ):
         monkeypatch.setenv(name, "")
     b = brand()
-    assert (b.name, b.pbx_name, b.sip_user_agent) == ("NIMBORA", "NIMBORA Voice", "NIMBORA-Voice")
+    assert (b.name, b.pbx_name, b.sip_user_agent) == (
+        "NIMBORA",
+        "NIMBORA Voice",
+        "NIMBORA-Voice",
+    )
     assert b.noreply_email == "noreply@nimbora.io"
 
 
@@ -280,7 +289,9 @@ async def test_white_label_and_event_subscription(db_session, monkeypatch):
     assert connection.branding_applied_at is not None
 
 
-async def test_branding_is_reported_as_the_kits_when_the_engine_refuses(db_session, monkeypatch):
+async def test_branding_is_reported_as_the_kits_when_the_engine_refuses(
+    db_session, monkeypatch
+):
     """Seen on a real engine (26.11): /asterisk/pjsip/global needs a master-tenant
     token, so the company's least-privilege service account gets 401. The kit
     brands the SIP headers at install time: the platform reports that instead of

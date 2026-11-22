@@ -66,6 +66,53 @@ See `deploy/pbx/README.md` for every option and what the white label changes.
   <img src="/images/screenshots/pbx-numbers.webp" alt="Inbound numbers with one routed to an AI agent" />
 </Frame>
 
+## Shared PBX of the platform (one tenant per company)
+
+An operator can run **one PBX for all its client companies** instead of one server per company. Each company gets its own tenant on the shared PBX — extensions, queues, numbers, voice menus and recordings stay isolated — created by NIMBORA in one click, without any credential to type.
+
+<Steps>
+  <Step title="Install the PBX in operator mode">
+    ```bash
+    sudo ./install.sh --brand "NIMBORA" --nimbora-url https://app.example.com \
+         --nimbora-ip 203.0.113.10 --company "Opérateur" --operator
+    ```
+    `--operator` also creates the **provisioning account** (`nimbora-provisioning`) in the top tenant. It holds the service account's rights plus those needed to create tenants, dialplan contexts and service accounts — nothing more (`deploy/pbx/provisioning-policy.json`). The settings to copy are printed at the end.
+  </Step>
+  <Step title="Configure the platform">
+    In NIMBORA's `.env`:
+
+    | Variable | Value |
+    | --- | --- |
+    | `PBX_PROVISIONING_URL` | `https://pbx.example.com` |
+    | `PBX_PROVISIONING_USERNAME` / `PBX_PROVISIONING_PASSWORD` | the provisioning account |
+    | `PBX_PROVISIONING_ARI_ENDPOINT`, `_ARI_USER`, `_ARI_PASSWORD`, `_ARI_WS_CLIENT` | the PBX's ARI, for AI agents |
+    | `PBX_PROVISIONING_ON_SIGNUP` | `true` to create the tenant as soon as a company signs up |
+    | `PBX_PROVISIONING_USER_RANGE` (and `_GROUP_`, `_QUEUE_`, `_CONFERENCE_RANGE`) | internal numbering of each tenant (default 1000-1999, 2000-2999, 3000-3999, 4000-4999, as the install kit) |
+  </Step>
+  <Step title="The company activates its telephony">
+    In **Téléphonie d'entreprise**, **Activer la téléphonie** creates the tenant (`org<id>`), its internal, inbound and outbound contexts (internal calls can dial out), a service account restricted to the tenant with the integration policy, the ARI configuration of its AI agents (its own Stasis application on the shared Asterisk) and the events webhook. The connection is then **managed by the platform**: the company cannot see or change it. The operator can also do it from the super-admin API (`POST /api/v1/saas/admin/tenants/{id}/pbx/provision`) and remove a tenant (`DELETE …/pbx`, irreversible).
+  </Step>
+</Steps>
+
+<Frame caption="Téléphonie d'entreprise — activation in one click on the platform's PBX">
+  <img src="/images/screenshots/pbx-activation.webp" alt="Activate the platform PBX" />
+</Frame>
+
+<Frame caption="The company's tenant is ready: managed connection, human seats of the plan">
+  <img src="/images/screenshots/pbx-activated.webp" alt="PBX connected, seats 2 / 15" />
+</Frame>
+
+Provisioning is idempotent: a run interrupted halfway is completed by the next one, without duplicates (the service account's password is rotated each time).
+
+### Plans: shared PBX, own PBX and human seats
+
+Two plan options decide what a company may use (super-admin console → Offres):
+
+- **Téléphonie d'entreprise sur le PBX de la plateforme** (`pbx_shared`) — the one-click activation above.
+- **Connexion de son propre PBX** (`pbx_dedicated`) — a dedicated server installed with the kit, connected from **Connexion**. Plans created before these options keep this right.
+
+**Human seats** (`max_human_seats`) count the agents of the built-in contact center **and** the PBX extensions. Creating an extension beyond the plan is refused with the number of seats left; a CSV import creates the valid lines up to the seats left and lists the others. The PBX page shows **Postes 4 / 15**.
+
 ## Administer the PBX
 
 ### Extensions

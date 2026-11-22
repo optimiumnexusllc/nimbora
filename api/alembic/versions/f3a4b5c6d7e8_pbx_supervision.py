@@ -60,8 +60,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index(
-        "ix_pbx_supervision_sessions_org_created", "pbx_supervision_sessions"
-    )
+    op.drop_index("ix_pbx_supervision_sessions_org_created", "pbx_supervision_sessions")
     op.drop_table("pbx_supervision_sessions")
     op.drop_column("pbx_connections", "supervision_settings")

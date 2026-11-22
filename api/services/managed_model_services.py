@@ -54,7 +54,8 @@ async def ensure_mps_correlation_id(
 def _is_nimbora_service(service: Any) -> bool:
     provider = getattr(service, "provider", None)
     return (
-        provider == ServiceProviders.NIMBORA or provider == ServiceProviders.NIMBORA.value
+        provider == ServiceProviders.NIMBORA
+        or provider == ServiceProviders.NIMBORA.value
     )
 
 

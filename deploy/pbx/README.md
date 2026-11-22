@@ -63,6 +63,7 @@ sudo ./install.sh \
 | `--phones-from` | Sources autorisées pour l'auto-provisioning des téléphones (8667, 9498, 9499) : `none` (défaut) ou CIDR |
 | `--rtp-range` | Plage RTP ouverte (défaut `10000-20000`, celle du moteur) |
 | `--trusted-proxy` | CIDR d'un reverse proxy placé devant le PBX (ex. Traefik) : nginx et wazo-auth journalisent alors l'adresse réelle du client (`X-Forwarded-For`) |
+| `--operator` | **PBX partagé de l'opérateur** : crée aussi le compte d'approvisionnement `nimbora-provisioning` (tenant principal), avec lequel la plateforme ouvre un tenant par entreprise ; affiche les variables `PBX_PROVISIONING_*` à copier dans le `.env` de la plateforme |
 | `--firewall-only` | Réapplique seulement le pare-feu et fail2ban (après avoir changé les options ci-dessus) |
 
 Le script :

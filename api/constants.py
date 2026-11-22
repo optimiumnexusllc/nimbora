@@ -348,6 +348,32 @@ SERVICE_URL_ALLOWED_HOSTS = _env_csv(
 # addresses (the operator's own white-label PBX on the internal network).
 PBX_ALLOWED_HOSTS = _env_csv("PBX_ALLOWED_HOSTS", "")
 
+# Shared PBX of the operator (multi-tenant): one tenant per company, created by
+# NIMBORA with the operator's provisioning account (deploy/pbx --operator).
+# Empty = no shared PBX; companies connect their own (dedicated) PBX.
+PBX_PROVISIONING_URL = (os.getenv("PBX_PROVISIONING_URL") or "").rstrip("/")
+PBX_PROVISIONING_USERNAME = os.getenv(
+    "PBX_PROVISIONING_USERNAME", "nimbora-provisioning"
+)
+PBX_PROVISIONING_PASSWORD = os.getenv("PBX_PROVISIONING_PASSWORD", "")
+PBX_PROVISIONING_VERIFY_TLS = (
+    os.getenv("PBX_PROVISIONING_VERIFY_TLS", "true").lower() != "false"
+)
+# Create the tenant as soon as a company signs up (its plan must allow it).
+PBX_PROVISIONING_ON_SIGNUP = _env_bool("PBX_PROVISIONING_ON_SIGNUP")
+# Internal numbering of each company's tenant (users, groups, queues, rooms).
+PBX_PROVISIONING_USER_RANGE = os.getenv("PBX_PROVISIONING_USER_RANGE", "1000-1999")
+PBX_PROVISIONING_GROUP_RANGE = os.getenv("PBX_PROVISIONING_GROUP_RANGE", "2000-2999")
+PBX_PROVISIONING_QUEUE_RANGE = os.getenv("PBX_PROVISIONING_QUEUE_RANGE", "3000-3999")
+PBX_PROVISIONING_CONFERENCE_RANGE = os.getenv(
+    "PBX_PROVISIONING_CONFERENCE_RANGE", "4000-4999"
+)
+# AI agents on the shared PBX: its ARI, one Stasis application per company.
+PBX_PROVISIONING_ARI_ENDPOINT = os.getenv("PBX_PROVISIONING_ARI_ENDPOINT", "")
+PBX_PROVISIONING_ARI_USER = os.getenv("PBX_PROVISIONING_ARI_USER", "")
+PBX_PROVISIONING_ARI_PASSWORD = os.getenv("PBX_PROVISIONING_ARI_PASSWORD", "")
+PBX_PROVISIONING_ARI_WS_CLIENT = os.getenv("PBX_PROVISIONING_ARI_WS_CLIENT", "")
+
 # Human contact center on the platform's Asterisk.
 CONTACT_CENTER_ENABLED = _env_bool("CONTACT_CENTER_ENABLED")
 # Directory shared with the Asterisk container; generated config lands here.

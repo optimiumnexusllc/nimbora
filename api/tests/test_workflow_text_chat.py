@@ -591,7 +591,10 @@ async def test_text_chat_pre_call_fetch_hydrates_initial_context_once(
         == created["workflow_run_id"]
     )
     assert fetch_kwargs["call_context_vars"]["customer_name"] == "Explicit"
-    assert fetch_kwargs["call_context_vars"]["page_url"] == "https://nimbora.example/pricing"
+    assert (
+        fetch_kwargs["call_context_vars"]["page_url"]
+        == "https://nimbora.example/pricing"
+    )
     # The models are only final after the fetch, so they are not in the request.
     assert "runtime_configuration" not in fetch_kwargs["call_context_vars"]
     assert (

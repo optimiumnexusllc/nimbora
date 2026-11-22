@@ -22,6 +22,7 @@ from api.services.pbx import (
     numbers,
     outbound,
     permissions,
+    provisioning,
     recordings,
     softphone,
     trunks,
@@ -73,6 +74,19 @@ class ConnectionResponse(BaseModel):
     last_checked_at: datetime | None = None
     branding_applied_at: datetime | None = None
     events_connected: bool = False
+    # Tenant created by the platform on its shared PBX: read-only for the company.
+    managed: bool = False
+
+
+class PlanAccessResponse(BaseModel):
+    shared: bool
+    dedicated: bool
+    shared_available: bool
+    seats_limit: int | None
+    seats_used: int | None
+    plan_name: str | None
+    connected: bool
+    managed: bool
 
 
 class ConnectionRequest(BaseModel):
@@ -132,6 +146,7 @@ def _to_response(connection) -> ConnectionResponse:
         last_checked_at=connection.last_checked_at,
         branding_applied_at=connection.branding_applied_at,
         events_connected=bool(connection.webhook_subscription_uuid),
+        managed=bool(getattr(connection, "managed", False)),
     )
 
 
@@ -157,6 +172,12 @@ async def save_connection(
         if ari is None or ari.provider != "ari":
             raise HTTPException(status_code=404, detail="Configuration ARI introuvable")
     existing = await db_client.get_pbx_connection(organization_id)
+    if existing is not None and existing.managed:
+        raise HTTPException(
+            status_code=409,
+            detail="Ce PBX est géré par la plateforme : ses réglages ne se modifient pas ici.",
+        )
+    await _call(provisioning.assert_dedicated_allowed(organization_id))
     fields: dict[str, Any] = request.model_dump()
     fields["base_url"] = request.base_url.rstrip("/")
     fields["tenant_uuid"] = (request.tenant_uuid or "").strip() or None
@@ -174,9 +195,56 @@ async def save_connection(
 
 @router.delete("/connection", status_code=204)
 async def delete_connection(user: UserModel = Depends(get_user)):
+    existing = await db_client.get_pbx_connection(_org(user))
+    if existing is not None and existing.managed:
+        raise HTTPException(
+            status_code=409,
+            detail="Ce PBX est géré par la plateforme : contactez votre opérateur pour le retirer.",
+        )
     if not await db_client.delete_pbx_connection(_org(user)):
         raise HTTPException(status_code=404, detail="Aucun PBX connecté")
     return Response(status_code=204)
+
+
+@router.get("/plan", response_model=PlanAccessResponse)
+async def read_plan_access(user: UserModel = Depends(get_user)):
+    """What the plan allows: shared or own PBX, human seats used and included."""
+    organization_id = _org(user)
+    access = await provisioning.pbx_access(organization_id)
+    connection = await db_client.get_pbx_connection(organization_id)
+    seats_used = None
+    if connection is not None:
+        try:
+            async with pbx.client_for(await pbx._connection(organization_id)) as client:
+                pbx_users = len(await client.users())
+            seats_used = await provisioning.seats_in_use(organization_id, pbx_users)
+        except PbxError:
+            seats_used = None
+    return PlanAccessResponse(
+        **access.as_dict(),
+        seats_used=seats_used,
+        connected=connection is not None,
+        managed=bool(connection is not None and connection.managed),
+    )
+
+
+@router.post("/provision", response_model=ConnectionResponse)
+async def provision(user: UserModel = Depends(get_user)):
+    """Create the company's tenant on the platform's shared PBX and connect it."""
+    from api.constants import BACKEND_API_ENDPOINT
+
+    try:
+        connection = await _call(
+            provisioning.provision_organization(
+                _org(user), public_base_url=BACKEND_API_ENDPOINT
+            )
+        )
+    except provisioning.ProvisioningUnavailable as error:
+        raise HTTPException(
+            status_code=404,
+            detail="La plateforme ne propose pas de PBX partagé.",
+        ) from error
+    return _to_response(connection)
 
 
 @router.post("/connection/test", response_model=ConnectionResponse)

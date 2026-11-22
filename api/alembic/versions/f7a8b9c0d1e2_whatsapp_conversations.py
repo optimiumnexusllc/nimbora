@@ -15,7 +15,8 @@ depends_on = None
 
 def upgrade():
     op.add_column(
-        "customer_interactions", sa.Column("channel", sa.String(length=16), nullable=True)
+        "customer_interactions",
+        sa.Column("channel", sa.String(length=16), nullable=True),
     )
     op.create_table(
         "whatsapp_conversations",

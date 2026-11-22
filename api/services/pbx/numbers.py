@@ -246,7 +246,9 @@ async def remove_number(organization_id: int, number: str, **client_kwargs) -> b
             return False
         await client.delete_incall(incall["id"])
         for extension in incall.get("extensions") or []:
-            if _exten(extension.get("exten") or "") == _exten(number) and extension.get("id"):
+            if _exten(extension.get("exten") or "") == _exten(number) and extension.get(
+                "id"
+            ):
                 try:
                     await client.delete_extension(extension["id"])
                 except PbxError as error:
