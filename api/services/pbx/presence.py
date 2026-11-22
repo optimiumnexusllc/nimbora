@@ -34,7 +34,10 @@ LABELS = {
     "unknown": "Inconnu",
 }
 # What an employee may set for themselves (the rest follows their phone).
-SETTABLE = {"available": "available", "away": "away", "offline": "unavailable"}
+# « Hors ligne » chosen by the person is sent as "invisible": the engine (26.11)
+# leaves "unavailable" on users who never set a presence, so that state cannot
+# mean anything any more (lab step 10).
+SETTABLE = {"available": "available", "away": "away", "offline": "invisible"}
 
 
 def from_engine(item: dict[str, Any]) -> str:

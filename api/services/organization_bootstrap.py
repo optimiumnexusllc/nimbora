@@ -17,7 +17,13 @@ from datetime import timedelta
 
 from loguru import logger
 
-from api.constants import AUTH_PROVIDER, DEPLOYMENT_MODE, LOCAL_AI_ENABLED, SAAS_MODE
+from api.constants import (
+    AUTH_PROVIDER,
+    DEPLOYMENT_MODE,
+    LOCAL_AI_ENABLED,
+    MPS_ENABLED,
+    SAAS_MODE,
+)
 from api.db import db_client
 from api.db.organization_configuration_client import LEASE_COMPLETED
 from api.enums import OrganizationConfigurationKey
@@ -133,7 +139,7 @@ def _autonomous_platform() -> bool:
     (LOCAL_AI_ENABLED) brings its own telephony (the platform Asterisk or the
     tenant's SIP trunks); nothing is allocated in third-party accounts.
     """
-    return LOCAL_AI_ENABLED or SAAS_MODE
+    return LOCAL_AI_ENABLED or SAAS_MODE or not MPS_ENABLED
 
 
 async def _has_managed_sip_connectivity(organization_id: int) -> bool:
@@ -165,6 +171,15 @@ async def _bootstrap_organization(
 
         await bootstrap_local_model_configuration(organization_id)
         has_model_configuration = True
+
+    if not has_model_configuration and not MPS_ENABLED:
+        # No NIMBORA hosted services on this platform: the company brings its
+        # own AI keys (Paramètres → Modèles). Nothing to mint, nothing to retry.
+        logger.info(
+            "Organization {} bootstrapped without hosted services (MPS off)",
+            organization_id,
+        )
+        return True
 
     if not has_model_configuration:
         # Billing is best effort: it is recoverable out of band, and failing the

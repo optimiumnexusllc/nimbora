@@ -19,6 +19,7 @@ LEASE_OWNER_TOKEN = "lease-owner-token"
 def hosted_deployment(monkeypatch):
     monkeypatch.setattr(bootstrap, "AUTH_PROVIDER", "stack")
     monkeypatch.setattr(bootstrap, "DEPLOYMENT_MODE", "saas")
+    monkeypatch.setattr(bootstrap, "MPS_ENABLED", True)
 
 
 @pytest.fixture(autouse=True)
@@ -344,3 +345,46 @@ async def test_oss_can_mint_managed_key_directly(monkeypatch, mps):
         == MINTED_KEY
     )
     assert mps.await_args.kwargs["organization_id"] is None
+
+
+@pytest.mark.asyncio
+async def test_without_hosted_services_nothing_is_minted_or_retried(
+    monkeypatch, state, lease, mps, catalog
+):
+    """A white-label platform without NIMBORA hosted services (MPS_API_URL
+    unset or off): companies bring their own AI keys. Seen on the lab: every
+    request tried to reach the placeholder address."""
+    monkeypatch.setattr(bootstrap, "MPS_ENABLED", False)
+    monkeypatch.setattr(bootstrap, "SAAS_MODE", False)
+    monkeypatch.setattr(bootstrap, "LOCAL_AI_ENABLED", False)
+
+    assert await bootstrap.ensure_organization_bootstrapped(
+        ORG_ID, created_by=CREATED_BY
+    )
+    mps.assert_not_awaited()
+    catalog.assert_not_awaited()
+    lease.complete.assert_awaited_once_with(
+        ORG_ID, bootstrap._BOOTSTRAP_KEY, LEASE_OWNER_TOKEN
+    )
+
+
+@pytest.mark.parametrize(
+    ("url", "enabled"),
+    [
+        ("https://services.nimbora.example", False),
+        ("off", False),
+        ("", False),
+        ("https://services.mon-operateur.ci", True),
+    ],
+)
+def test_hosted_services_are_on_only_with_a_real_address(monkeypatch, url, enabled):
+    import importlib
+
+    from api import constants
+
+    monkeypatch.setenv("MPS_API_URL", url)
+    try:
+        assert importlib.reload(constants).MPS_ENABLED is enabled
+    finally:
+        monkeypatch.undo()
+        importlib.reload(constants)

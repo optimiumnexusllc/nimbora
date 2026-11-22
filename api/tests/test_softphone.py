@@ -385,6 +385,14 @@ async def test_colleagues_show_their_presence(db_session, monkeypatch):
     with pytest.raises(ValueError):
         await softphone.save_presence(device, "on_call")
 
+    # « Hors ligne » chosen in the app stays offline although the phone is
+    # registered (sent as "invisible", lab step 10).
+    await softphone.save_presence(device, "offline")
+    assert fake.presences[0]["state"] == "invisible"
+    fake.presences[0]["line_state"] = "available"
+    me = next(p for p in (await softphone.directory(device))["people"] if p["me"])
+    assert me["presence"]["state"] == "offline"
+
 
 async def test_presence_without_presence_rights_falls_back_on_calls(
     db_session, monkeypatch

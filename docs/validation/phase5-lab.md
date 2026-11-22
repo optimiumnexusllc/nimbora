@@ -537,6 +537,10 @@ Autres observations :
   hébergé sur `MPS_API_URL` (valeur par défaut `https://services.nimbora.example`, hôte
   inexistant) et recommence à chaque requête. Sans rapport avec le PBX ni avec les PR validées ;
   à neutraliser dans le kit (variable vide ou amorçage hébergé désactivé en auto-hébergement).
+  → **Corrigé** (branche `feat/lot-b-presence-directory`) : l'adresse par défaut est un exemple ;
+  avec elle (ou vide, ou `off`), les services hébergés sont coupés, l'amorçage ne contacte plus
+  rien et se termine (l'entreprise apporte ses clés IA). À revérifier : plus aucune trace
+  `Name or service not known` après redéploiement.
 
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
