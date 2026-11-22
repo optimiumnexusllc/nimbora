@@ -831,6 +831,30 @@ qu'un numéro, quelle que soit son écriture (« 2250700000001 », « +225 07 00
 suite (pytest en conteneur impossible sans privilèges) : le nom des postes 1003 et 1004 est
 conservé, les numéros nus sont écartés. À redéployer pour le voir sur le laboratoire.
 
+## Rapport d'étape 16 — PR #12 (catalogue), #13 (prospects), #14 (AI Business Hub), #16 (version en service) (22 novembre 2026)
+
+Déployé par l'opérateur depuis `chore/deploy-build-stamp` (`e6dbf05`, qui contient les PR #8 à
+#15 et le correctif n° 28). Session d'assistance sans `sudo` ni `docker` : vérifications par
+l'API (jetons des comptes du laboratoire) et par la console pilotée en Chromium. Sans fusion.
+
+| Étape | Résultat |
+|---|---|
+| (0) `GET /api/v1/health` → `build_commit` | ❌ **la réponse ne contient aucun champ `build_commit`** (clés : `auth_provider`, `backend_api_endpoint`, `deployment_mode`, `force_turn_relay`, `signup_enabled`, `stack_*`, `status`, `tunnel_url`, `turn_enabled`, `version`). L'API en service n'est donc pas construite depuis `e6dbf05` (la PR #16 ajoute ce champ, `None` au pire). Dernière ligne d'`install.sh` : non fournie. Les points suivants ont été vérifiés sur l'API en service, qui expose déjà le catalogue, les prospects et le hub |
+| (1) Catalogue : 3 articles créés par l'API (85 000 XOF « la nuit » avec caractéristiques, 25,50 EUR, 4 500,75 XOF) | ✅ le prix XOF à décimales est arrondi à **4 501** ; console `/catalog` : « 85 000 F CFA », « 4 501 F CFA », « 150 000 F CFA », « 25,50 € », article à stock 0 marqué « Épuisé » |
+| (1) Import CSV de 2 lignes (en-têtes français, séparateur `;`) | ✅ `created 2, updated 0, errors []` ; export : en-tête `reference;nom;type;categorie;description;prix;devise;unite;stock;disponible;url;tags;…` + les colonnes de caractéristiques, 5 lignes d'articles |
+| (1) Recherche « délux » | ✅ trouve « Chambre Deluxe vue mer » (API et console) ; « aeroport » trouve « Transfert aéroport » |
+| (1) Isolation org2 | ✅ 0 article, recherche vide, `PUT` sur un article d'org1 → 404 |
+| (2) Prospects : 2 créés (XOF avec fourchette de budget, EUR) ; le premier avancé `qualified → proposal → negotiation → won` | ✅ pipeline : Nouveau 1, Gagné 1 (les quatre autres à 0) ; console `/leads` : six colonnes, « Gagné · 2 500 000 F CFA · Awa Koné · Chaud · 95 », « Nouveau · 400,00 € · Jean Dupont · Tiède · 60 » ; `?stage=won` horodaté |
+| (2) Export CSV | ✅ en-tête `id;nom;telephone;email;societe;besoin;budget;echeance;decideur;interets;etape;score;source;responsable;prochaine action;cree le`, budget « 1 500 000 F CFA à 2 500 000 F CFA », étape « Gagné » |
+| (2) Isolation org2 | ✅ 0 prospect, pipeline vide, `PUT` et changement d'étape sur un prospect d'org1 → 404 |
+| (3) Hub `/hub` : 6 indicateurs (Conversations, Appels IA, Appels humains, Rendez-vous pris, Nouveaux prospects, Nouveaux clients) sur 7 → 30 → 90 jours (`period=7d|30d|90d`, 7/30/90 lignes quotidiennes) | ✅ valeurs stables sur les trois périodes (toute l'activité du laboratoire date de 48 h) ; « Nouveaux prospects 2 · 1 qualifiés · 1 gagnés (50 %) » pendant l'essai ; vue **Tableau** (Jour / Appels IA / Appels humains / WhatsApp / Web / Rendez-vous / Prospects) |
+| (3) Appels humains vs PBX | ⚠️ hub : **34** appels humains, 18 min (source : lignes `human_call_usage`) ; journal d'appels du PBX : **35** appels externes décrochés (28 entrants + 7 sortants), 17,9 min. Un appel d'écart, mêmes minutes : à dater côté auteur (dernier appel non encore comptabilisé, ou appel « décroché » par le PBX lui-même). Les 16 appels internes décrochés ne sont pas comptés, ce qui est attendu |
+| (3) Fuseau | ✅ « Conversations par canal (jours dans le fuseau UTC) » = fuseau de Mon entreprise (UTC) |
+| (3) Isolation org2 | ✅ conversations 0, appels IA 0, appels humains 0, rendez-vous 0, prospects 0 ; « Nouveaux clients 1 » correspond au seul client d'org2 (appel manqué de l'étape 9) |
+| (4) n° 28 (nom du conseiller 1003) | 🧪 aucun nouvel appel entrant client → 1003 pendant l'étape, et l'API en service n'est pas celle de `e6dbf05` (voir point 0) |
+| (5) Outils d'agent `search_catalog` et `qualify_lead` en appel réel | 🧪 clés fournisseur IA non disponibles |
+| (6) Remise en état | ✅ 5 articles et 2 prospects supprimés (0 restant), aucun enregistrement d'essai |
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
