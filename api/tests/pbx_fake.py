@@ -195,6 +195,12 @@ class FakePbx:
         # True: global Asterisk settings answer 401 to a non-master token,
         # like the real engine does for a company's service account.
         self.asterisk_master_only = False
+        # True: wazo-amid answers 401 to every token but a master-tenant one
+        # (required_master_tenant on each /action), like the real engine.
+        self.amid_master_only = False
+        # (username, password) of the platform operator, a master-tenant account.
+        self.operator_credentials: tuple[str, str] | None = None
+        self.master_tokens: set[str] = set()
         self.agent_actions: list[tuple[str, str, dict]] = []
         self.hung_up: list[str] = []
         self.password_resets: list[tuple[str, str]] = []
@@ -329,13 +335,24 @@ class FakePbx:
             expected = base64.b64encode(
                 f"{self.username}:{self.password}".encode()
             ).decode()
-            if request.headers.get("authorization") != f"Basic {expected}":
+            operator = (
+                "Basic "
+                + base64.b64encode(
+                    ":".join(self.operator_credentials).encode()
+                ).decode()
+                if self.operator_credentials
+                else None
+            )
+            given = request.headers.get("authorization")
+            if given != f"Basic {expected}" and given != operator:
                 return httpx.Response(
                     401, json={"reason": ["Authentication Failed"], "status_code": 401}
                 )
             self.token_requests += 1
             token = str(uuid.uuid4())
             self.tokens.add(token)
+            if operator and given == operator:
+                self.master_tokens.add(token)
             return httpx.Response(
                 200,
                 json={
@@ -1500,6 +1517,14 @@ class FakePbx:
                     "calls": calls,
                 },
             )
+        if (
+            path.startswith("/api/amid/")
+            and self.amid_master_only
+            and request.headers.get("x-auth-token") not in self.master_tokens
+        ):
+            return httpx.Response(
+                401, json={"reason": ["Unauthorized"], "status_code": 401}
+            )
         if path == "/api/amid/1.0/action/QueueStatus" and method == "POST":
             name = (body or {}).get("Queue")
             known = {q["name"] for q in self.queues}
@@ -1630,6 +1655,9 @@ def install(monkeypatch, fake: FakePbx) -> None:
         return real(settings, **kwargs)
 
     monkeypatch.setattr(service, "PbxClient", factory)
+    from api.services.pbx import supervision
+
+    monkeypatch.setattr(supervision, "PbxClient", factory)
     monkeypatch.setattr(service, "assert_pbx_url_allowed", lambda url: None)
 
 

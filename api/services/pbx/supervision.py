@@ -6,6 +6,9 @@ to the AI calls (``services.supervision``):
 * **Live state** — queues with the callers waiting (AMI ``QueueStatus``
   through wazo-amid; the REST APIs do not expose waiting callers), agents
   (agentd) and the conversations in progress on each extension (calld).
+  wazo-amid only answers master-tenant tokens, so on the shared PBX the
+  platform operator's account asks it, always about one named queue of the
+  company (lab step 15); on a dedicated PBX the company's own account does.
 * **Listening, whispering, barging** — calld rings the supervisor's own
   phone; once answered it runs ``ChanSpy`` on the target extension's channel
   in the ``nimbora-supervision`` dialplan context installed by the PBX kit
@@ -27,7 +30,8 @@ from zoneinfo import ZoneInfo
 
 from loguru import logger
 
-from api.services.pbx.client import PbxError
+from api import constants
+from api.services.pbx.client import PbxClient, PbxError
 from api.services.pbx.service import PbxRouteError, _connection, client_for
 
 MODES = ("listen", "whisper", "barge")
@@ -192,6 +196,26 @@ def _call_state(call: dict) -> str:
     return "on_call"
 
 
+def on_shared_pbx(connection) -> bool:
+    """The company lives on the operator's shared PBX (a tenant of it)."""
+    return bool(
+        constants.PBX_PROVISIONING_URL
+        and constants.PBX_PROVISIONING_PASSWORD
+        and (connection.base_url or "").rstrip("/") == constants.PBX_PROVISIONING_URL
+    )
+
+
+def ami_client(connection, **client_kwargs) -> PbxClient | None:
+    """Client for wazo-amid on the shared PBX: the operator's master-tenant
+    account, since the engine refuses every AMI action to a company's service
+    account. ``None`` on a dedicated PBX: the company's own account is used."""
+    if not on_shared_pbx(connection):
+        return None
+    from api.services.pbx.provisioning import _operator_settings
+
+    return PbxClient(_operator_settings(), **client_kwargs)
+
+
 async def live(
     organization_id: int,
     *,
@@ -237,18 +261,24 @@ async def live(
         )
 
         queue_status: dict[str, dict[str, Any]] = {}
+        # Only the queue names confd returned for this tenant are ever asked:
+        # the AMI is not tenant aware, the operator's account sees them all.
+        names = [q["name"] for q in result["queues"] if q.get("name")]
+        operator = ami_client(connection, **client_kwargs) if names else None
 
-        async def one_queue(name: str):
+        async def one_queue(ami: PbxClient, name: str):
             try:
                 queue_status[name] = parse_queue_status(
-                    await client.queue_status(name), name
+                    await ami.queue_status(name), name
                 )
             except PbxError as error:
                 errors["waiting"] = str(error)
 
-        await asyncio.gather(
-            *(one_queue(q["name"]) for q in result["queues"] if q.get("name"))
-        )
+        if operator is None:
+            await asyncio.gather(*(one_queue(client, n) for n in names))
+        else:
+            async with operator:
+                await asyncio.gather(*(one_queue(operator, n) for n in names))
 
     now = datetime.now(UTC)
     users = {u.get("uuid"): u for u in result["users"]}
