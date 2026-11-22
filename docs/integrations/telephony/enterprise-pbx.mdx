@@ -41,7 +41,7 @@ The install script:
 - leaves out the engine's own web UI;
 - installs the supervision dialplan (`nimbora-supervision`, used to listen to calls from NIMBORA, reachable by API only);
 - installs a deny-by-default nftables firewall: only SSH, HTTPS, SIP and RTP (`--sip-from`), the ARI (port 5039) from NIMBORA and, optionally, phone provisioning (`--phones-from`) are reachable; the AMI (port 5038), RabbitMQ, Postfix and the engine's internal services stay local to the server;
-- creates the service account. Its policy grants only the 112 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
+- creates the service account. Its policy grants only the 113 permissions NIMBORA uses (`deploy/pbx/integration-policy.json`), with no wildcard grant. After upgrading NIMBORA, run `deploy/pbx/scripts/create_service_account.py` again: it updates the policy in place, and the account keeps its password.
 
 See `deploy/pbx/README.md` for every option and what the white label changes.
 
@@ -128,6 +128,10 @@ Two plan options decide what a company may use (super-admin console → Offres):
 - optionally the contact-center agent.
 
 The credentials are shown **once**, so you can copy them or download them as a CSV file. NIMBORA never stores them. Later, **Mot de passe** e-mails the person a reset link under your brand. **Supprimer** removes the user together with their line, extension, voicemail and login.
+
+**SIP** gives the extension's lines a new 20-character SIP secret, for example after a secret was seen where it should not have been. The old one stops working at once. NIMBORA reads the endpoint back before showing the new secret, once, with the SIP user to register as (the endpoint name) and the authentication user. NIMBORA Softphone needs nothing: when the PBX refuses the old secret, it reads its account again and restarts the line with the new one. A phone configured by hand (Linphone, a desk phone) must be given the new values. The service account needs `confd.endpoints.sip.*.update`, part of `integration-policy.json` since this version: on a shared PBX, run `create_service_account.py --provisioner` again, then provision each company again; on your own PBX, run `create_service_account.py` again.
+
+API: `POST /api/v1/pbx/extensions/{user_uuid}/sip-password` → `{uuid, lines: [{extension, sip_identity, sip_username, sip_password}]}`.
 
 <Frame caption="Credentials of a new extension, shown once">
   <img src="/images/screenshots/pbx-credentials.webp" alt="Dialog showing the generated login, SIP account and voicemail PIN of a new extension" />

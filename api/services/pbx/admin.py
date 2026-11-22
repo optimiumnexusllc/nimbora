@@ -12,6 +12,8 @@ import string
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
+from loguru import logger
+
 from api.services.branding import brand
 from api.services.pbx.client import PbxClient, PbxError
 from api.services.pbx.service import (
@@ -235,6 +237,91 @@ async def send_password_reset(
     connection = await _connection(organization_id)
     async with client_for(connection, **client_kwargs) as client:
         await client.send_password_reset_email(login)
+
+
+# Fields of a SIP endpoint the engine accepts back on PUT (the rest is read-only
+# or derived). Templates and transport are references: only their uuid goes.
+_ENDPOINT_FIELDS = (
+    "name",
+    "label",
+    "asterisk_id",
+    "aor_section_options",
+    "auth_section_options",
+    "endpoint_section_options",
+    "identify_section_options",
+    "registration_section_options",
+    "registration_outbound_auth_section_options",
+    "outbound_auth_section_options",
+)
+
+
+def _endpoint_with_password(endpoint: dict, password: str) -> dict:
+    body = {k: endpoint[k] for k in _ENDPOINT_FIELDS if k in endpoint}
+    auth = [list(o) for o in endpoint.get("auth_section_options") or []]
+    if any(o[0] == "password" for o in auth):
+        auth = [[k, password if k == "password" else v] for k, v in auth]
+    else:
+        auth.append(["password", password])
+    body["auth_section_options"] = auth
+    body["templates"] = [
+        {"uuid": t["uuid"]} for t in endpoint.get("templates") or [] if t.get("uuid")
+    ]
+    if (endpoint.get("transport") or {}).get("uuid"):
+        body["transport"] = {"uuid": endpoint["transport"]["uuid"]}
+    return body
+
+
+async def rotate_sip_password(
+    organization_id: int, user_uuid: str, **client_kwargs
+) -> dict[str, Any]:
+    """New SIP secret for every line of an extension, shown once.
+
+    Phones configured by hand (Linphone, desk phones) must be given the new
+    secret; NIMBORA Softphone reads it from the PBX at each start and after a
+    refused registration, so it needs nothing.
+    """
+    connection = await _connection(organization_id)
+    async with client_for(connection, **client_kwargs) as client:
+        user = await client.user(user_uuid)
+        lines = [
+            line
+            for line in user.get("lines") or []
+            if (line.get("endpoint_sip") or {}).get("uuid")
+        ]
+        if not lines:
+            raise PbxRouteError("Ce poste n'a pas de ligne SIP.", 409)
+        rotated = []
+        for line in lines:
+            endpoint = await client.endpoint_sip(line["endpoint_sip"]["uuid"])
+            password = _secret(20)
+            await client.update_endpoint_sip(
+                endpoint["uuid"], _endpoint_with_password(endpoint, password)
+            )
+            # Read back: a PUT the engine accepted but did not apply must not
+            # hand out a secret that does not work.
+            check = await client.endpoint_sip(endpoint["uuid"])
+            if (
+                dict(check.get("auth_section_options") or []).get("password")
+                != password
+            ):
+                raise PbxRouteError(
+                    "Le PBX n'a pas enregistré le nouveau mot de passe SIP.", 502
+                )
+            auth = dict(check.get("auth_section_options") or [])
+            extensions = line.get("extensions") or []
+            rotated.append(
+                {
+                    "extension": (extensions[0].get("exten") if extensions else None)
+                    or user.get("extension"),
+                    "sip_identity": check.get("name") or auth.get("username"),
+                    "sip_username": auth.get("username"),
+                    "sip_password": password,
+                }
+            )
+    logger.info(
+        f"[PBX org={organization_id}] SIP password rotated for {len(rotated)} line(s)"
+    )
+    return {"uuid": user_uuid, "lines": rotated}
 
 
 # ---------------------------------------------------------- CSV import

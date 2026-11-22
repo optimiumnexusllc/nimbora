@@ -414,3 +414,77 @@ async def test_admin_routes(db_session, monkeypatch, test_client_factory):
         assert (
             await client.delete(f"/api/v1/pbx/queues/{queue['id']}")
         ).status_code == 204
+
+
+async def test_sip_password_rotation_keeps_the_endpoint_and_is_read_back(
+    db_session, monkeypatch, test_client_factory
+):
+    fake = FakePbx()
+    user, org, _ = await _setup(db_session, monkeypatch, fake)
+    before = dict(fake.user_endpoints["sip-u1"])
+
+    async with test_client_factory(user) as client:
+        response = await client.post("/api/v1/pbx/extensions/u-1/sip-password")
+    assert response.status_code == 200
+    (line,) = response.json()["lines"]
+    assert (line["extension"], line["sip_identity"], line["sip_username"]) == (
+        "1001",
+        "koffi1001",
+        "koffi1001",
+    )
+    assert len(line["sip_password"]) == 20
+    assert line["sip_password"] != "Sip-Secret-1001"
+
+    after = fake.user_endpoints["sip-u1"]
+    assert dict(after["auth_section_options"]) == {
+        "username": "koffi1001",
+        "password": line["sip_password"],
+    }
+    # Name and templates (WebRTC) survive: the Softphone keeps working.
+    assert after["name"] == before["name"]
+    assert [t["uuid"] for t in after["templates"]] == ["tpl-webrtc", "tpl-global"]
+
+    # The Softphone reads the new secret from the PBX.
+    from api.services.pbx import softphone
+
+    async with client_module.PbxClient(
+        client_module.PbxSettings(
+            base_url=BASE, username="nimbora", password="secret", tenant_uuid=TENANT
+        ),
+        transport=fake.transport,
+    ) as engine:
+        connection = await db_session.get_pbx_connection(org.id)
+        account = await softphone.sip_account(engine, connection, "u-1")
+    assert account["password"] == line["sip_password"]
+
+
+async def test_sip_password_rotation_refuses_an_engine_that_did_not_apply_it(
+    db_session, monkeypatch
+):
+    fake = FakePbx()
+    _, org, _ = await _setup(db_session, monkeypatch, fake)
+    original = fake.handle
+
+    def ignore_updates(request):
+        if request.method == "PUT" and "/endpoints/sip/" in request.url.path:
+            import httpx
+
+            return httpx.Response(204)  # accepted, not applied
+        return original(request)
+
+    fake.handle = ignore_updates
+    with pytest.raises(pbx.PbxRouteError) as error:
+        await admin.rotate_sip_password(org.id, "u-1")
+    assert error.value.status == 502
+    assert dict(fake.user_endpoints["sip-u1"]["auth_section_options"])["password"] == (
+        "Sip-Secret-1001"
+    )
+
+
+async def test_sip_password_rotation_needs_a_sip_line(db_session, monkeypatch):
+    fake = FakePbx()
+    _, org, _ = await _setup(db_session, monkeypatch, fake)
+    fake.users[1]["lines"] = []
+    with pytest.raises(pbx.PbxRouteError) as error:
+        await admin.rotate_sip_password(org.id, "u-2")
+    assert error.value.status == 409

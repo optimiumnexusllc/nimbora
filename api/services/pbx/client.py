@@ -758,6 +758,9 @@ class PbxClient:
 
     # --------------------------------------------------------- softphone
 
+    async def update_endpoint_sip(self, sip_uuid: str, body: dict) -> None:
+        await self.request("confd", "PUT", f"/endpoints/sip/{sip_uuid}", json=body)
+
     async def endpoint_sip(self, sip_uuid: str) -> dict:
         """A SIP account, with its authentication options (secret included)."""
         return await self.request("confd", "GET", f"/endpoints/sip/{sip_uuid}")
@@ -989,6 +992,7 @@ REQUIRED_ACL: dict[str, str] = {
     "user_forwards": "confd.users.{user_id}.forwards.read",
     "set_user_forwards": "confd.users.{user_id}.forwards.update",
     "user_services": "confd.users.{user_id}.services.read",
+    "update_endpoint_sip": "confd.endpoints.sip.{sip_uuid}.update",
     "presences": "chatd.users.presences.read",
     "set_presence": "chatd.users.{user_uuid}.presences.update",
     "set_user_services": "confd.users.{user_id}.services.update",
