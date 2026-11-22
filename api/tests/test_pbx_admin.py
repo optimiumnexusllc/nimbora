@@ -487,3 +487,24 @@ async def test_sip_password_rotation_needs_a_sip_line(db_session, monkeypatch):
     with pytest.raises(pbx.PbxRouteError) as error:
         await admin.rotate_sip_password(org.id, "u-2")
     assert error.value.status == 409
+
+
+async def test_browser_lines_made_before_the_fix_are_repaired_once(
+    db_session, monkeypatch, test_client_factory
+):
+    """Bug 23 (lab step 14): « global » listed after « webrtc » forced
+    transport-udp and the engine could not ring the browser."""
+    fake = FakePbx()
+    user, _, _ = await _setup(db_session, monkeypatch, fake)
+    before = dict(fake.user_endpoints["sip-u1"])
+    async with test_client_factory(user) as client:
+        first = await client.post("/api/v1/pbx/maintenance/webrtc-lines")
+        second = await client.post("/api/v1/pbx/maintenance/webrtc-lines")
+    assert first.status_code == 200
+    assert first.json()["repaired"] == ["1001"]
+    assert first.json()["failed"] == []
+    after = fake.user_endpoints["sip-u1"]
+    assert [t["uuid"] for t in after["templates"]] == ["tpl-webrtc"]
+    assert after["name"] == before["name"]
+    assert after["auth_section_options"] == before["auth_section_options"]
+    assert second.json()["repaired"] == []  # idempotent

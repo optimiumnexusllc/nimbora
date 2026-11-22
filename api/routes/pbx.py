@@ -618,6 +618,19 @@ async def rotate_extension_sip_password(
     return await _call(admin.rotate_sip_password(_org(user), user_uuid))
 
 
+class WebrtcRepairResponse(BaseModel):
+    checked: int
+    repaired: list[str | None]
+    failed: list[str | None]
+
+
+@router.post("/maintenance/webrtc-lines", response_model=WebrtcRepairResponse)
+async def repair_webrtc_lines(user: UserModel = Depends(get_user)):
+    """Repair browser lines created before the engine could ring them (lines
+    with both the « webrtc » and « global » templates). Idempotent."""
+    return await _call(admin.repair_webrtc_lines(_org(user)))
+
+
 @router.post("/extensions/password-reset", status_code=204)
 async def extension_password_reset(
     request: LoginRequest, user: UserModel = Depends(get_user)

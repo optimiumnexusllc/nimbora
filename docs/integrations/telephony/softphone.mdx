@@ -110,6 +110,8 @@ By default the app connects to `wss://<PBX host>/api/asterisk/ws`, the engine's 
 
 The PBX must have a valid TLS certificate for its WebSocket address, because browsers and apps refuse self-signed ones.
 
+**A browser extension that never rings** (the caller hears busy or congestion, and the PBX logs « Unsuitable transport selected to reach destination ») was created before NIMBORA gave browser lines the `webrtc` template alone. NIMBORA repairs such a line when its Softphone starts, and **Postes → Softphones → Vérifier les lignes navigateur** repairs every line at once (`POST /api/v1/pbx/maintenance/webrtc-lines`). The service account needs `confd.endpoints.sip.*.update`.
+
 ## Platforms and downloads
 
 | Platform | Package |
