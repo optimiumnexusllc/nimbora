@@ -399,11 +399,10 @@ async def test_card_reaches_every_node_prompt_in_a_running_agent(
     monkeypatch, three_node_workflow
 ):
     """Real engine + pipeline: the card is in the system prompt of each node."""
-    from pipecat.tests import MockLLMService
-
     from api.tests.test_pipecat_engine_context_update import (
         run_pipeline_and_capture_context,
     )
+    from pipecat.tests import MockLLMService
 
     async def fake_load(organization_id, workflow_run_id):
         assert (organization_id, workflow_run_id) == (1, 1)
@@ -433,11 +432,10 @@ async def test_card_reaches_every_node_prompt_in_a_running_agent(
 
 
 async def test_agent_still_runs_when_the_card_fails(monkeypatch, three_node_workflow):
-    from pipecat.tests import MockLLMService
-
     from api.tests.test_pipecat_engine_context_update import (
         run_pipeline_and_capture_context,
     )
+    from pipecat.tests import MockLLMService
 
     async def broken(organization_id, workflow_run_id):
         raise RuntimeError("db down")

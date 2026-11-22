@@ -33,7 +33,9 @@ def connections(monkeypatch):
     lookup = AsyncMock(
         return_value=[
             SimpleNamespace(provider="openai", credentials={"api_key": "other-key"}),
-            SimpleNamespace(provider="nimbora", credentials={"api_key": "mps_sk_saved"}),
+            SimpleNamespace(
+                provider="nimbora", credentials={"api_key": "mps_sk_saved"}
+            ),
         ]
     )
     monkeypatch.setattr(client_module.db_client, "list_provider_connections", lookup)

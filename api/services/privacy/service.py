@@ -23,6 +23,9 @@ from collections import Counter
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from loguru import logger
+from pydantic import BaseModel, Field, field_validator
+
 from api.enums import OrganizationConfigurationKey
 from api.services.privacy.redaction import (
     ALL_CATEGORIES,
@@ -30,8 +33,6 @@ from api.services.privacy.redaction import (
     redact_text,
     redact_value,
 )
-from loguru import logger
-from pydantic import BaseModel, Field, field_validator
 
 SETTING_KEY = OrganizationConfigurationKey.PRIVACY.value
 ERASED = "[ERASED]"

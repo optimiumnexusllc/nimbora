@@ -433,7 +433,9 @@ async def test_completion_happy_path_uploads_audio_and_sends_trace():
     assert call_names.index("send_trace_dict") < call_names.index("send_audio_sync")
     sent_trace = client.send_trace_dict.call_args.args[0]
     assert sent_trace["trace_id"] == "trace-1"
-    assert sent_trace["attributes"]["nimbora.recording_url"] == "https://nimbora/rec.wav"
+    assert (
+        sent_trace["attributes"]["nimbora.recording_url"] == "https://nimbora/rec.wav"
+    )
     assert sent_trace["attributes"]["nimbora.call_disposition"] == "qualified"
     # Placeholder live-phase identity must be replaced with the node's values.
     assert sent_trace["attributes"]["noveum.project"] == "voice-agent"

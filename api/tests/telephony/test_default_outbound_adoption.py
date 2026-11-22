@@ -41,7 +41,9 @@ async def test_creating_a_configuration_never_claims_the_default(
 ):
     organization = await _organization(async_session)
 
-    first = await _config(db_session, organization, "NIMBORA Cloudonix SIP", "cloudonix")
+    first = await _config(
+        db_session, organization, "NIMBORA Cloudonix SIP", "cloudonix"
+    )
     second = await _config(db_session, organization, "Twilio", "twilio")
 
     assert first.is_default_outbound is False

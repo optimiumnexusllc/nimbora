@@ -2498,7 +2498,9 @@ class PbxSupervisionSessionModel(Base):
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
     __table_args__ = (
-        Index("ix_pbx_supervision_sessions_org_created", "organization_id", "created_at"),
+        Index(
+            "ix_pbx_supervision_sessions_org_created", "organization_id", "created_at"
+        ),
     )
 
 
