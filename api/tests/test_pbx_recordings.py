@@ -324,6 +324,17 @@ def test_the_advisor_is_the_internal_extension_not_the_public_number():
     assert parties["destination_name"] == "Koffi Yao"  # a real name is kept
     assert parties["source"] == "+2250700112233" and parties["source_name"] == "Awa"
 
+    # Lab step 17 bis (bug n° 28): a real name that merely contains the
+    # extension is a name; only a bare number (however it is spelt) is dropped.
+    named = {**inbound, "destination_name": "Test 1003 (SIP, répondeur automatique)"}
+    assert recordings.call_parties(named)["destination_name"] == (
+        "Test 1003 (SIP, répondeur automatique)"
+    )
+    spelt = {**outbound, "source_name": "+225 07 00 00 00 01"}
+    assert recordings.call_parties(spelt)["source_name"] is None
+    own = {**outbound, "source_name": "1004"}
+    assert recordings.call_parties(own)["source_name"] is None
+
 
 async def test_a_deleted_recording_never_comes_back(
     db_session, monkeypatch, storage, test_client_factory

@@ -181,7 +181,10 @@ def _party(cdr: dict, side: str) -> tuple[str | None, str | None]:
     inbound call's destination) is the public number the route presents or
     the customer dialled; the employee's own extension is
     ``<side>_internal_extension`` (lab steps 9 and 17, bugs n° 20 and n° 27).
-    A name that is only that number says nothing and is dropped.
+    A name that is only that number (« 2250700000001 », « +225 07 00 00 00 01 »)
+    says nothing and is dropped; a real name that merely contains the
+    extension (« Test 1003 (SIP) », « Poste 1004 (navigateur) ») is kept
+    (lab step 17 bis, bug n° 28).
     """
     internal = cdr.get(f"{side}_internal_extension")
     extension = internal or cdr.get(f"{side}_extension")
@@ -189,15 +192,11 @@ def _party(cdr: dict, side: str) -> tuple[str | None, str | None]:
         extension = cdr.get("requested_extension")
     name = cdr.get(f"{side}_internal_name") or cdr.get(f"{side}_name")
     digits = lambda v: "".join(ch for ch in str(v or "") if ch.isdigit())  # noqa: E731
+    bare = re.sub(r"[\s+().-]", "", str(name or ""))
     if (
-        internal
-        and name
-        and digits(name)
-        and digits(name)
-        in {
-            digits(cdr.get(f"{side}_extension")),
-            digits(internal),
-        }
+        name
+        and bare.isdigit()
+        and bare in {digits(cdr.get(f"{side}_extension")), digits(internal), digits(extension)}
     ):
         name = None
     return (
