@@ -695,6 +695,29 @@ Observation mineure : après le transfert « 1002 sonne encore », le moteur ret
 ~30 s un `200 OK` (ré-INVITE d'attente dont l'ACK n'est pas parti avant la fin du dialogue) ;
 sans effet sur les appels.
 
+### 14 bis — réparation automatique des lignes navigateur (`2808b03`) (22 novembre 2026)
+
+Déployé : pointe `5d69d8c` de `feat/lot-b-attended-transfer`, images `nimbora-pr10` reconstruites
+(API et UI), kit lab `--only nimbora --no-build`, `/api/v1/health` 200. État de référence relevé
+avant les essais pour les quatre postes (nom d'endpoint, modèles confd, transport vu par
+Asterisk, utilisateur d'authentification, empreinte SHA-256 du secret).
+
+| Étape | Résultat |
+|---|---|
+| (2) Endpoint de 1004 remis à la main sur `[webrtc, global]` (confd, compte de service) | ✅ confd relit `['webrtc', 'global']`, secret et utilisateur inchangés |
+| (2) Softphone web 1004 ouvert (il relit `/softphone/config`) | ✅ journal de l'API : `Softphone: browser line v0sleb29 repaired (webrtc template alone)` ; confd : modèles `['webrtc']`, Asterisk : `transport-wss` |
+| (2) Appel 1002 → 1004 | ✅ 1004 sonne (canal `Ringing`) et décroche, pont établi |
+| (3) Endpoint de 1001 remis sur `[webrtc, global]`, puis Console → Postes → Softphones (bloc « Connexion des softphones au PBX ») → **Vérifier les lignes navigateur** | ✅ toast « **Lignes navigateur réparées : 1001** » ; journal : `[PBX org=1] browser lines repaired: 1001` ; `POST /pbx/maintenance/webrtc-lines` 200 |
+| (3) Second clic | ✅ « **4 lignes vérifiées : rien à réparer** » |
+| (3) Lignes SIP classiques 1002 et 1003 | ✅ inchangées : modèles `['global']`, `transport-udp` |
+| (4) Avant/après pour les quatre postes | ✅ **aucune différence** : noms d'endpoint, modèles (1001 et 1004 `['webrtc']`), transports, utilisateurs d'authentification et empreintes des secrets identiques à l'état de référence |
+
+Note de sécurité : un relevé intermédiaire de cette étape (commande de diagnostic sur le moteur)
+a affiché en clair les secrets SIP des quatre postes de test dans la sortie d'outil de la session
+d'assistance ; rien dans le dépôt ni dans ce journal. Ils peuvent être régénérés depuis la
+console (Postes → SIP) ; pour 1002 et 1003, les clients `baresip` du laboratoire sont alors à
+reconfigurer.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
