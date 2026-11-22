@@ -764,6 +764,27 @@ Objets laissés en place sur le laboratoire : groupe d'interception « Accueil �
 (701-720), interphone « Directeur » (*111). Tests API de la branche : 47 passés
 (`test_pbx_teamwork.py`, softphone, admin, PBX, dont le test de couverture des ACL).
 
+### 15 bis — supervision par le compte opérateur et horaires qui suivent « Mon entreprise » (`7c2bade`) (22 novembre 2026)
+
+Déployé : pointe `7c2bade` de `feat/lot-b-pickup-park-intercom`, images `nimbora-pr11` (API et
+UI) reconstruites, kit lab `--only nimbora --no-build`, aucune migration (tête `d7e8f9a0b1c2`),
+aucune ACL nouvelle (comptes inchangés : dédié 130, opérateur 143).
+
+| Étape | Résultat |
+|---|---|
+| (2) Appel client → file « Support test », agent 1001 en pause (personne de disponible) | ✅ **Supervision en direct** : `live: true`, `waiting: 1`, appelant position 1 avec son numéro et `wait_seconds` 7 puis 18 dix secondes plus tard, `agents_available: 0` |
+| (2) Journal de l'API pendant l'appel | ✅ deux `POST amid/1.0/action/QueueStatus` → **200**, zéro 401 : l'AMI est interrogé avec le compte opérateur (tenant maître), uniquement sur les files de l'entreprise |
+| (2) Isolation : supervision d'org2 pendant l'attente | ✅ aucune file ni appelant visible pour org2 |
+| (3) Interrupteur « Heures d'ouverture » activé sur « Sortie test (lab) » avec des heures lundi 09:00-10:00 (un dimanche) | ✅ confd : `nimbora-horaires-sortie-1` jours [1], plage 09:00-10:00, fermé → `hangup`, attaché à la route 1 |
+| (3) Heures changées dans Mon entreprise (tous les jours 00:00-24:00) **sans toucher l'interrupteur** | ✅ journal `[PBX org=1] hours refreshed: nimbora-horaires-1, nimbora-horaires-sortie-1` ; confd : jours [1…7], plage 00:00-23:59 sur les deux horaires ; appel sortant de 1002 **accepté** (pont 1002 ↔ opérateur) |
+| (3) Heures remises à lundi 09:00-10:00 (toujours sans toucher l'interrupteur) | ✅ nouveau `hours refreshed`, confd revenu à [1] 09:00-10:00 ; appel sortant de 1002 **refusé** (`Congestion`) |
+| (4) Horaire entrant : aucun n'existait, un horaire « Numéros → Appliquer les horaires » (hors horaires → `hangup`) a été posé sur le numéro public pour l'essai | ✅ il suit les mêmes rafraîchissements (`nimbora-horaires-1`, mêmes plages à chaque changement) et **garde sa destination hors horaires** (`hangup`) ; appel entrant hors horaires : `check_schedule` → `CLOSED` « did is out of schedule », l'opérateur reçoit `603 Decline` |
+| Remise en état | heures remises à « tous les jours » (dernier rafraîchissement), interrupteur sortant désactivé, horaire entrant détaché du numéro (confd), profil remis vide, numéro public remis sur 1003, agent 1001 remis en service |
+
+Secrets SIP exposés à l'étape 14 bis : rien n'a été régénéré, conformément à la consigne.
+Droits temporaires de la session (`/etc/sudoers.d/90-messie-temp`, appartenance au groupe
+`docker`) retirés en fin d'étape.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
