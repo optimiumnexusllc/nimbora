@@ -808,8 +808,12 @@ pas dire « tout le monde », elle interdit tout le monde. Correction : à la cr
 monde » devient tous les postes de l'entreprise ; la liste est réaffichée vide dans NIMBORA quand
 elle couvre tout le monde. L'interphone « Directeur » du laboratoire a été recréé après le correctif.
 
-Objets laissés en place sur le laboratoire : groupe d'interception « Accueil », parking 700
-(701-720), interphone « Directeur » (*111). Tests API de la branche : 47 passés
+Objets laissés en place sur le laboratoire : parking 700 (701-720) et interphone « Directeur »
+(*111). Le groupe d'interception « Accueil » a été **supprimé par erreur pendant cette étape** : le
+script de remise en état lancé à 17:10 UTC pour recréer l'interphone après le correctif n° 26
+supprimait aussi le groupe (journal wazo-confd : `DELETE /callpickups/1` à 17:10:26, 13 min après
+sa création à 16:57:35, par l'API NIMBORA). Il a été recréé à l'étape 18 (`POST /callpickups`
+du 23 novembre 06:38:06). Tests API de la branche : 47 passés
 (`test_pbx_teamwork.py`, softphone, admin, PBX, dont le test de couverture des ACL).
 
 ### 15 bis — supervision par le compte opérateur et horaires qui suivent « Mon entreprise » (`7c2bade`) (22 novembre 2026)
@@ -936,6 +940,26 @@ Déployé par l'opérateur avec le kit (construction marquée du commit). Sessio
 | (2) n° 28 — appel entrant client → 1003 (28 s, journal n° 90) passé par l'opérateur, politique d'enregistrement activée avant, « Synchroniser » | ✅ enregistrement 13 : destination (conseiller) **« 1003 »** avec son nom **« Test 1003 (SIP, répondeur automatique) »** |
 | (2) Hub après cet appel | ✅ appels humains **34 → 35** (conversations 35), minutes 18 : le nouvel appel est compté |
 | (3) Remise en état | ✅ enregistrement 13 supprimé depuis la console (« ici et sur le PBX »), synchronisation sans retour (`seen 7, imported 0`), politique d'enregistrement remise à son état initial (4 postes modifiés), 0 enregistrement |
+
+## Rapport d'étape 18 — laboratoire revenu sur `main` (`948f1e8`, PR #1 à #16 fusionnées) (23 novembre 2026)
+
+Déployé par l'opérateur avec le kit (REGISTRY retiré du `.env`, images sous le nom par défaut).
+Session sans `sudo` ni `docker` : API avec les jetons du laboratoire, console et Softphone web
+pilotés en Chromium. Softphone web 1.4.0 construit depuis `main`.
+
+| Étape | Résultat |
+|---|---|
+| (1) `GET /api/v1/health` → `build_commit` | ✅ **`948f1e8`** (vérifié le 23 novembre, après la relance du kit). À la première vérification la route affichait encore `25b4aee` : le déploiement depuis `main` n'avait pas tourné, le kit s'étant arrêté en silence juste après ses avertissements (`get_kv` échouait sur la clé `REGISTRY` retirée du `.env`, sous `set -euo pipefail`), défaut introduit par la PR #16 et corrigé par la PR #18 (non fusionnée) ; l'opérateur a remis `REGISTRY=nimbora` et relancé le kit |
+| (2) Console org1 : PBX → Postes | ✅ quatre postes et deux appareils Softphone listés, présence 1001 « Hors ligne », 1002 « Disponible », 1003 « Disponible », 1004 « Hors ligne » (application fermée) |
+| (2) PBX → Routage | ✅ onglet, politique et simulateur rendus |
+| (2) PBX → Équipe | ✅ parking « Accueil » 700 (701-720) et interphone « Directeur » (`*111`) présents ; le groupe d'interception « Accueil » (1002 + 1004) de l'étape 15 était absent du moteur : d'après le journal wazo-confd fourni par l'opérateur (tenant de l'entreprise, user-agent de l'API NIMBORA), il a été créé le 22 novembre à 16:57:35 UTC puis **supprimé à 17:10:26 UTC par le script de remise en état de la session d'assistance** (qui recréait l'interphone et supprimait aussi le groupe), pas par une annulation automatique ; recréé ici le 23 novembre à 06:38:06 UTC (`POST /callpickups` → 201, identifiant 1) |
+| (2) PBX → Enregistrements | ✅ bloc politique affiché, « Aucun enregistrement » |
+| (2) Catalogue, Prospects, AI Business Hub, Contrôle qualité | ✅ les quatre pages s'ouvrent sans erreur de page, sans réponse 5xx ni toast d'erreur ; hub : 6 indicateurs (35 appels humains, 35 conversations), qualité : 4 compteurs, catalogue et prospects vides |
+| (2) Softphone web 1004 | ✅ « Disponible » ; appel 1004 → 1002 : « Ça sonne… » (1002 est un client `baresip` à décroché manuel, non pilotable sans privilèges : appel non établi, raccroché) ; appel 1004 → 1003 (décroché automatique) **établi** 20 s puis « Appel terminé » |
+| (3) Isolation : même parcours connecté comme entreprise-a (org2) | ✅ Postes : seul « Agent A 1001 » ; Équipe : aucun groupe, parking ni interphone ; Enregistrements vides ; catalogue 0, prospects 0, hub tout à zéro, qualité 0 ; aucune erreur de page |
+
+Aucun appel ni objet d'essai laissé en place (le groupe « Accueil » recréé est un objet du
+laboratoire, comme le parking et l'interphone).
 
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
