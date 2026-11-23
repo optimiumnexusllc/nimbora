@@ -961,6 +961,29 @@ pilotés en Chromium. Softphone web 1.4.0 construit depuis `main`.
 Aucun appel ni objet d'essai laissé en place (le groupe « Accueil » recréé est un objet du
 laboratoire, comme le parking et l'interphone).
 
+## Rapport d'étape 19 — PR #19 « tests des agents avec des clients simulés » (23 novembre 2026)
+
+Déployé par l'opérateur avec le kit depuis `feat/agent-simulated-tests` (`d981adf`, qui contient
+`main` à `c2d4b5f`) ; migration `c2d3e4f5a6b7` appliquée au démarrage. Session sans `sudo` ni
+`docker` : API avec les jetons du laboratoire, console pilotée en Chromium. Sans fusion.
+
+Préalable : aucun agent n'existait sur le laboratoire ; un agent « Agent test labo (étape 19) » a
+été créé pour org1 depuis le modèle métier « Accueil général » (`POST /business/templates/general/agent`,
+outils `schedule_callback` et `transfer_call` signalés manquants donc non attachés), puis archivé en fin d'étape.
+
+| Étape | Résultat |
+|---|---|
+| (1) `GET /api/v1/health` → `build_commit` ; `GET /api/v1/agent-tests?workflow_id=1` | ✅ `d981adf` ; 200 (liste vide) — une première vérification faite alors que `main` seul tournait (`c2d4b5f`) donnait 404 : la fonctionnalité n'y est pas |
+| (2) Agent → menu ⋮ (icône MoreVertical de l'éditeur) | ✅ entrées « View Runs · **Tests clients simulés** · Duplicate Workflow · Download Workflow · Copy Agent UUID » ; l'entrée ouvre `/workflow/1/tests` |
+| (2) « Nouveau test » : nom, client décrit (persona), 2 critères de réussite, 1 phrase interdite → « Enregistrer le test » | ✅ « Test enregistré », une ligne dans le tableau |
+| (2) « Modifier » : nom changé, troisième critère ajouté | ✅ ligne mise à jour |
+| (2) « Lancer » (version brouillon) | ✅ statut **« Erreur »** en moins de 5 s ; fiche du lancement : « Erreur · Brouillon · **Aucun modèle de langage utilisable : vérifiez-le dans Modèles IA** (Invalid model configuration; review fields: llm) » ; API : `last_run.status = error` avec le même message |
+| (2) « Proposer des tests » | ✅ toast avec le **même message**, pas de dialogue de suggestions, aucune erreur de page ni réponse 5xx ; API `POST /agent-tests/suggest` → 409 avec le même détail |
+| (3) Isolation : org2 (et org3) | ✅ `GET /agent-tests?workflow_id=1` → **404** « Agent introuvable » ; `POST /agent-tests` et `POST /agent-tests/suggest` sur l'agent d'org1 → 404 |
+| (4) Lancement avec une clé : verdict par critère et conversation | 🧪 clés fournisseur IA non disponibles |
+| Nom de fonction d'un outil accentué | ✅ la fonction `custom_tool_function_name` de la PR, exercée hors de l'API sur le code de la branche : « Réserver » → **`reserver`**, « Prendre rendez-vous » → `prendre_rendez_vous`, « Créer un ticket » → `creer_un_ticket` (test unitaire `test_agent_tests.py` présent). L'affichage dans la fiche d'un lancement (« Utilise l'outil … », « Outils utilisés ») n'a pas pu être observé : il faut un agent avec un outil personnalisé attaché et un modèle de langage — 🧪 pour cette partie |
+| (5) Remise en état | ✅ test supprimé depuis la console (confirmation « Supprimer le test … et ses résultats ? », « Aucun test. »), 0 test par l'API ; agent d'essai archivé (`PUT /workflow/1/status`) |
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
