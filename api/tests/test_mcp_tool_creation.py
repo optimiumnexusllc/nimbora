@@ -155,6 +155,8 @@ async def test_mcp_create_tool_schema_includes_validation_and_llm_hints():
         "book_appointment",
         "send_message",
         "create_ticket",
+        "search_catalog",
+        "qualify_lead",
         "native",
         "integration",
         "mcp",
