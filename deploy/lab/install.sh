@@ -356,6 +356,11 @@ if runs nimbora; then
         done
     fi
     # --force-recreate is not needed: compose recreates a container whose image changed.
+    if [[ ",$profiles," != *",minio,"* ]]; then
+        # `up` never stops a container whose profile is no longer active (lab
+        # step 20): retire MinIO explicitly — the container only, its volume stays.
+        (cd "$DEPLOY_DIR" && docker compose --profile minio rm -sf minio >/dev/null 2>&1) || true
+    fi
     (cd "$DEPLOY_DIR" && docker compose up -d --remove-orphans)
     # What actually runs, compared with this checkout (lab step 17: a build
     # done under another name left the previous API in service, unnoticed).

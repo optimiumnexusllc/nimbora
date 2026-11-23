@@ -93,6 +93,10 @@ DOCKER_CMD=(docker)
 if [[ "$(nimbora_object_store_profiles .env "${DOCKER_CMD[@]}")" == minio ]]; then
     PROFILE_ARGS+=(--profile minio)
     nimbora_info "Object store: the bundled MinIO is kept running (existing files). Migration: docs/deployment/object-storage.mdx"
+else
+    # `up` never stops a container whose profile is no longer active: retire
+    # MinIO explicitly (container only, its volume stays) — lab step 20.
+    "${COMPOSE_CMD[@]}" --profile minio rm -sf minio >/dev/null 2>&1 || true
 fi
 if nimbora_is_local_ipv4 "${SERVER_IP:-}"; then
     PROFILE_ARGS+=(--profile tunnel)

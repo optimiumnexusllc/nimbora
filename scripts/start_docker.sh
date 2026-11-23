@@ -241,6 +241,10 @@ minio_profile=()
 if [[ "$object_store" == minio || ( "$has_minio" == true && "$(dotenv_value MINIO_RETIRED || true)" != true ) ]]; then
     minio_profile=(--profile minio)
     echo "Object store: the bundled MinIO is kept running (existing files)."
+else
+    # `up` never stops a container whose profile is no longer active: retire
+    # MinIO explicitly (container only, its volume stays).
+    docker compose --profile minio rm -sf minio >/dev/null 2>&1 || true
 fi
 
 REGISTRY="$REGISTRY" ENABLE_TELEMETRY="$ENABLE_TELEMETRY" docker compose --profile tunnel "${minio_profile[@]}" up --pull always

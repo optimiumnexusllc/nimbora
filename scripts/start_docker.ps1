@@ -245,6 +245,10 @@ $profileArgs = @('--profile', 'tunnel')
 if ($objectStore -eq 'minio' -or ($hasMinio -and (Get-DotEnvValue -Path $EnvFile -Key 'MINIO_RETIRED') -ne 'true')) {
     $profileArgs += @('--profile', 'minio')
     Write-Host 'Object store: the bundled MinIO is kept running (existing files).'
+} else {
+    # `up` never stops a container whose profile is no longer active: retire
+    # MinIO explicitly (container only, its volume stays).
+    docker compose --profile minio rm -sf minio 2>$null | Out-Null
 }
 docker compose @profileArgs up --pull always
 if ($LASTEXITCODE -ne 0) {

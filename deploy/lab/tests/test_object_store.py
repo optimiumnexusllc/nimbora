@@ -29,7 +29,11 @@ def test_seaweedfs_is_the_default_store_and_minio_an_opt_in_profile(compose):
     services = compose["services"]
     weed = services["seaweedfs"]
     assert "profiles" not in weed  # starts with a plain `docker compose up`
-    assert weed["image"].startswith("${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:")
+    # Pinned by digest (validated on the lab, step 20), like every bundled image.
+    assert weed["image"] == (
+        "${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.55"
+        "@sha256:7ca46aeae2f223b37e5d91593c17ab37738eec6df6ab69b48a0487f7643342b9}"
+    )
     command = weed["command"]
     assert command[0] == "server" and "-s3" in command and "-s3.port=8333" in command
     assert "-master.telemetry=false" in command  # no anonymous statistics
@@ -196,3 +200,22 @@ def test_the_api_image_carries_the_migration_tool():
     dockerfile = (REPO / "api" / "Dockerfile").read_text()
     assert "./scripts/migrate_object_store.py" in dockerfile
     assert (REPO / "scripts" / "migrate_object_store.py").is_file()
+
+
+@pytest.mark.parametrize(
+    "script",
+    [
+        "deploy/lab/install.sh",
+        "remote_up.sh",
+        "scripts/start_docker.sh",
+        "scripts/start_docker.ps1",
+    ],
+)
+def test_a_retired_minio_is_stopped_not_left_running(script):
+    """Lab step 20: MINIO_RETIRED=true, yet nimbora_minio kept running — `up`
+    never stops a container whose profile is no longer active. Every entry
+    point removes the MinIO container (never its volume) before `up`."""
+    text = (REPO / script).read_text()
+    assert "--profile minio rm -sf minio" in text
+    assert "rm -sfv" not in text and "down -v" not in text
+    assert text.index("--profile minio rm -sf minio") < text.rindex(" up ")

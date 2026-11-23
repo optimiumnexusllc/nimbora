@@ -65,7 +65,7 @@ services:
     # every install script works unchanged); without an identity SeaweedFS would
     # serve anonymous requests, with one the bucket is private. Anonymous usage
     # statistics are off. Override the image with SEAWEEDFS_IMAGE.
-    image: ${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.55}
+    image: ${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.55@sha256:7ca46aeae2f223b37e5d91593c17ab37738eec6df6ab69b48a0487f7643342b9}
     container_name: seaweedfs
     command:
       - server
