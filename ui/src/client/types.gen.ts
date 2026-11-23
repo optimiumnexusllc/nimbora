@@ -271,6 +271,36 @@ export type AgentResponse = {
 };
 
 /**
+ * AgentSearch
+ */
+export type AgentSearch = {
+    /**
+     * Query
+     */
+    query?: string;
+    /**
+     * Max Price
+     */
+    max_price?: number | null;
+    /**
+     * Min Price
+     */
+    min_price?: number | null;
+    /**
+     * Category
+     */
+    category?: string | null;
+    /**
+     * Available Only
+     */
+    available_only?: boolean;
+    /**
+     * Currency
+     */
+    currency?: string;
+};
+
+/**
  * AgentSummary
  */
 export type AgentSummary = {
@@ -753,6 +783,16 @@ export type BlockedNumberStats = {
      * Caller Requests
      */
     caller_requests: number;
+};
+
+/**
+ * Body_import_items_api_v1_catalog_import_post
+ */
+export type BodyImportItemsApiV1CatalogImportPost = {
+    /**
+     * File
+     */
+    file: Blob | File;
 };
 
 /**
@@ -1781,6 +1821,70 @@ export type CampaignsResponse = {
 };
 
 /**
+ * CatalogItemIn
+ */
+export type CatalogItemIn = {
+    /**
+     * Kind
+     */
+    kind?: 'product' | 'property' | 'room' | 'service' | 'vehicle' | 'other';
+    /**
+     * Sku
+     */
+    sku?: string | null;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Category
+     */
+    category?: string | null;
+    /**
+     * Price
+     *
+     * In the currency, e.g. 15000 or 12.50
+     */
+    price?: number | string | null;
+    /**
+     * Currency
+     */
+    currency?: string;
+    /**
+     * Unit
+     */
+    unit?: string | null;
+    /**
+     * Stock
+     *
+     * None: not tracked
+     */
+    stock?: number | null;
+    /**
+     * Available
+     */
+    available?: boolean;
+    /**
+     * Attributes
+     */
+    attributes?: {
+        [key: string]: string | number | number | boolean;
+    };
+    /**
+     * Tags
+     */
+    tags?: Array<string>;
+    /**
+     * Url
+     */
+    url?: string | null;
+};
+
+/**
  * CheckoutRequest
  */
 export type CheckoutRequest = {
@@ -2674,7 +2778,7 @@ export type CreateToolRequest = {
      *
      * Tool category. Must match definition.type.
      */
-    category?: 'http_api' | 'end_call' | 'transfer_call' | 'transfer_agent' | 'calculator' | 'schedule_callback' | 'book_appointment' | 'send_message' | 'create_ticket' | 'native' | 'integration' | 'mcp';
+    category?: 'http_api' | 'end_call' | 'transfer_call' | 'transfer_agent' | 'calculator' | 'schedule_callback' | 'book_appointment' | 'send_message' | 'create_ticket' | 'search_catalog' | 'native' | 'integration' | 'mcp';
     /**
      * Icon
      *
@@ -2711,6 +2815,8 @@ export type CreateToolRequest = {
     } & SendMessageToolDefinition) | ({
         type: 'create_ticket';
     } & CreateTicketToolDefinition) | ({
+        type: 'search_catalog';
+    } & SearchCatalogToolDefinition) | ({
         type: 'mcp';
     } & McpToolDefinition);
 };
@@ -7887,6 +7993,67 @@ export type ScheduleRequest = {
 };
 
 /**
+ * SearchCatalogConfig
+ *
+ * Search the company's catalog (Catalogue page) during the call.
+ */
+export type SearchCatalogConfig = {
+    /**
+     * Kinds
+     *
+     * Only these kinds of items; empty = the whole catalog.
+     */
+    kinds?: Array<'product' | 'property' | 'room' | 'service' | 'vehicle' | 'other'>;
+    /**
+     * Currency
+     *
+     * Currency the caller's budgets are understood in.
+     */
+    currency?: string;
+    /**
+     * Max Results
+     */
+    max_results?: number;
+    /**
+     * Available Only
+     *
+     * Leave out unavailable and sold-out items by default.
+     */
+    available_only?: boolean;
+    /**
+     * Show Stock
+     *
+     * Tell how many are left, or just « en stock ».
+     */
+    show_stock?: boolean;
+};
+
+/**
+ * SearchCatalogToolDefinition
+ */
+export type SearchCatalogToolDefinition = {
+    /**
+     * Schema Version
+     *
+     * Schema version.
+     */
+    schema_version?: number;
+    /**
+     * Messages
+     *
+     * Configured speech. An empty list disables announcements. HTTP/MCP choose one start entry and one entry per delayed timing at random. End-call and transfer tools support one start entry only.
+     */
+    messages?: Array<ToolStartTextMessage | ToolStartAudioMessage | ToolDelayedTextMessage | ToolDelayedAudioMessage>;
+    /**
+     * Type
+     *
+     * Tool type.
+     */
+    type: 'search_catalog';
+    config?: SearchCatalogConfig;
+};
+
+/**
  * SendMessageConfig
  *
  * Send an SMS, a WhatsApp message or an e-mail during the call.
@@ -8336,6 +8503,22 @@ export type StatusRequest = {
      * Forward To
      */
     forward_to?: string;
+};
+
+/**
+ * StockUpdate
+ */
+export type StockUpdate = {
+    /**
+     * Stock
+     *
+     * None: not tracked
+     */
+    stock: number | null;
+    /**
+     * Available
+     */
+    available?: boolean | null;
 };
 
 /**
@@ -10444,6 +10627,8 @@ export type UpdateToolRequest = {
     } & SendMessageToolDefinition) | ({
         type: 'create_ticket';
     } & CreateTicketToolDefinition) | ({
+        type: 'search_catalog';
+    } & SearchCatalogToolDefinition) | ({
         type: 'mcp';
     } & McpToolDefinition) | null;
     /**
@@ -22147,6 +22332,385 @@ export type UpdateCustomerApiV1CustomersCustomerIdPatchResponses = {
 };
 
 export type UpdateCustomerApiV1CustomersCustomerIdPatchResponse = UpdateCustomerApiV1CustomersCustomerIdPatchResponses[keyof UpdateCustomerApiV1CustomersCustomerIdPatchResponses];
+
+export type ListItemsApiV1CatalogItemsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Q
+         */
+        q?: string;
+        /**
+         * Kind
+         */
+        kind?: string | null;
+        /**
+         * Category
+         */
+        category?: string | null;
+        /**
+         * Available Only
+         */
+        available_only?: boolean;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/catalog/items';
+};
+
+export type ListItemsApiV1CatalogItemsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListItemsApiV1CatalogItemsGetError = ListItemsApiV1CatalogItemsGetErrors[keyof ListItemsApiV1CatalogItemsGetErrors];
+
+export type ListItemsApiV1CatalogItemsGetResponses = {
+    /**
+     * Response List Items Api V1 Catalog Items Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ListItemsApiV1CatalogItemsGetResponse = ListItemsApiV1CatalogItemsGetResponses[keyof ListItemsApiV1CatalogItemsGetResponses];
+
+export type CreateItemApiV1CatalogItemsPostData = {
+    body: CatalogItemIn;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/items';
+};
+
+export type CreateItemApiV1CatalogItemsPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateItemApiV1CatalogItemsPostError = CreateItemApiV1CatalogItemsPostErrors[keyof CreateItemApiV1CatalogItemsPostErrors];
+
+export type CreateItemApiV1CatalogItemsPostResponses = {
+    /**
+     * Response Create Item Api V1 Catalog Items Post
+     *
+     * Successful Response
+     */
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type CreateItemApiV1CatalogItemsPostResponse = CreateItemApiV1CatalogItemsPostResponses[keyof CreateItemApiV1CatalogItemsPostResponses];
+
+export type DeleteItemApiV1CatalogItemsItemIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Item Id
+         */
+        item_id: number;
+    };
+    query?: never;
+    url: '/api/v1/catalog/items/{item_id}';
+};
+
+export type DeleteItemApiV1CatalogItemsItemIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteItemApiV1CatalogItemsItemIdDeleteError = DeleteItemApiV1CatalogItemsItemIdDeleteErrors[keyof DeleteItemApiV1CatalogItemsItemIdDeleteErrors];
+
+export type DeleteItemApiV1CatalogItemsItemIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteItemApiV1CatalogItemsItemIdDeleteResponse = DeleteItemApiV1CatalogItemsItemIdDeleteResponses[keyof DeleteItemApiV1CatalogItemsItemIdDeleteResponses];
+
+export type UpdateItemApiV1CatalogItemsItemIdPutData = {
+    body: CatalogItemIn;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Item Id
+         */
+        item_id: number;
+    };
+    query?: never;
+    url: '/api/v1/catalog/items/{item_id}';
+};
+
+export type UpdateItemApiV1CatalogItemsItemIdPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateItemApiV1CatalogItemsItemIdPutError = UpdateItemApiV1CatalogItemsItemIdPutErrors[keyof UpdateItemApiV1CatalogItemsItemIdPutErrors];
+
+export type UpdateItemApiV1CatalogItemsItemIdPutResponses = {
+    /**
+     * Response Update Item Api V1 Catalog Items  Item Id  Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type UpdateItemApiV1CatalogItemsItemIdPutResponse = UpdateItemApiV1CatalogItemsItemIdPutResponses[keyof UpdateItemApiV1CatalogItemsItemIdPutResponses];
+
+export type UpdateStockApiV1CatalogItemsItemIdStockPatchData = {
+    body: StockUpdate;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Item Id
+         */
+        item_id: number;
+    };
+    query?: never;
+    url: '/api/v1/catalog/items/{item_id}/stock';
+};
+
+export type UpdateStockApiV1CatalogItemsItemIdStockPatchErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateStockApiV1CatalogItemsItemIdStockPatchError = UpdateStockApiV1CatalogItemsItemIdStockPatchErrors[keyof UpdateStockApiV1CatalogItemsItemIdStockPatchErrors];
+
+export type UpdateStockApiV1CatalogItemsItemIdStockPatchResponses = {
+    /**
+     * Response Update Stock Api V1 Catalog Items  Item Id  Stock Patch
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type UpdateStockApiV1CatalogItemsItemIdStockPatchResponse = UpdateStockApiV1CatalogItemsItemIdStockPatchResponses[keyof UpdateStockApiV1CatalogItemsItemIdStockPatchResponses];
+
+export type ImportItemsApiV1CatalogImportPostData = {
+    body: BodyImportItemsApiV1CatalogImportPost;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Currency
+         */
+        currency?: string;
+    };
+    url: '/api/v1/catalog/import';
+};
+
+export type ImportItemsApiV1CatalogImportPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ImportItemsApiV1CatalogImportPostError = ImportItemsApiV1CatalogImportPostErrors[keyof ImportItemsApiV1CatalogImportPostErrors];
+
+export type ImportItemsApiV1CatalogImportPostResponses = {
+    /**
+     * Response Import Items Api V1 Catalog Import Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ImportItemsApiV1CatalogImportPostResponse = ImportItemsApiV1CatalogImportPostResponses[keyof ImportItemsApiV1CatalogImportPostResponses];
+
+export type ExportItemsApiV1CatalogExportCsvGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/export.csv';
+};
+
+export type ExportItemsApiV1CatalogExportCsvGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ExportItemsApiV1CatalogExportCsvGetError = ExportItemsApiV1CatalogExportCsvGetErrors[keyof ExportItemsApiV1CatalogExportCsvGetErrors];
+
+export type ExportItemsApiV1CatalogExportCsvGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
+
+export type AgentPreviewApiV1CatalogAgentPreviewPostData = {
+    body: AgentSearch;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/catalog/agent-preview';
+};
+
+export type AgentPreviewApiV1CatalogAgentPreviewPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AgentPreviewApiV1CatalogAgentPreviewPostError = AgentPreviewApiV1CatalogAgentPreviewPostErrors[keyof AgentPreviewApiV1CatalogAgentPreviewPostErrors];
+
+export type AgentPreviewApiV1CatalogAgentPreviewPostResponses = {
+    /**
+     * Response Agent Preview Api V1 Catalog Agent Preview Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type AgentPreviewApiV1CatalogAgentPreviewPostResponse = AgentPreviewApiV1CatalogAgentPreviewPostResponses[keyof AgentPreviewApiV1CatalogAgentPreviewPostResponses];
 
 export type ReadSettingsApiV1PrivacySettingsGetData = {
     body?: never;

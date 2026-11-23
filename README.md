@@ -220,7 +220,7 @@ reliés à leur historique : un visiteur ne peut pas usurper le numéro d'un aut
 
 <p align="center"><img src="docs/images/screenshots/customer-channels.webp" alt="Historique client multicanal" width="88%"></p>
 
-### ⚡ Des agents qui agissent : rendez-vous, messages, tickets
+### ⚡ Des agents qui agissent : rendez-vous, messages, tickets, catalogue
 
 Pendant l'appel, l'agent ne se contente pas de répondre : il **fait**.
 
@@ -232,6 +232,9 @@ Pendant l'appel, l'agent ne se contente pas de répondre : il **fait**.
   suivi. Twilio, n'importe quelle passerelle SMS (HTTP) ou SMTP, avec modèles et limite par appel.
 - **Ouvre un ticket** et donne son numéro au client, puis lui dit où en est sa demande lors des appels
   suivants. Helpdesk NIMBORA intégré, **Zendesk** ou **Freshdesk**.
+- **Cherche dans votre catalogue** (produits, biens immobiliers, chambres, prestations, véhicules) avec
+  les mots et le budget du client : nom, prix, disponibilité, stock et caractéristiques, sans jamais
+  inventer. Catalogue saisi dans la console ou importé en CSV, essai « comme l'agent ».
 
 Tout ce que les agents ont fait se retrouve dans la page **Activité**.
 
@@ -442,7 +445,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Mémoire client |
 | ✅ | Actions : rendez-vous (CalDAV, Google), SMS / WhatsApp / e-mail, tickets (Zendesk, Freshdesk) |
 | ✅ | Rappels automatiques, passation IA → humain avec fiche de contexte |
-| 🔜 | Catalogue : produits, biens, chambres… avec prix, stock et recherche par l'agent |
+| ✅ | **Catalogue** : produits, biens, chambres, prestations, véhicules avec prix (devise et unité), stock, disponibilité et caractéristiques libres ; import / export CSV ; outil « Rechercher dans le catalogue » (mots sans accents, budget, détails d'un article, types limités par outil) ; essai « comme l'agent » |
 | 🔜 | Prospects : qualification (besoin, budget), pipeline |
 | ✅ | **Routage intelligent** des passations IA → humain : client VIP, **conseiller habituel** (appris des appels du PBX), compétence demandée par l'IA, langue, destination par défaut — selon qui est libre **à l'instant** ; si personne n'est libre : file, rappel planifié ou l'IA continue ; **simulateur** qui explique chaque décision |
 

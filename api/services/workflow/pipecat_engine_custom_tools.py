@@ -271,6 +271,7 @@ class CustomToolManager:
             ToolCategory.BOOK_APPOINTMENT.value,
             ToolCategory.SEND_MESSAGE.value,
             ToolCategory.CREATE_TICKET.value,
+            ToolCategory.SEARCH_CATALOG.value,
         }:
             timeout_secs = 25.0
             handler = self._create_action_handler(tool, function_name)

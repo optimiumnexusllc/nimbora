@@ -203,6 +203,7 @@ def tool_to_function_schema(tool: Any) -> dict[str, Any]:
         "book_appointment",
         "send_message",
         "create_ticket",
+        "search_catalog",
     }:
         from api.services.actions.schemas import action_function_parameters
 

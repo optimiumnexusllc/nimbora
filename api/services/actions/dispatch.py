@@ -8,7 +8,12 @@ from loguru import logger
 
 from api.services.actions.common import ActionContext, ActionError
 
-ACTION_CATEGORIES = ("book_appointment", "send_message", "create_ticket")
+ACTION_CATEGORIES = (
+    "book_appointment",
+    "send_message",
+    "create_ticket",
+    "search_catalog",
+)
 
 
 async def run_action(
@@ -28,6 +33,10 @@ async def run_action(
             from api.services.actions.tickets import handle_ticket
 
             return await handle_ticket(ctx, config, args)
+        if category == "search_catalog":
+            from api.services.catalog.service import handle_catalog
+
+            return await handle_catalog(ctx, config, args)
         raise ActionError(f"Unknown action tool '{category}'")
     except ActionError as exc:
         return {"status": "error", "error": str(exc)}

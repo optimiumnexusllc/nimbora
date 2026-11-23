@@ -241,6 +241,7 @@ class ToolCategory(Enum):
     BOOK_APPOINTMENT = "book_appointment"  # Calendar: free slots, book, cancel
     SEND_MESSAGE = "send_message"  # SMS, WhatsApp or e-mail
     CREATE_TICKET = "create_ticket"  # Helpdesk ticket: create, follow up
+    SEARCH_CATALOG = "search_catalog"  # Company catalog: products, properties, rooms…
     NATIVE = "native"  # Built-in integrations (future: dtmf_input)
     INTEGRATION = "integration"  # Third-party integrations (future: Google Calendar, Salesforce, etc.)
     MCP = "mcp"  # Customer-provided MCP server exposing a tool catalog

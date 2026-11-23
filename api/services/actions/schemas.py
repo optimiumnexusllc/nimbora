@@ -107,4 +107,45 @@ def action_function_parameters(definition: dict[str, Any]) -> tuple[dict, list[s
                 "enum": list(config["categories"]),
             }
         return properties, ["action"]
+    if kind == "search_catalog":
+        return (
+            {
+                "action": {
+                    "type": "string",
+                    "enum": ["search", "details"],
+                    "description": (
+                        "search: items matching the caller's words and budget; details: "
+                        "everything about one item found (item_id)."
+                    ),
+                },
+                "query": {
+                    "type": "string",
+                    "description": (
+                        "What the caller looks for, in a few key words "
+                        "(« villa piscine Cocody », « chambre double vue mer »)."
+                    ),
+                },
+                "category": {
+                    "type": "string",
+                    "description": "A catalog category, if the caller named one.",
+                },
+                "min_price": {
+                    "type": "number",
+                    "description": "Lowest price, in the catalog's currency.",
+                },
+                "max_price": {
+                    "type": "number",
+                    "description": "Budget: highest price, in the catalog's currency.",
+                },
+                "available_only": {
+                    "type": "boolean",
+                    "description": "false to include unavailable or sold-out items.",
+                },
+                "item_id": {
+                    "type": "integer",
+                    "description": "Item to describe (details), from search.",
+                },
+            },
+            ["action"],
+        )
     return {}, []

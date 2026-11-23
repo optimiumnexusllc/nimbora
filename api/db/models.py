@@ -4,6 +4,7 @@ from datetime import UTC, datetime
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     JSON,
+    BigInteger,
     Boolean,
     Column,
     DateTime,
@@ -2528,3 +2529,48 @@ class SoftphoneDeviceModel(Base):
     last_seen_at = Column(DateTime(timezone=True), nullable=True)
     revoked_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
+class CatalogItemModel(Base):
+    """Something the company sells or rents: a product, a property, a room…
+
+    The agent searches it during calls (« Rechercher dans le catalogue »).
+    ``search_text`` is the item's words in lower case without accents, so
+    « chambre deluxe » finds « Chambre Délux ».
+    """
+
+    __tablename__ = "catalog_items"
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    # product, property (real estate), room, service, vehicle, other
+    kind = Column(String(16), nullable=False, default="product")
+    sku = Column(String(64), nullable=True)
+    name = Column(String(200), nullable=False)
+    description = Column(Text, nullable=True)
+    category = Column(String(100), nullable=True)
+    # Smallest unit of the currency (cents; XOF has none: 15000 = 15 000 F CFA).
+    price_cents = Column(BigInteger, nullable=True)
+    currency = Column(String(3), nullable=False, default="XOF")
+    unit = Column(String(32), nullable=True)  # « la nuit », « le kg », « par mois »
+    # None: stock not tracked (always available while ``available``).
+    stock = Column(Integer, nullable=True)
+    available = Column(Boolean, nullable=False, default=True)
+    attributes = Column(JSON, nullable=False, default=dict)
+    tags = Column(JSON, nullable=False, default=list)
+    url = Column(String(500), nullable=True)
+    search_text = Column(Text, nullable=False, default="")
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+    __table_args__ = (
+        UniqueConstraint("organization_id", "sku", name="_catalog_org_sku_uc"),
+        Index("ix_catalog_items_org_kind", "organization_id", "kind"),
+        Index("ix_catalog_items_org_category", "organization_id", "category"),
+    )
