@@ -495,3 +495,36 @@ async def test_pbx_routes_for_ai_outbound_and_restrictions(
         assert (
             await client.delete(f"/api/v1/pbx/restrictions/{created.json()['id']}")
         ).status_code == 204
+
+
+async def test_a_cancelled_lookup_is_never_taken_for_not_blocked(monkeypatch):
+    """CI hang (test_cancelled_batch_returns_real_claims): the driver turned the
+    batch's cancellation into an error, the lookup answered « not blocked » and
+    the cancelled task went on towards dialling."""
+    import asyncio
+
+    from api.db import db_client
+    from api.services.telephony import blocklist
+
+    entered = asyncio.Event()
+
+    async def lookup(*args, **kwargs):
+        entered.set()
+        try:
+            await asyncio.sleep(30)
+        except asyncio.CancelledError:
+            raise RuntimeError("connection was closed in the middle of operation")
+
+    monkeypatch.setattr(db_client, "find_blocked_number", lookup)
+    task = asyncio.create_task(blocklist.find_block(1, "+2250700112233", "outbound"))
+    await asyncio.wait_for(entered.wait(), 5)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await asyncio.wait_for(task, 5)
+
+    # Outside a cancellation, a failing lookup still lets the call through.
+    async def broken(*args, **kwargs):
+        raise RuntimeError("database unavailable")
+
+    monkeypatch.setattr(db_client, "find_blocked_number", broken)
+    assert await blocklist.find_block(1, "+2250700112233", "outbound") is None
