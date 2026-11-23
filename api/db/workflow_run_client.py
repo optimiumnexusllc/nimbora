@@ -171,6 +171,28 @@ class WorkflowRunClient(BaseDBClient):
             await session.commit()
             return True
 
+    async def count_storage_backend(self, backend: str) -> int:
+        """Stored files (recordings, transcripts…) still on a storage backend."""
+        from sqlalchemy import func, select
+
+        from api.db.models import PbxCallRecordingModel, WorkflowRecordingModel
+
+        total = 0
+        async with self.async_session() as session:
+            for model in (
+                WorkflowRunModel,
+                WorkflowRecordingModel,
+                PbxCallRecordingModel,
+            ):
+                total += (
+                    await session.execute(
+                        select(func.count())
+                        .select_from(model)
+                        .where(model.storage_backend == backend)
+                    )
+                ).scalar_one()
+        return total
+
     async def reassign_storage_backend(self, old: str, new: str) -> dict[str, int]:
         """Point every stored file from one storage backend to another.
 

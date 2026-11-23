@@ -231,7 +231,22 @@ if ($answer -match '^[Nn]') {
 $env:REGISTRY = $Registry
 $env:ENABLE_TELEMETRY = $EnableTelemetry
 Sync-PostgresPassword -Password (Get-DotEnvValue -Path $EnvFile -Key 'POSTGRES_PASSWORD')
-docker compose --profile tunnel up --pull always
+
+# Object store: the bundled SeaweedFS; an install made before keeps its MinIO
+# (OBJECT_STORE=minio) until its files are migrated, and MinIO runs while its
+# volume exists and MINIO_RETIRED is not true (docs/deployment/object-storage.mdx).
+$objectStore = Get-DotEnvValue -Path $EnvFile -Key 'OBJECT_STORE'
+$hasMinio = [bool]((docker volume ls -q 2>$null) | Where-Object { $_ -match '(^|_)minio-data$' })
+if (-not $objectStore) {
+    $objectStore = if ($hasMinio) { 'minio' } else { 'seaweedfs' }
+    Set-DotEnvValue -Path $EnvFile -Key 'OBJECT_STORE' -Value $objectStore
+}
+$profileArgs = @('--profile', 'tunnel')
+if ($objectStore -eq 'minio' -or ($hasMinio -and (Get-DotEnvValue -Path $EnvFile -Key 'MINIO_RETIRED') -ne 'true')) {
+    $profileArgs += @('--profile', 'minio')
+    Write-Host 'Object store: the bundled MinIO is kept running (existing files).'
+}
+docker compose @profileArgs up --pull always
 if ($LASTEXITCODE -ne 0) {
     exit $LASTEXITCODE
 }

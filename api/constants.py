@@ -140,6 +140,74 @@ S3_ADDRESSING_STYLE = os.environ.get("S3_ADDRESSING_STYLE")
 #   internal (e.g. http://seaweedfs:8333 behind https://app.example.com). Signed
 #   download and upload links are computed for this address.
 S3_PUBLIC_ENDPOINT_URL = os.environ.get("S3_PUBLIC_ENDPOINT_URL") or None
+S3_ACCESS_KEY: str | None = None
+S3_SECRET_KEY: str | None = None
+
+# OBJECT_STORE: where files go.
+#   seaweedfs  the bundled SeaweedFS (default of docker-compose.yaml since PR #21):
+#              the API talks to it as S3 (http://seaweedfs:8333, path-style,
+#              SigV4) with the bundled store's keys (MINIO_ROOT_USER/PASSWORD,
+#              kept as names so every install script works unchanged);
+#   minio      the bundled MinIO (frozen last open-source build, `minio` compose
+#              profile) — what an install made before keeps until it migrates;
+#   s3         any other S3 service (ENABLE_AWS_S3=true and the S3_* settings).
+# Unset: « minio » (local development, docker-compose-local.yaml).
+# ENABLE_AWS_S3=true always means the external S3 service, whatever OBJECT_STORE.
+
+
+def _object_store_settings(env) -> dict:
+    aws = (env.get("ENABLE_AWS_S3") or "false").lower() == "true"
+    store = (env.get("OBJECT_STORE") or "").strip().lower()
+    if aws or store == "s3":
+        # An install moved to an external S3 service (ENABLE_AWS_S3=true) stays
+        # on it whatever OBJECT_STORE says — compose now defaults OBJECT_STORE
+        # to seaweedfs, and must not point such an install at an empty store.
+        store = "s3"
+    elif store not in {"seaweedfs", "minio"}:
+        store = "minio"
+    settings = {
+        "store": store,
+        "enable_aws_s3": store in {"seaweedfs", "s3"},
+        "bundled_seaweedfs": store == "seaweedfs",
+        "s3_bucket": env.get("S3_BUCKET"),
+        "s3_endpoint_url": env.get("S3_ENDPOINT_URL"),
+        "s3_signature_version": env.get("S3_SIGNATURE_VERSION"),
+        "s3_addressing_style": env.get("S3_ADDRESSING_STYLE"),
+        "s3_public_endpoint_url": env.get("S3_PUBLIC_ENDPOINT_URL") or None,
+        "s3_access_key": env.get("AWS_ACCESS_KEY_ID") or None,
+        "s3_secret_key": env.get("AWS_SECRET_ACCESS_KEY") or None,
+    }
+    if store == "seaweedfs":
+        # The bundled SeaweedFS, reached inside the compose network; browsers
+        # go through the public address (the proxy serves /voice-audio/).
+        settings.update(
+            {
+                "s3_bucket": env.get("MINIO_BUCKET") or "voice-audio",
+                "s3_endpoint_url": env.get("SEAWEEDFS_ENDPOINT")
+                or "http://seaweedfs:8333",
+                "s3_signature_version": "s3v4",
+                "s3_addressing_style": "path",
+                "s3_public_endpoint_url": env.get("MINIO_PUBLIC_ENDPOINT")
+                or env.get("PUBLIC_BASE_URL")
+                or "http://localhost:8333",
+                "s3_access_key": env.get("MINIO_ACCESS_KEY") or "minioadmin",
+                "s3_secret_key": env.get("MINIO_SECRET_KEY") or "minioadmin",
+            }
+        )
+    return settings
+
+
+_STORE = _object_store_settings(os.environ)
+OBJECT_STORE: str = _STORE["store"]
+BUNDLED_SEAWEEDFS: bool = _STORE["bundled_seaweedfs"]
+ENABLE_AWS_S3 = _STORE["enable_aws_s3"]
+S3_BUCKET = _STORE["s3_bucket"]
+S3_ENDPOINT_URL = _STORE["s3_endpoint_url"]
+S3_SIGNATURE_VERSION = _STORE["s3_signature_version"]
+S3_ADDRESSING_STYLE = _STORE["s3_addressing_style"]
+S3_PUBLIC_ENDPOINT_URL = _STORE["s3_public_endpoint_url"]
+S3_ACCESS_KEY = _STORE["s3_access_key"]
+S3_SECRET_KEY = _STORE["s3_secret_key"]
 
 # Sentry configuration
 SENTRY_DSN = os.getenv("SENTRY_DSN")

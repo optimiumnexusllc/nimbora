@@ -267,7 +267,29 @@ if runs nimbora; then
     ENV="$DEPLOY_DIR/.env"
     [[ -f "$ENV" ]] || { umask 077; : > "$ENV"; }
     set_kv "$ENV" COMPOSE_PROJECT_NAME nimbora-lab
-    set_kv "$ENV" COMPOSE_PROFILES local-turn
+    # Object store: SeaweedFS for a new install; an install made before keeps
+    # its MinIO (OBJECT_STORE=minio) until its files are migrated. MinIO runs
+    # (profile `minio`) while its volume exists and MINIO_RETIRED is not true:
+    # during a migration new files go to SeaweedFS, old ones are read from MinIO.
+    minio_volume="$(get_kv "$ENV" COMPOSE_PROJECT_NAME)_minio-data"
+    has_minio=0
+    docker volume inspect "$minio_volume" >/dev/null 2>&1 && has_minio=1
+    OBJECT_STORE="$(get_kv "$ENV" OBJECT_STORE)"
+    if [[ -z "$OBJECT_STORE" ]]; then
+        if [[ "$has_minio" == 1 ]]; then OBJECT_STORE=minio; else OBJECT_STORE=seaweedfs; fi
+        set_kv "$ENV" OBJECT_STORE "$OBJECT_STORE"
+    fi
+    profiles=local-turn
+    if [[ "$OBJECT_STORE" == minio || ( "$has_minio" == 1 && "$(get_kv "$ENV" MINIO_RETIRED)" != true ) ]]; then
+        profiles+=,minio
+    fi
+    set_kv "$ENV" COMPOSE_PROFILES "$profiles"
+    if [[ "$OBJECT_STORE" == minio ]]; then
+        warn "Stockage objet : MinIO (installation existante, image figée sans mises à jour)."
+        warn "Migration vers SeaweedFS : docs/deployment/object-storage.mdx (copy, verify, switch)."
+    else
+        ok "Stockage objet : $OBJECT_STORE"
+    fi
     set_kv "$ENV" ENVIRONMENT production
     set_kv "$ENV" SERVER_IP "$PUBLIC_IP"
     set_kv "$ENV" PUBLIC_HOST "$APP_DOMAIN"
@@ -363,11 +385,14 @@ if runs traefik; then
     for ((p = 8000; p < 8000 + FASTAPI_WORKERS; p++)); do
         servers+="          - url: http://nimbora_api:$p"$'\n'
     done
+    audio_server="http://nimbora_seaweedfs:8333"
+    [[ "$(get_kv "$DEPLOY_DIR/.env" OBJECT_STORE)" == minio ]] && audio_server="http://nimbora_minio:9000"
     target="$TRAEFIK_DYNAMIC_DIR/nimbora-lab.yaml"
     tmp="$(mktemp)"
     awk -v servers="$servers" '{ if ($0 == "__API_SERVERS__") printf "%s", servers; else print }' \
         "$KIT_DIR/templates/traefik-nimbora-lab.yaml" \
-        | sed -e "s#__APP_DOMAIN__#$APP_DOMAIN#g" -e "s#__PBX_DOMAIN__#$PBX_DOMAIN#g" -e "s#__PBX_IP__#$PBX_IP#g" > "$tmp"
+        | sed -e "s#__APP_DOMAIN__#$APP_DOMAIN#g" -e "s#__PBX_DOMAIN__#$PBX_DOMAIN#g" -e "s#__PBX_IP__#$PBX_IP#g" \
+              -e "s#__AUDIO_SERVER__#$audio_server#g" > "$tmp"
     if [[ -f "$target" ]] && cmp -s "$tmp" "$target"; then
         rm -f "$tmp"; ok "$target déjà à jour"
     else

@@ -67,6 +67,11 @@ async def lifespan(app: FastAPI):
 
         await run_saas_startup_checks()
 
+        # Object store: SeaweedFS bucket on first start, files left on MinIO.
+        from api.services.storage import startup_checks as storage_startup_checks
+
+        await storage_startup_checks()
+
         # Pre-register all org-specific Langfuse exporters so they're ready
         # before any pipeline runs, without per-call DB lookups.
         await load_all_org_langfuse_credentials()

@@ -56,7 +56,7 @@ __API_SERVERS__
     nimbora-lab-audio:
       loadBalancer:
         servers:
-          - url: http://nimbora_minio:9000
+          - url: __AUDIO_SERVER__
     nimbora-lab-pbx:
       loadBalancer:
         serversTransport: nimbora-lab-pbx

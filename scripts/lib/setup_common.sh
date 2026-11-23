@@ -295,6 +295,32 @@ nimbora_require_init_compose_layout() {
     fi
 }
 
+# Object store of an install: prints « minio » when the bundled MinIO must run.
+#   usage: nimbora_object_store_profiles <env_file> <docker command…>
+# New installs use the bundled SeaweedFS. An install made before (a MinIO volume
+# exists on this host and .env has no OBJECT_STORE) keeps MinIO until its files
+# are migrated (docs/deployment/object-storage.mdx). MinIO keeps running while
+# its volume exists and MINIO_RETIRED is not true, so that during a migration
+# the files not yet copied stay readable.
+nimbora_object_store_profiles() {
+    local env_file=$1
+    shift
+    local store="" retired="" has_minio=0
+    store="$(awk -F= '$1 == "OBJECT_STORE" { v = $2 } END { print v }' "$env_file" 2>/dev/null || true)"
+    retired="$(awk -F= '$1 == "MINIO_RETIRED" { v = $2 } END { print v }' "$env_file" 2>/dev/null || true)"
+    if "$@" volume ls -q 2>/dev/null | grep -qE '(^|_)minio-data$'; then
+        has_minio=1
+    fi
+    if [[ -z "$store" ]]; then
+        store=seaweedfs
+        [[ "$has_minio" == 1 ]] && store=minio
+        nimbora_set_env_key "$env_file" OBJECT_STORE "$store" >/dev/null
+    fi
+    if [[ "$store" == minio || ( "$has_minio" == 1 && "$retired" != true ) ]]; then
+        echo minio
+    fi
+}
+
 nimbora_render_remote_nginx_conf() {
     local project_dir=${1:-$(nimbora_project_dir)}
     local destination=${2:-"$project_dir/nginx.conf"}
@@ -316,7 +342,12 @@ nimbora_render_remote_nginx_conf() {
         echo "}"
     } > "$tmp_upstream"
 
-    awk -v public_host="$PUBLIC_HOST" -v upstream_file="$tmp_upstream" '
+    local object_store="seaweedfs:8333"
+    if [[ "${OBJECT_STORE:-seaweedfs}" == "minio" ]]; then
+        object_store="minio:9000"
+    fi
+
+    awk -v public_host="$PUBLIC_HOST" -v object_store="$object_store" -v upstream_file="$tmp_upstream" '
         BEGIN {
             while ((getline line < upstream_file) > 0) {
                 upstream = upstream line ORS
@@ -325,6 +356,7 @@ nimbora_render_remote_nginx_conf() {
         }
         {
             gsub(/__NIMBORA_PUBLIC_HOST__/, public_host)
+            gsub(/__NIMBORA_OBJECT_STORE__/, object_store)
             if ($0 == "__NIMBORA_UPSTREAM_BLOCK__") {
                 printf "%s", upstream
             } else {

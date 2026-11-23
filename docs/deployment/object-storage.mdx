@@ -1,9 +1,21 @@
 ---
 title: "Object storage"
-description: "Where recordings and files are stored, why the bucket is private, and how to move from the bundled MinIO to a maintained S3 service."
+description: "Where recordings and files are stored (SeaweedFS by default), why the bucket is private, and how to move an existing MinIO install to SeaweedFS or to a managed S3 service."
 ---
 
-Call recordings, transcripts, knowledge-base documents and campaign files are stored in an S3-compatible object store. By default the platform ships a MinIO container; any S3 service can replace it.
+Call recordings, transcripts, knowledge-base documents and campaign files are stored in an S3-compatible object store. The platform bundles **SeaweedFS** (Apache-2.0, maintained); any S3 service can replace it.
+
+| `OBJECT_STORE` | Store | When |
+|---|---|---|
+| `seaweedfs` (default) | Bundled SeaweedFS, reached as S3 at `http://seaweedfs:8333` | New installs |
+| `minio` | Bundled MinIO, `minio` compose profile | Installs made before SeaweedFS became the default, until they migrate |
+| — with `ENABLE_AWS_S3=true` | Any other S3 service (`S3_*` settings) | Managed storage; always wins over `OBJECT_STORE` |
+
+The bundled store's keys are `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` in `.env`, whichever store it is (the names are kept so every install script works unchanged). `GET /api/v1/health` returns `object_store`, and `legacy_minio_files` when files are still on MinIO while another store is active.
+
+<Note>
+**Updating an install made before.** The install and update scripts (`remote_up.sh`, `scripts/update_remote.sh`, `scripts/start_docker.sh`, the lab kit) find the existing MinIO volume and write `OBJECT_STORE=minio`: nothing changes until you migrate. If you run `docker compose up` by hand after updating, set `OBJECT_STORE=minio` and `COMPOSE_PROFILES=minio` in `.env` first — otherwise new files go to SeaweedFS and the old ones stay on a MinIO that is no longer started (the API logs it, and `/api/v1/health` shows `legacy_minio_files`).
+</Note>
 
 ## A private bucket and signed links
 
@@ -51,17 +63,34 @@ MinIO removed its public images; the bundled one is the last open-source release
   </Step>
 </Steps>
 
-## Self-hosted: SeaweedFS (to validate)
+## From the bundled MinIO to the bundled SeaweedFS
 
-SeaweedFS (Apache-2.0, maintained) is the planned default self-hosted store. Until it ships in the compose files, a single container is enough:
+For an install made before SeaweedFS became the default (`OBJECT_STORE=minio`). MinIO keeps running during the migration: new files go to SeaweedFS while the old ones are still read from MinIO.
 
-```yaml
-  seaweedfs:
-    image: chrislusf/seaweedfs   # pin the version and digest you validated
-    command: server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json
-    volumes:
-      - seaweedfs-data:/data
-      - ./seaweedfs-s3.json:/etc/seaweedfs/s3.json:ro
-```
+<Steps>
+  <Step title="Switch new files to SeaweedFS">
+    In `.env`: `OBJECT_STORE=seaweedfs` (keep `minio` in `COMPOSE_PROFILES` if you set it by hand), then restart with your usual command (`./remote_up.sh`, the lab kit `--only nimbora`). The API creates the `voice-audio` bucket on SeaweedFS at start-up.
+  </Step>
+  <Step title="Copy and verify">
+    ```bash
+    docker compose exec api python -m scripts.migrate_object_store copy
+    docker compose exec api python -m scripts.migrate_object_store verify
+    ```
+    With `OBJECT_STORE=seaweedfs` the destination is the bundled SeaweedFS: no `S3_*` setting is needed.
+  </Step>
+  <Step title="Switch the old files">
+    ```bash
+    docker compose exec api python -m scripts.migrate_object_store switch   # type BASCULER
+    ```
+    `/api/v1/health` then shows `legacy_minio_files: 0`. Play a few old recordings in the console.
+  </Step>
+  <Step title="Retire MinIO">
+    `MINIO_RETIRED=true` in `.env` and restart: MinIO is no longer started. Keep its volume for a while, then remove it (`docker volume rm <project>_minio-data`).
+  </Step>
+</Steps>
 
-with `seaweedfs-s3.json` holding one identity (access key, secret key, actions `Read`, `Write`, `List`, `Tagging`, `Admin`), then `S3_ENDPOINT_URL=http://seaweedfs:8333`, `S3_PUBLIC_ENDPOINT_URL` = your public address, the proxy's `/voice-audio/` path pointed at `seaweedfs:8333`, and the migration above.
+## What SeaweedFS runs with
+
+One container, `chrislusf/seaweedfs` (version pinned in `docker-compose.yaml`, `SEAWEEDFS_IMAGE` to override): master, volume server, filer and S3 gateway (`server -s3`), data in the `seaweedfs-data` volume, S3 on port 8333 bound to localhost. Its admin identity comes from the bundled store's keys, which makes the bucket private; anonymous usage statistics are turned off (`-master.telemetry=false`), and the Iceberg and Lance listeners are disabled. The reverse proxy serves `/voice-audio/` from it (nginx `deploy/templates`, Traefik `deploy/lab`).
+
+The `deploy/enterprise` stack and the Helm chart still bundle MinIO: they move to SeaweedFS in a later release, once it is validated on the reference lab.

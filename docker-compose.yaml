@@ -56,7 +56,50 @@ services:
     networks:
       - app-network
 
+  seaweedfs:
+    # The bundled object store (recordings, transcripts, documents): SeaweedFS,
+    # Apache-2.0 and maintained, one container (master + volume + filer + S3
+    # gateway). The API talks S3 to it (OBJECT_STORE=seaweedfs). Its admin
+    # identity comes from AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY, i.e. the
+    # bundled store's keys (MINIO_ROOT_USER / MINIO_ROOT_PASSWORD, names kept so
+    # every install script works unchanged); without an identity SeaweedFS would
+    # serve anonymous requests, with one the bucket is private. Anonymous usage
+    # statistics are off. Override the image with SEAWEEDFS_IMAGE.
+    image: ${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.55}
+    container_name: seaweedfs
+    command:
+      - server
+      - -ip=seaweedfs
+      - -ip.bind=0.0.0.0
+      - -s3
+      - -s3.port=8333
+      - -s3.port.iceberg=0
+      - -s3.port.lance=0
+      - -master.telemetry=false
+    environment:
+      AWS_ACCESS_KEY_ID: "${MINIO_ROOT_USER:-minioadmin}"
+      AWS_SECRET_ACCESS_KEY: "${MINIO_ROOT_PASSWORD:-minioadmin}"
+    ports:
+      - "127.0.0.1:8333:8333" # S3, bound to localhost
+    volumes:
+      - seaweedfs-data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    restart: unless-stopped
+    networks:
+      - app-network
+
   minio:
+    # Legacy bundled store, for installs made before SeaweedFS became the
+    # default: started only with the `minio` profile (COMPOSE_PROFILES=minio in
+    # .env, which the install and update scripts set when they find an existing
+    # MinIO volume) and OBJECT_STORE=minio — or during a migration to SeaweedFS
+    # (docs/deployment/object-storage.mdx).
+    profiles: ["minio"]
     # MinIO community build of the last open-source release (2025-04-22). MinIO
     # removed its own images from quay.io and Docker Hub, so this is Bitnami's
     # build of that same release: same `minio` and `mc` binaries. Bitnami lays
@@ -100,6 +143,7 @@ services:
       PUBLIC_BASE_URL: "${PUBLIC_BASE_URL:-}"
       BACKEND_API_ENDPOINT: "${BACKEND_API_ENDPOINT:-http://localhost:8000}"
       MINIO_PUBLIC_ENDPOINT: "${MINIO_PUBLIC_ENDPOINT:-http://localhost:9000}"
+      OBJECT_STORE: "${OBJECT_STORE:-seaweedfs}"
       TURN_HOST: "${TURN_HOST:-}"
       TURN_SECRET: "${TURN_SECRET:-}"
       FASTAPI_WORKERS: "${FASTAPI_WORKERS:-1}"
@@ -184,8 +228,10 @@ services:
       # Redis configuration (using containerized redis)
       REDIS_URL: "redis://:${REDIS_PASSWORD:-redissecret}@redis:6379"
 
-      # Storage configuration - bundled MinIO by default. Set ENABLE_AWS_S3=true
-      # in .env to make the API use AWS S3 or another S3-compatible server.
+      # Storage: OBJECT_STORE=seaweedfs (bundled SeaweedFS, default), minio
+      # (bundled MinIO, installs made before — `minio` profile), or
+      # ENABLE_AWS_S3=true for any other S3 service (it always wins).
+      OBJECT_STORE: "${OBJECT_STORE:-seaweedfs}"
       ENABLE_AWS_S3: "${ENABLE_AWS_S3:-false}"
 
       # S3 backend configuration. Compose's .env file is used for interpolation,
@@ -327,8 +373,12 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
+      seaweedfs:
+        condition: service_healthy
       minio:
         condition: service_healthy
+        # Only when the `minio` profile is active (installs made before).
+        required: false
     healthcheck:
       test:
         [
@@ -414,6 +464,8 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  seaweedfs-data:
+    driver: local
   minio-data:
     driver: local
   nginx-generated:

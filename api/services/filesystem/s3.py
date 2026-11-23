@@ -18,6 +18,8 @@ class S3FileSystem(BaseFileSystem):
         signature_version: Optional[str] = None,
         addressing_style: Optional[str] = None,
         public_endpoint_url: Optional[str] = None,
+        access_key: Optional[str] = None,
+        secret_key: Optional[str] = None,
     ):
         """Initialize S3 filesystem.
 
@@ -37,7 +39,14 @@ class S3FileSystem(BaseFileSystem):
         self.region_name = region_name
         self.endpoint_url = endpoint_url
         self.public_endpoint_url = public_endpoint_url
-        self.session = aioboto3.Session()
+        # Explicit keys (the bundled SeaweedFS); else botocore's default chain.
+        self.session = (
+            aioboto3.Session(
+                aws_access_key_id=access_key, aws_secret_access_key=secret_key
+            )
+            if access_key and secret_key
+            else aioboto3.Session()
+        )
 
         # Build a botocore Config only when an override is requested so that the
         # default behavior is byte-for-byte unchanged when no env vars are set.
@@ -67,6 +76,22 @@ class S3FileSystem(BaseFileSystem):
         if self._config is not None:
             kwargs["config"] = self._config
         return kwargs
+
+    async def aensure_bucket(self) -> bool:
+        """Create the bucket when it does not exist yet (bundled store only:
+        on a managed S3 service the bucket is the operator's). True if created."""
+        from botocore.exceptions import ClientError
+
+        async with self.session.client("s3", **self._client_kwargs()) as s3:
+            try:
+                await s3.head_bucket(Bucket=self.bucket_name)
+                return False
+            except ClientError as error:
+                code = str(error.response.get("Error", {}).get("Code", ""))
+                if code not in {"404", "NoSuchBucket", "NotFound"}:
+                    raise
+            await s3.create_bucket(Bucket=self.bucket_name)
+            return True
 
     async def acreate_file(self, file_path: str, content: AsyncReadable) -> bool:
         try:
