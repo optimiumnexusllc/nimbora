@@ -95,7 +95,10 @@ def test_backup_contains_databases_configuration_and_recordings(pbx):
     assert "pg_dumpall --clean --if-exists" in pbx.log.read_text()
 
     listing = subprocess.run(
-        ["tar", "-tzf", str(backup / "files.tar.gz")], capture_output=True, text=True, check=True
+        ["tar", "-tzf", str(backup / "files.tar.gz")],
+        capture_output=True,
+        text=True,
+        check=True,
     ).stdout
     for wanted in (
         "etc/nimbora-pbx/secrets.env",
@@ -120,8 +123,17 @@ def test_second_run_keeps_one_line_per_metric(pbx):
     pbx.run(BACKUP, str(pbx.dest / "again"))
     metric = (pbx.textfile / "nimbora_pbx_backup.prom").read_text()
     lines = metric.splitlines()
-    assert sum(line.startswith("nimbora_pbx_backup_last_success_timestamp_seconds ") for line in lines) == 1
-    assert sum(line.startswith("# TYPE nimbora_pbx_backup_last_success") for line in lines) == 1
+    assert (
+        sum(
+            line.startswith("nimbora_pbx_backup_last_success_timestamp_seconds ")
+            for line in lines
+        )
+        == 1
+    )
+    assert (
+        sum(line.startswith("# TYPE nimbora_pbx_backup_last_success") for line in lines)
+        == 1
+    )
 
 
 def test_encrypted_backup_round_trip_and_offsite_copy(pbx):
@@ -147,7 +159,9 @@ def test_encrypted_backup_round_trip_and_offsite_copy(pbx):
     # Without the passphrase: refused. With it: readable.
     refused = pbx.run(RESTORE, str(backup), "--check", check=False)
     assert refused.returncode != 0 and "BACKUP_PASSPHRASE_FILE" in refused.stdout
-    checked = pbx.run(RESTORE, str(backup), "--check", BACKUP_PASSPHRASE_FILE=str(passphrase))
+    checked = pbx.run(
+        RESTORE, str(backup), "--check", BACKUP_PASSPHRASE_FILE=str(passphrase)
+    )
     assert "check only" in checked.stdout
     assert "wazo-service" not in pbx.log.read_text()  # nothing stopped
 
@@ -172,7 +186,11 @@ def test_restore_stops_engine_reloads_databases_and_files(pbx):
 
     commands = [line.split()[0:2] for line in pbx.log.read_text().splitlines()]
     order = [c for c in commands if c[0] in {"wazo-service", "psql"}]
-    assert order == [["wazo-service", "stop"], ["psql", "-q"], ["wazo-service", "start"]]
+    assert order == [
+        ["wazo-service", "stop"],
+        ["psql", "-q"],
+        ["wazo-service", "start"],
+    ]
     assert "CREATE DATABASE asterisk;" in (pbx.tmp / "restored.sql").read_text()
     restored = new_root / "etc/nimbora-pbx/secrets.env"
     assert restored.read_text() == "ROOT_PASSWORD=s3cret\n"
@@ -205,11 +223,20 @@ def test_failed_backup_records_its_failure(pbx):
 def test_backup_covers_the_engine_state_seen_on_a_real_26_11():
     """Validated on the lab engine: service keys, DTLS keys, astdb and recordings
     directories exist and are needed to restore on a new server."""
-    script = (KIT / "scripts/backup.sh").read_text() if "KIT" in globals() else (Path(__file__).resolve().parents[2] / "pbx/scripts/backup.sh").read_text()
+    script = (
+        (KIT / "scripts/backup.sh").read_text()
+        if "KIT" in globals()
+        else (Path(__file__).resolve().parents[2] / "pbx/scripts/backup.sh").read_text()
+    )
     for path in (
-        "var/lib/wazo-auth-keys", "var/lib/asterisk/keys", "var/lib/asterisk/astdb.sqlite3",
-        "var/lib/asterisk/sounds", "var/spool/asterisk/recording", "var/lib/wazo-call-logd",
-        "var/lib/wazo-agentd", "var/lib/wazo-chatd",
+        "var/lib/wazo-auth-keys",
+        "var/lib/asterisk/keys",
+        "var/lib/asterisk/astdb.sqlite3",
+        "var/lib/asterisk/sounds",
+        "var/spool/asterisk/recording",
+        "var/lib/wazo-call-logd",
+        "var/lib/wazo-agentd",
+        "var/lib/wazo-chatd",
     ):
         assert path in script, path
 

@@ -49,7 +49,8 @@ def desired_contexts(slug: str) -> list[dict]:
             # Start and end must have the same length: one range per number length,
             # from short national numbers to full international ones.
             "incall_ranges": [
-                {"start": "0" * n, "end": "9" * n, "did_length": n} for n in range(4, 16)
+                {"start": "0" * n, "end": "9" * n, "did_length": n}
+                for n in range(4, 16)
             ],
             "enabled": True,
         },
@@ -92,7 +93,9 @@ class Api:
         if self.tenant:
             request.add_header("Wazo-Tenant", self.tenant)
         try:
-            with urllib.request.urlopen(request, context=self.context, timeout=30) as response:
+            with urllib.request.urlopen(
+                request, context=self.context, timeout=30
+            ) as response:
                 payload = response.read()
         except urllib.error.HTTPError as error:
             detail = error.read().decode(errors="replace")[:300]
@@ -110,9 +113,16 @@ def main() -> None:
     args = parser.parse_args()
 
     api = Api(args.url, args.insecure)
-    token = api.call("POST", AUTH + "/token", {"expiration": 600}, basic=(args.root_user, args.root_password))
+    token = api.call(
+        "POST",
+        AUTH + "/token",
+        {"expiration": 600},
+        basic=(args.root_user, args.root_password),
+    )
     api.token = token["data"]["token"]
-    tenants = api.call("GET", AUTH + "/tenants", query={"search": args.tenant_name})["items"]
+    tenants = api.call("GET", AUTH + "/tenants", query={"search": args.tenant_name})[
+        "items"
+    ]
     tenant = next((t for t in tenants if t.get("name") == args.tenant_name), None)
     if tenant is None:
         sys.exit(f"Tenant « {args.tenant_name} » introuvable")
@@ -128,16 +138,26 @@ def main() -> None:
             # The engine creates default contexts without numbering ranges:
             # fill the empty ones (ranges set by hand are kept).
             missing = {
-                k: v for k, v in wanted.items()
+                k: v
+                for k, v in wanted.items()
                 if k.endswith("_ranges") and v and not context.get(k)
             }
             if missing:
-                api.call("PUT", CONFD + f"/contexts/{context['id']}", {
-                    "name": context["name"], "label": context.get("label") or wanted["label"],
-                    "type": context["type"], "enabled": context.get("enabled", True), **missing,
-                })
+                api.call(
+                    "PUT",
+                    CONFD + f"/contexts/{context['id']}",
+                    {
+                        "name": context["name"],
+                        "label": context.get("label") or wanted["label"],
+                        "type": context["type"],
+                        "enabled": context.get("enabled", True),
+                        **missing,
+                    },
+                )
                 context.update(missing)
-                print(f"{wanted['type']}: « {context['name']} » complété ({', '.join(missing)})")
+                print(
+                    f"{wanted['type']}: « {context['name']} » complété ({', '.join(missing)})"
+                )
             else:
                 print(f"{wanted['type']}: « {context['name']} » déjà présent")
             continue
@@ -150,7 +170,11 @@ def main() -> None:
     if internal and outcall:
         includes = [c["id"] for c in internal.get("contexts", [])]
         if outcall["id"] not in includes:
-            api.call("PUT", CONFD + f"/contexts/{internal['id']}/contexts", {"contexts": [{"id": i} for i in [*includes, outcall["id"]]]})
+            api.call(
+                "PUT",
+                CONFD + f"/contexts/{internal['id']}/contexts",
+                {"contexts": [{"id": i} for i in [*includes, outcall["id"]]]},
+            )
             print(f"« {internal['name']} » inclut « {outcall['name']} »")
 
     print(json.dumps({t: c["name"] for t, c in created.items()}, ensure_ascii=False))

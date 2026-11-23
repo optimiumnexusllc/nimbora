@@ -19,7 +19,9 @@ COMPOSE_FILES = [
 ]
 
 
-@pytest.mark.parametrize("compose", COMPOSE_FILES, ids=lambda p: str(p.relative_to(REPO)))
+@pytest.mark.parametrize(
+    "compose", COMPOSE_FILES, ids=lambda p: str(p.relative_to(REPO))
+)
 def test_minio_image_is_pullable_and_health_check_has_its_alias(compose: Path):
     """MinIO removed its images from quay.io and Docker Hub (401 / pull denied).
 
@@ -31,7 +33,9 @@ def test_minio_image_is_pullable_and_health_check_has_its_alias(compose: Path):
     doc = yaml.safe_load(compose.read_text())
     minio = doc["services"]["minio"]
     default_image = minio["image"].split(":-")[-1].rstrip("}")
-    assert not default_image.startswith(("quay.io/minio/", "minio/", "docker.io/minio/")), default_image
+    assert not default_image.startswith(
+        ("quay.io/minio/", "minio/", "docker.io/minio/")
+    ), default_image
     assert str(minio["command"]).startswith("minio server /data")
     assert minio["healthcheck"]["test"] == ["CMD", "mc", "ready", "local"]
     assert "MC_HOST_local" in minio["environment"]
@@ -41,8 +45,9 @@ def test_minio_image_is_pullable_and_health_check_has_its_alias(compose: Path):
 def test_minio_image_is_pinned_by_digest():
     for compose in COMPOSE_FILES:
         image = compose.read_text().split("MINIO_IMAGE:-", 1)[1].split("}", 1)[0]
-        assert re.fullmatch(r"bitnamilegacy/minio:2025\.4\.22@sha256:[0-9a-f]{64}", image), image
-
+        assert re.fullmatch(
+            r"bitnamilegacy/minio:2025\.4\.22@sha256:[0-9a-f]{64}", image
+        ), image
 
 
 def api_environment(compose: Path) -> dict:
@@ -50,15 +55,28 @@ def api_environment(compose: Path) -> dict:
     return yaml.safe_load(compose.read_text())["services"]["api"]["environment"]
 
 
-@pytest.mark.parametrize("compose", [REPO / "docker-compose.yaml", DEPLOY / "enterprise" / "docker-compose.yml"], ids=lambda p: str(p.relative_to(REPO)))
+@pytest.mark.parametrize(
+    "compose",
+    [REPO / "docker-compose.yaml", DEPLOY / "enterprise" / "docker-compose.yml"],
+    ids=lambda p: str(p.relative_to(REPO)),
+)
 def test_compose_passes_the_white_label_variables_to_the_api(compose: Path):
     """BRAND_* in .env reached nobody: the api service lists its environment explicitly."""
     env = api_environment(compose)
-    for name in ("BRAND_NAME", "BRAND_PBX_NAME", "BRAND_DOMAIN", "BRAND_SIP_USER_AGENT"):
+    for name in (
+        "BRAND_NAME",
+        "BRAND_PBX_NAME",
+        "BRAND_DOMAIN",
+        "BRAND_SIP_USER_AGENT",
+    ):
         assert name in env, name
 
 
-@pytest.mark.parametrize("compose", [REPO / "docker-compose.yaml", DEPLOY / "enterprise" / "docker-compose.yml"], ids=lambda p: str(p.relative_to(REPO)))
+@pytest.mark.parametrize(
+    "compose",
+    [REPO / "docker-compose.yaml", DEPLOY / "enterprise" / "docker-compose.yml"],
+    ids=lambda p: str(p.relative_to(REPO)),
+)
 def test_compose_passes_every_shared_pbx_variable_to_the_api(compose: Path):
     """Each PBX_PROVISIONING_* the API reads must be forwarded by compose."""
     constants = (REPO / "api" / "constants.py").read_text()
@@ -74,7 +92,13 @@ def test_compose_passes_every_shared_pbx_variable_to_the_api(compose: Path):
 def test_root_compose_passes_the_saas_mode_switches_to_the_api():
     """SAAS_MODE in .env reached nobody: the operator usage report answered 404 on the lab."""
     env = api_environment(REPO / "docker-compose.yaml")
-    for name in ("SAAS_MODE", "SAAS_DEFAULT_PLAN", "SAAS_TRIAL_DAYS", "SAAS_GRACE_DAYS", "SAAS_PLATFORM_NAME"):
+    for name in (
+        "SAAS_MODE",
+        "SAAS_DEFAULT_PLAN",
+        "SAAS_TRIAL_DAYS",
+        "SAAS_GRACE_DAYS",
+        "SAAS_PLATFORM_NAME",
+    ):
         assert name in env, name
     assert env["SAAS_MODE"] == "${SAAS_MODE:-false}"
 

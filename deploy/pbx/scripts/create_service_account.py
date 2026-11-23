@@ -57,7 +57,9 @@ class Api:
         if self.tenant:
             request.add_header("Wazo-Tenant", self.tenant)
         try:
-            with urllib.request.urlopen(request, context=self.context, timeout=20) as response:
+            with urllib.request.urlopen(
+                request, context=self.context, timeout=20
+            ) as response:
                 payload = response.read()
         except urllib.error.HTTPError as error:
             detail = error.read().decode(errors="replace")[:300]
@@ -98,7 +100,9 @@ def main() -> None:
     )
     parser.add_argument(
         "--provisioning-policy-file",
-        default=str(Path(__file__).resolve().parent.parent / "provisioning-policy.json"),
+        default=str(
+            Path(__file__).resolve().parent.parent / "provisioning-policy.json"
+        ),
     )
     args = parser.parse_args()
     if not args.provisioner and not args.tenant_name:
@@ -108,7 +112,12 @@ def main() -> None:
     )
 
     api = Api(args.url, args.insecure)
-    token = api.call("POST", "/token", {"expiration": 600}, basic=(args.root_user, args.root_password))
+    token = api.call(
+        "POST",
+        "/token",
+        {"expiration": 600},
+        basic=(args.root_user, args.root_password),
+    )
     api.token = token["data"]["token"]
 
     if args.provisioner:
@@ -116,14 +125,18 @@ def main() -> None:
         metadata = token["data"].get("metadata") or {}
         tenant = {"uuid": metadata.get("tenant_uuid"), "name": "(tenant principal)"}
     else:
-        tenants = api.call("GET", "/tenants", query={"search": args.tenant_name})["items"]
+        tenants = api.call("GET", "/tenants", query={"search": args.tenant_name})[
+            "items"
+        ]
         tenant = next((t for t in tenants if t.get("name") == args.tenant_name), None)
         if tenant is None:
             sys.exit(f"Tenant « {args.tenant_name} » introuvable")
         api.tenant = tenant["uuid"]
 
     policy_spec = build_policy(args)
-    policies = api.call("GET", "/policies", query={"search": policy_spec["name"]})["items"]
+    policies = api.call("GET", "/policies", query={"search": policy_spec["name"]})[
+        "items"
+    ]
     policy = next((p for p in policies if p.get("name") == policy_spec["name"]), None)
     if policy is None:
         policy = api.call("POST", "/policies", policy_spec)
@@ -136,19 +149,30 @@ def main() -> None:
         user = api.call(
             "POST",
             "/users",
-            {"username": args.username, "password": args.password, "purpose": "external_api", "enabled": True},
+            {
+                "username": args.username,
+                "password": args.password,
+                "purpose": "external_api",
+                "enabled": True,
+            },
         )
     # An existing account keeps its password (install.sh reuses the same one).
     api.call("PUT", f"/users/{user['uuid']}/policies/{policy['uuid']}")
 
-    print(json.dumps({
-        "base_url": args.url,
-        "username": args.username,
-        "tenant_uuid": tenant["uuid"],
-        "tenant_name": tenant["name"],
-        "policy": policy_spec["name"],
-        "acl_count": len(policy_spec["acl"]),
-    }, indent=2, ensure_ascii=False))
+    print(
+        json.dumps(
+            {
+                "base_url": args.url,
+                "username": args.username,
+                "tenant_uuid": tenant["uuid"],
+                "tenant_name": tenant["name"],
+                "policy": policy_spec["name"],
+                "acl_count": len(policy_spec["acl"]),
+            },
+            indent=2,
+            ensure_ascii=False,
+        )
+    )
 
 
 if __name__ == "__main__":
