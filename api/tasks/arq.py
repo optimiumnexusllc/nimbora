@@ -58,6 +58,7 @@ REDIS_SETTINGS = RedisSettings(
     ssl_check_hostname=False if use_ssl else None,
 )
 
+from api.services.agent_tests.service import run_agent_test
 from api.services.contact_center.callbacks import run_callback_scheduler
 from api.services.pbx.alerts import run_alert_checks
 from api.services.pbx.billing import sync_human_minutes
@@ -98,6 +99,7 @@ class WorkerSettings:
         finalize_completed_text_chat,
         func(import_pbx_recordings, timeout=600),
         func(evaluate_call_quality, timeout=180),
+        func(run_agent_test, timeout=600),
         func(provision_pbx_tenant, timeout=300),
     ]
     cron_jobs = [

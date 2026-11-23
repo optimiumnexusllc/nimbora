@@ -1,7 +1,7 @@
 "use client";
 
 import { ReactFlowInstance } from "@xyflow/react";
-import { AlertCircle, ArrowLeft, Bot, Clipboard, Copy, Download, Eye, History, LoaderCircle, Menu, MoreVertical, Pencil, Phone } from "lucide-react";
+import { AlertCircle, ArrowLeft, Bot, Clipboard, Copy, Download, Eye, FlaskConical,History, LoaderCircle, Menu, MoreVertical, Pencil, Phone } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useRef, useState } from "react";
 import { toast } from "sonner";
@@ -442,6 +442,13 @@ export const WorkflowEditorHeader = ({
                         >
                             <History className="w-4 h-4 mr-2" />
                             View Runs
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                            onClick={() => confirmNavigate(() => router.push(`/workflow/${workflowId}/tests`))}
+                            className="text-white hover:bg-[#2a2a2a] cursor-pointer"
+                        >
+                            <FlaskConical className="w-4 h-4 mr-2" />
+                            Tests clients simulés
                         </DropdownMenuItem>
                         <DropdownMenuItem
                             onClick={handleDuplicate}

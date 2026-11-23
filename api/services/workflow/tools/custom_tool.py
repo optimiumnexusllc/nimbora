@@ -2,6 +2,7 @@
 
 import json
 import re
+import unicodedata
 from typing import Any
 
 import httpx
@@ -39,8 +40,13 @@ _FULL_PLACEHOLDER = re.compile(r"^\{\{\s*([^|\s}]+)(?:\s*\|[^}]*)?\s*\}\}$")
 
 
 def custom_tool_function_name(name: str) -> str:
-    """Return the LLM function name generated for a custom tool."""
-    function_name = re.sub(r"[^a-z0-9_]", "_", name.lower())
+    """Return the LLM function name generated for a custom tool.
+
+    Accents are folded first: « Réserver » gives ``reserver``, not ``r_server``
+    (the model reads this name during calls).
+    """
+    folded = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    function_name = re.sub(r"[^a-z0-9_]", "_", folded.lower())
     return re.sub(r"_+", "_", function_name).strip("_")
 
 

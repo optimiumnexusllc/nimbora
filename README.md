@@ -463,7 +463,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | RGPD et PCI DSS |
 | ✅ | Tableau de bord « AI Business Hub » : conversations, appels IA et humains, prospects, rendez-vous, activité par canal, comparaison à la période précédente ([doc](docs/contact-center/business-hub.mdx)) |
 | ✅ | Contrôle qualité des appels humains : grille par entreprise, évaluation par l'IA à partir de la transcription (à la demande ou automatique sur un échantillon), validation par un superviseur, note par conseiller et par critère ([doc](docs/contact-center/call-quality.mdx)) |
-| 🔜 | Tests des agents avec des clients simulés |
+| ✅ | **Tests des agents avec des clients simulés** : le modèle de l'entreprise joue des clients (décrits en quelques phrases, ou proposés à partir des consignes) face au brouillon ou à la version publiée, avec les mêmes consignes, outils et étapes qu'un appel réel ; outils simulés (le catalogue lit les vrais articles), verdict par critère expliqué, outils obligatoires ou interdits, phrases interdites ([doc](docs/voice-agent/simulated-customer-tests.mdx)) |
 
 ### Phase 5 — PBX d'entreprise en marque blanche (moteur Wazo Platform)
 
