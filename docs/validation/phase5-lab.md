@@ -984,6 +984,28 @@ outils `schedule_callback` et `transfer_call` signalés manquants donc non attac
 | Nom de fonction d'un outil accentué | ✅ la fonction `custom_tool_function_name` de la PR, exercée hors de l'API sur le code de la branche : « Réserver » → **`reserver`**, « Prendre rendez-vous » → `prendre_rendez_vous`, « Créer un ticket » → `creer_un_ticket` (test unitaire `test_agent_tests.py` présent). L'affichage dans la fiche d'un lancement (« Utilise l'outil … », « Outils utilisés ») n'a pas pu être observé : il faut un agent avec un outil personnalisé attaché et un modèle de langage — 🧪 pour cette partie |
 | (5) Remise en état | ✅ test supprimé depuis la console (confirmation « Supprimer le test … et ses résultats ? », « Aucun test. »), 0 test par l'API ; agent d'essai archivé (`PUT /workflow/1/status`) |
 
+## Rapport d'étape 20 — PR #21 « SeaweedFS par défaut » (23 novembre 2026)
+
+Déployé par l'opérateur : volume MinIO sauvegardé, branche `feat/seaweedfs-default` (`50a10f9`)
+déployée avec le kit (MinIO conservé), puis `OBJECT_STORE=seaweedfs` et les étapes `copy`,
+`verify`, `switch` de l'outil de migration. Session sans `sudo` ni `docker` : API avec les jetons
+du laboratoire, console et Softphones web pilotés en Chromium. Sans fusion.
+
+| Étape | Résultat |
+|---|---|
+| (1) `GET /api/v1/health` | ✅ `build_commit: "50a10f9"`, **`object_store: "seaweedfs"`**, **`legacy_minio_files: 0`**. Sorties de `copy` / `verify` / `switch` : non transmises à la session (à coller par l'opérateur : nombre d'objets copiés, aucun manquant) |
+| (2) Anciens fichiers importés avant la migration | 🧪 **aucun fichier antérieur sur le laboratoire** : 0 enregistrement (tous supprimés aux étapes précédentes), 0 document de base de connaissances, 0 enregistrement d'appel IA ; `legacy_minio_files: 0` est cohérent. Rien à écouter ni à ouvrir d'ancien |
+| (3) Nouveau document : `POST /knowledge-base/upload-url` → lien de dépôt signé sur `app.optimiumnexus.com/voice-audio/knowledge_base/1/…` ; `PUT` du fichier texte (121 octets) | ✅ 200, en-tête **`Server: SeaweedFS 30GB 4.55`**, ETag renvoyé ; `process-document` → document listé, contenu relu par l'API ; `GET /s3/signed-url` → lien signé ouvert : 200 `text/plain`, même serveur, contenu intact. ⚠️ `processing_status: failed` avec « Add a NIMBORA provider with a service key to use this feature » : l'indexation exige un fournisseur hébergé ou une clé IA, absents du laboratoire (hors stockage) |
+| (3) Nouvel appel humain enregistré | ✅ politique d'enregistrement activée, appel **Softphone web 1004 → Softphone web 1001** (33 s, décroché sur 1001 ; les clients `baresip` du laboratoire étaient arrivés au bout de leur durée de vie de 24 h et ne se relancent pas sans privilèges) ; « Synchroniser » → enregistrement 14 (`internal`, 1004 → 1001, 533 804 octets) |
+| (3) Écoute | ✅ `GET /pbx/recordings/14/audio` → lien signé `https://app.optimiumnexus.com/voice-audio/pbx-recordings/1/2026/11/23/…` (paramètres `X-Amz-*`, `response-content-type`, `response-content-disposition`) ; lecture : 200, `audio/wav`, 533 804 octets, en-tête **`Server: SeaweedFS 30GB 4.55`**, en-tête RIFF : servi par SeaweedFS derrière Traefik |
+| (4) Sécurité | ✅ même clé **sans paramètres de signature → 403 `AccessDenied`** ; **signature modifiée → 403 `SignatureDoesNotMatch`** (pour l'enregistrement comme pour le document) |
+| (5) Isolation | ✅ org2 : `GET /pbx/recordings/14/audio` → 404, liste des enregistrements vide, `GET /knowledge-base/documents/{uuid d'org1}` → 404, 0 document |
+| Remise en état | ✅ enregistrement 14 supprimé depuis la console (« ici et sur le PBX »), synchronisation sans retour, document supprimé, politique d'enregistrement remise à son état initial, 0 enregistrement et 0 document |
+
+Empreinte de l'image SeaweedFS : le compose de la branche référence `${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.55}`
+et le serveur s'annonce « SeaweedFS 30GB 4.55 » ; l'empreinte (`@sha256:…`) à épingler n'a pas été
+transmise à la session : **à compléter par l'opérateur**.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
