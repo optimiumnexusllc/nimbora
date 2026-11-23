@@ -82,6 +82,28 @@ def _webrtc_capable(endpoint: dict, tenant: dict | None) -> bool:
     return str(options.get("webrtc", "")).lower() in {"yes", "true", "1"}
 
 
+async def _repair_line(client: PbxClient, endpoint: dict[str, Any]) -> None:
+    """A browser line made before the fix of bug 23 cannot ring: the app that
+    reads its account repairs it. Best effort: an older service account
+    without the update right only logs it."""
+    from api.services.pbx import endpoints
+
+    fixed = endpoints.repair_templates(endpoint)
+    if fixed is None:
+        return
+    try:
+        await client.update_endpoint_sip(
+            endpoint["uuid"], endpoints.endpoint_body(endpoint, fixed)
+        )
+        logger.info(
+            f"Softphone: browser line {endpoint.get('name')} repaired (webrtc template alone)"
+        )
+    except PbxError as error:
+        logger.warning(
+            f"Softphone: browser line {endpoint.get('name')} not repaired: {error}"
+        )
+
+
 async def sip_account(client: PbxClient, connection, user_uuid: str) -> dict[str, Any]:
     """The extension's WebRTC SIP account, read live from the PBX."""
     user = await client.user(user_uuid)
@@ -99,6 +121,7 @@ async def sip_account(client: PbxClient, connection, user_uuid: str) -> dict[str
         endpoint = await client.endpoint_sip(sip["uuid"])
         if not _webrtc_capable(endpoint, tenant):
             continue
+        await _repair_line(client, endpoint)
         auth = dict(endpoint.get("auth_section_options") or [])
         if not auth.get("username") or not auth.get("password"):
             continue

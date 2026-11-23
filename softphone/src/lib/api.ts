@@ -2,7 +2,7 @@
 
 import type { Platform } from "./format";
 
-export const APP_VERSION = "1.2.1";
+export const APP_VERSION = "1.3.0";
 
 export type IceServer = { urls: string[] | string; username?: string; credential?: string };
 export type SoftphoneConfig = {

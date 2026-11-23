@@ -6,6 +6,7 @@
  * be tested without a network.
  */
 import type { SoftphoneConfig } from "./api";
+import { ConferenceMixer, remoteStream } from "./conference";
 import { cleanNumber, numberFromUri } from "./format";
 
 export type Registration = "disconnected" | "connecting" | "registered" | "failed";
@@ -21,7 +22,19 @@ export type Call = {
     held: boolean;
     endReason: string | null;
 };
-export type Snapshot = { registration: Registration; error: string | null; call: Call | null };
+export type Snapshot = {
+    registration: Registration;
+    error: string | null;
+    /** The customer's call (or the only call). */
+    call: Call | null;
+    /** The colleague consulted while the customer waits on hold. */
+    consult: Call | null;
+    /** Both calls mixed: the three people hear each other. */
+    conference: boolean;
+    /** A short message about the last transfer or conference attempt. */
+    notice: string | null;
+};
+type Role = "main" | "consult";
 
 export type CallEvent =
     | { type: "incoming"; id: string; number: string; name: string | null }
@@ -107,8 +120,12 @@ export const AUTH_REFUSED = "Identifiants SIP refusés par le PBX";
 export class Phone {
     private ua: UA | null = null;
     private session: RTCSession | null = null;
+    private consultSession: RTCSession | null = null;
+    /** Hanging up our own legs after the PBX accepted a transfer: no unhold, no promotion. */
+    private transferring = false;
+    private mixer: ConferenceMixer;
     private listeners = new Set<Listener>();
-    private snapshot: Snapshot = { registration: "disconnected", error: null, call: null };
+    private snapshot: Snapshot = { registration: "disconnected", error: null, call: null, consult: null, conference: false, notice: null };
     private clearTimer: ReturnType<typeof setTimeout> | null = null;
     onIncoming: ((call: Call) => void) | null = null;
 
@@ -116,7 +133,10 @@ export class Phone {
         private config: SoftphoneConfig,
         private audio: HTMLAudioElement | null,
         private loadJsSIP: () => Promise<JsSIPModule> = () => import("jssip"),
-    ) {}
+        makeMixer: () => ConferenceMixer = () => new ConferenceMixer(),
+    ) {
+        this.mixer = makeMixer();
+    }
 
     get state(): Snapshot {
         return this.snapshot;
@@ -133,13 +153,51 @@ export class Phone {
         for (const listener of this.listeners) listener(this.snapshot);
     }
 
-    private callEvent(event: CallEvent) {
+    private callEvent(event: CallEvent, role: Role = "main") {
+        if (role === "consult") {
+            this.emit({ consult: reduceCall(this.snapshot.consult, event) });
+            if (event.type === "ended") this.consultEnded();
+            return;
+        }
         this.emit({ call: reduceCall(this.snapshot.call, event) });
-        if (event.type === "ended") {
-            this.session = null;
-            if (this.clearTimer) clearTimeout(this.clearTimer);
-            // Keep "Appel terminé" on screen for a moment.
-            this.clearTimer = setTimeout(() => this.emit({ call: null }), 2500);
+        if (event.type !== "ended") return;
+        if (!this.transferring && this.consultSession && this.snapshot.consult && this.snapshot.consult.status !== "ended") {
+            // The customer hung up while the colleague is on the line: the
+            // colleague's call simply becomes the call.
+            void this.endConference();
+            this.session = this.consultSession;
+            this.consultSession = null;
+            this.emit({ call: this.snapshot.consult, consult: null, conference: false });
+            this.listenTo(this.session);
+            return;
+        }
+        this.session = null;
+        if (this.clearTimer) clearTimeout(this.clearTimer);
+        // Keep "Appel terminé" on screen for a moment.
+        this.clearTimer = setTimeout(() => this.emit({ call: null, notice: null }), 2500);
+    }
+
+    private consultEnded() {
+        this.consultSession = null;
+        void this.endConference();
+        this.emit({ consult: null, conference: false });
+        // Back to the customer (unless we are hanging up after a transfer).
+        if (!this.transferring && this.session && this.snapshot.call?.status === "active") {
+            if (this.snapshot.call.held) this.session.unhold();
+            this.listenTo(this.session);
+        }
+    }
+
+    private async endConference() {
+        if (this.mixer.active) await this.mixer.stop();
+    }
+
+    /** Play one call's voice (the other is on hold). */
+    private listenTo(session: RTCSession | null) {
+        const stream = remoteStream(session?.connection);
+        if (this.audio && stream) {
+            this.audio.srcObject = stream;
+            void this.audio.play().catch(() => undefined);
         }
     }
 
@@ -191,14 +249,17 @@ export class Phone {
 
     stop() {
         if (this.clearTimer) clearTimeout(this.clearTimer);
-        try {
-            this.session?.terminate();
-        } catch {
-            // Already ended.
+        void this.endConference();
+        for (const session of [this.consultSession, this.session]) {
+            try {
+                session?.terminate();
+            } catch {
+                // Already ended.
+            }
         }
         this.ua?.stop();
         this.ua = null;
-        this.emit({ registration: "disconnected", call: null });
+        this.emit({ registration: "disconnected", call: null, consult: null, conference: false });
     }
 
     private mediaOptions() {
@@ -209,20 +270,22 @@ export class Phone {
         };
     }
 
-    private bind(session: RTCSession) {
+    private bind(session: RTCSession, role: Role = "main") {
+        const on = (event: CallEvent) => this.callEvent(event, role);
         session.on("peerconnection", (e: { peerconnection: RTCPeerConnection }) => this.attach(e.peerconnection));
         if (session.connection) this.attach(session.connection);
-        session.on("progress", () => this.callEvent({ type: "progress" }));
-        session.on("accepted", () => this.callEvent({ type: "accepted", at: Date.now() }));
+        session.on("progress", () => on({ type: "progress" }));
+        session.on("accepted", () => on({ type: "accepted", at: Date.now() }));
         session.on("confirmed", () => {
-            if (this.snapshot.call?.status !== "active") this.callEvent({ type: "accepted", at: Date.now() });
+            const call = role === "main" ? this.snapshot.call : this.snapshot.consult;
+            if (call?.status !== "active") on({ type: "accepted", at: Date.now() });
         });
-        session.on("ended", (e: { cause?: string }) => this.callEvent({ type: "ended", reason: e.cause ?? null }));
-        session.on("failed", (e: { cause?: string }) => this.callEvent({ type: "ended", reason: e.cause ?? null }));
-        session.on("muted", () => this.callEvent({ type: "muted", value: true }));
-        session.on("unmuted", () => this.callEvent({ type: "muted", value: false }));
-        session.on("hold", () => this.callEvent({ type: "held", value: true }));
-        session.on("unhold", () => this.callEvent({ type: "held", value: false }));
+        session.on("ended", (e: { cause?: string }) => on({ type: "ended", reason: e.cause ?? null }));
+        session.on("failed", (e: { cause?: string }) => on({ type: "ended", reason: e.cause ?? null }));
+        session.on("muted", () => on({ type: "muted", value: true }));
+        session.on("unmuted", () => on({ type: "muted", value: false }));
+        session.on("hold", () => on({ type: "held", value: true }));
+        session.on("unhold", () => on({ type: "held", value: false }));
     }
 
     private attach(connection: RTCPeerConnection) {
@@ -248,12 +311,26 @@ export class Phone {
         if (this.session && this.snapshot.call?.status === "ringing") this.session.answer(this.mediaOptions());
     }
 
+    /** Hang up the customer's call (and the consultation, if any). */
     hangup() {
+        try {
+            this.consultSession?.terminate();
+        } catch {
+            this.callEvent({ type: "ended", reason: null }, "consult");
+        }
         try {
             this.session?.terminate();
         } catch {
             this.callEvent({ type: "ended", reason: null });
         }
+    }
+
+    /** The call being talked to now: the colleague during a consultation. */
+    private current(): { session: RTCSession | null; call: Call | null } {
+        if (this.consultSession && this.snapshot.consult && !this.snapshot.consult.held && !this.snapshot.conference) {
+            return { session: this.consultSession, call: this.snapshot.consult };
+        }
+        return { session: this.session, call: this.snapshot.call };
     }
 
     decline() {
@@ -265,26 +342,132 @@ export class Phone {
     }
 
     toggleMute() {
-        if (!this.session) return;
-        if (this.snapshot.call?.muted) this.session.unmute({ audio: true });
-        else this.session.mute({ audio: true });
+        if (this.snapshot.conference && this.mixer.mic) {
+            // One microphone feeds both calls.
+            const muted = !this.snapshot.call?.muted;
+            this.mixer.mic.enabled = !muted;
+            this.callEvent({ type: "muted", value: muted });
+            this.callEvent({ type: "muted", value: muted }, "consult");
+            return;
+        }
+        const { session, call } = this.current();
+        if (!session) return;
+        if (call?.muted) session.unmute({ audio: true });
+        else session.mute({ audio: true });
     }
 
     toggleHold() {
-        if (!this.session) return;
+        if (!this.session || this.consultSession) return; // « Basculer » during a consultation
         if (this.snapshot.call?.held) this.session.unhold();
         else this.session.hold();
     }
 
     dtmf(tone: string) {
-        if (this.session && this.snapshot.call?.status === "active") this.session.sendDTMF(tone, { transportType: "RFC2833" } as unknown as Parameters<RTCSession["sendDTMF"]>[1]);
+        const { session, call } = this.current();
+        if (session && call?.status === "active") session.sendDTMF(tone, { transportType: "RFC2833" } as unknown as Parameters<RTCSession["sendDTMF"]>[1]);
     }
 
     /** Blind transfer: the PBX takes over and calls the target. */
     transfer(target: string) {
-        if (!this.session || this.snapshot.call?.status !== "active") return;
+        if (!this.session || this.snapshot.call?.status !== "active" || this.consultSession) return;
         const number = cleanNumber(target);
         this.session.refer(`sip:${number}@${this.config.account.sip_domain}`);
+    }
+
+    /** Put the customer on hold and call a colleague (consultation). */
+    consult(target: string) {
+        if (!this.ua || !this.session || this.consultSession || this.snapshot.call?.status !== "active") return;
+        const number = cleanNumber(target);
+        if (!this.snapshot.call.held) this.session.hold();
+        const session = this.ua.call(`sip:${number}@${this.config.account.sip_domain}`, this.mediaOptions()) as RTCSession;
+        this.consultSession = session;
+        this.bind(session, "consult");
+        this.emit({ notice: null });
+        this.callEvent({ type: "dialing", id: String(session.id), number }, "consult");
+    }
+
+    /** Talk to the other one: the customer or the colleague. */
+    swap() {
+        if (!this.session || !this.consultSession || this.snapshot.conference) return;
+        if (this.snapshot.consult?.status !== "active") return;
+        if (this.snapshot.call?.held) {
+            this.consultSession.hold();
+            this.session.unhold();
+            this.listenTo(this.session);
+        } else {
+            this.session.hold();
+            this.consultSession.unhold();
+            this.listenTo(this.consultSession);
+        }
+    }
+
+    /** Hang up on the colleague and go back to the customer. */
+    cancelConsult() {
+        try {
+            this.consultSession?.terminate();
+        } catch {
+            this.callEvent({ type: "ended", reason: null }, "consult");
+        }
+    }
+
+    /**
+     * Connect the customer and the colleague, and leave. Once the colleague
+     * has answered: attended transfer (REFER with Replaces, the PBX bridges
+     * the two calls). While it still rings: the PBX calls the colleague for
+     * the customer (blind transfer).
+     */
+    completeTransfer() {
+        const main = this.session;
+        const consult = this.consultSession;
+        if (!main || !consult || this.snapshot.call?.status !== "active") return;
+        const target = this.snapshot.consult;
+        const options = {
+            eventHandlers: {
+                failed: () => this.emit({ notice: "Transfert refusé par le PBX" }),
+                accepted: () => {
+                    // The PBX has connected the two others (NOTIFY 200 OK): the
+                    // employee's own legs are over. Hang them up here rather than
+                    // wait for the PBX's BYE, which came 8 s later on the lab and
+                    // left a phantom "active" call that refused new callers.
+                    this.emit({ notice: "Appel transféré" });
+                    this.transferring = true;
+                    try {
+                        for (const session of [consult, main]) {
+                            if (typeof session.isEnded === "function" && session.isEnded()) continue;
+                            try {
+                                session.terminate();
+                            } catch {
+                                /* already gone */
+                            }
+                        }
+                    } finally {
+                        this.transferring = false;
+                    }
+                },
+            },
+        };
+        void this.endConference();
+        if (target?.status === "active") {
+            main.refer(consult.remote_identity.uri, { ...options, replaces: consult } as never);
+        } else if (target) {
+            this.cancelConsult();
+            main.refer(`sip:${target.number}@${this.config.account.sip_domain}`, options as never);
+        }
+    }
+
+    /** Everybody together: the customer, the colleague and the employee. */
+    async startConference(): Promise<boolean> {
+        if (!this.session || !this.consultSession || this.snapshot.conference) return false;
+        if (this.snapshot.call?.status !== "active" || this.snapshot.consult?.status !== "active") return false;
+        if (this.snapshot.call.held) this.session.unhold();
+        if (this.snapshot.consult.held) this.consultSession.unhold();
+        const mixed = await this.mixer.start([{ connection: this.session.connection }, { connection: this.consultSession.connection }], this.audio);
+        if (!mixed) {
+            this.emit({ notice: "Conférence impossible : audio indisponible" });
+            return false;
+        }
+        this.emit({ conference: true, notice: null });
+        return true;
     }
 
     setOutputDevice(deviceId: string) {

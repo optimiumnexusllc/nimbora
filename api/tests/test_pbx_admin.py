@@ -78,10 +78,9 @@ async def test_create_extension_in_one_call(db_session, monkeypatch):
     line = body["lines"][0]
     assert line["context"] == "default"  # the PBX's internal context
     assert line["extensions"] == [{"exten": "1010", "context": "default"}]
-    assert [t["uuid"] for t in line["endpoint_sip"]["templates"]] == [
-        "tpl-webrtc",
-        "tpl-global",
-    ]
+    # The WebRTC template alone: it inherits « global » on the engine, and
+    # listing « global » too made it override the WebSocket transport.
+    assert [t["uuid"] for t in line["endpoint_sip"]["templates"]] == ["tpl-webrtc"]
     creds = result["credentials"]
     assert ["password", creds["sip_password"]] in line["endpoint_sip"][
         "auth_section_options"
@@ -488,3 +487,24 @@ async def test_sip_password_rotation_needs_a_sip_line(db_session, monkeypatch):
     with pytest.raises(pbx.PbxRouteError) as error:
         await admin.rotate_sip_password(org.id, "u-2")
     assert error.value.status == 409
+
+
+async def test_browser_lines_made_before_the_fix_are_repaired_once(
+    db_session, monkeypatch, test_client_factory
+):
+    """Bug 23 (lab step 14): « global » listed after « webrtc » forced
+    transport-udp and the engine could not ring the browser."""
+    fake = FakePbx()
+    user, _, _ = await _setup(db_session, monkeypatch, fake)
+    before = dict(fake.user_endpoints["sip-u1"])
+    async with test_client_factory(user) as client:
+        first = await client.post("/api/v1/pbx/maintenance/webrtc-lines")
+        second = await client.post("/api/v1/pbx/maintenance/webrtc-lines")
+    assert first.status_code == 200
+    assert first.json()["repaired"] == ["1001"]
+    assert first.json()["failed"] == []
+    after = fake.user_endpoints["sip-u1"]
+    assert [t["uuid"] for t in after["templates"]] == ["tpl-webrtc"]
+    assert after["name"] == before["name"]
+    assert after["auth_section_options"] == before["auth_section_options"]
+    assert second.json()["repaired"] == []  # idempotent

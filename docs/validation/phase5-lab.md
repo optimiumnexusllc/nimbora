@@ -674,6 +674,98 @@ dans le conteneur : 60 passés (`test_pbx_admin.py`, softphone, approvisionnemen
 | (5) Aucun rejumelage demandé, pas de boucle d'échecs | ✅ appairage conservé (aucun appel à `/softphone/activate`, jeton inchangé) ; compteur « Failed to authenticate » de ce poste inchangé dans `messages`, une notice unique dans `full` ; fail2ban `asterisk-wazo` : 0 banni |
 | (6) `nimbora-lab-postes.txt`, bloc 1004 | ✅ ligne « SIP password » remplacée par le script Chromium (sans affichage), fichier en 600, empreinte `e69216e167c5` identique à celle du moteur |
 
+## Rapport d'étape 14 — PR #10 « transfert avec consultation et conférence à trois » (Softphone 1.3.0) (22 novembre 2026)
+
+Déployé : `feat/lot-b-attended-transfer` à `d760c76` (base `feat/pbx-sip-password-rotation`).
+Softphone web **1.3.0** construit depuis `softphone/` (35 tests Vitest, puis 36 avec le correctif
+ci-dessous) et servi en local, appairé au poste 1004 dans Chromium sans tête (micro factice,
+clics pilotés, états lus toutes les 500 ms). API et UI : images de la PR #9, puis l'API de la
+branche (`nimbora-pr10`) après le correctif n° 23. Sans fusion.
+
+Trois parties : **client** = `nimbora-operator` (baresip, identité `33123456789`) appelant le numéro
+public `2250700000001`, pointé pour l'essai sur le poste 1004 (remis sur 1003 ensuite) ;
+**employé** = 1004 (Softphone web) ; **collègue** = 1002 (baresip dans `nimbora-siptest`, décroche
+sur commande). Les observations côté moteur viennent de `core show channels`, `bridge show all`,
+`pjsip show channelstats` (paquets RTP par jambe) et du journal `full` (musique d'attente, pile
+SIP avec `pjsip set logger on`).
+
+### Préalable : aucun appel n'atteignait une ligne navigateur (🐛 n° 23, préexistant)
+
+| Constat | Détail |
+|---|---|
+| Premier appel client vers 1004 (enregistré, « Disponible ») | ❌ `Dial(PJSIP/v0sleb29/sip:…;transport=ws)` → « Everyone is busy/congested (1:0/1/0) » **sans aucune trame SIP émise** ; même chose pour 1002 → 1004 |
+| Cause (pjproject niveau 5) | « Unsuitable transport selected to reach destination » : l'endpoint avait `transport = transport-udp` alors que son contact est WebSocket. Les modèles du moteur sont corrects (`webrtc` → `transport-wss`, `global` → `transport-udp`) mais NIMBORA posait **[webrtc, global]** sur les lignes navigateur : `global` arrive en dernier et impose `transport-udp` |
+| Preuve | endpoint de 1004 remis sur le seul modèle `webrtc` (qui hérite déjà de `global`) → `transport-wss`, et 1004 sonne |
+| Correction (branche de la PR #10) | `admin.py::_templates_for` : ligne navigateur → `[webrtc]` seul, ligne SIP → `[global]` ; test `test_pbx_admin.py` ajusté. API reconstruite et déployée : un poste navigateur de contrôle (1005, supprimé ensuite) sort avec `transport-wss` |
+| Réparation du laboratoire | endpoints de 1001 et 1004 repassés sur `[webrtc]` (confd, compte de service). **Les installations existantes ont le même défaut sur toutes leurs lignes navigateur** : prévoir une réparation (à l'approvisionnement ou au démarrage de l'API) |
+| → Corrigé (`2808b03`, même branche) | chaque Softphone répare sa ligne en lisant son compte ; **Postes → Softphones → Vérifier les lignes navigateur** répare toutes les lignes de l'entreprise (`POST /pbx/maintenance/webrtc-lines`, idempotent). À revérifier : remettre 1004 sur `[webrtc, global]`, ouvrir le Softphone → `[webrtc]` seul et 1004 sonne |
+
+### 1-4. Consultation, bascules, transfert assisté
+
+| Étape | Résultat |
+|---|---|
+| Appel client → 1004, « Décrocher » | ✅ pont client ↔ 1004, RTP dans les deux sens (ulaw ↔ opus) |
+| Transférer → « Collègues disponibles » liste 1002 et 1003 (présence) → 1002 → **Appeler d'abord** | ✅ client mis en attente : « Started music on hold … on channel PJSIP/trunk-… » ; 1002 sonne (canal `Ringing`), Softphone « En attente · … / 1002 Ça sonne… » |
+| 1002 décroche, **Basculer** ×2 | ✅ bascule 1 : musique d'attente démarre sur 1002 et s'arrête sur le client ; bascule 2 : l'inverse. Les compteurs RTP émis par 1004 n'avancent que sur la jambe active (l'autre reste figée) : l'audio part du bon côté à chaque fois |
+| **Transférer** (REFER avec Replaces) | ✅ « Appel transféré » ; sur le moteur le client est **échangé** dans le pont du collègue : un seul pont client ↔ 1002, RTP qui continue, 1004 sans canal. Aucun REFER refusé (202, NOTIFY 100 puis 200 OK) |
+| Journal des appels (console) | ✅ l'appel entrant (destination « Poste 1004 », répondu, durée jusqu'au raccroché final) et l'appel interne 1004 → 1002 de la consultation ; la passation au collègue n'y apparaît pas comme telle (limite de la vue actuelle) |
+
+### 5. Conférence à trois
+
+| Étape | Résultat |
+|---|---|
+| Nouvel appel, consultation, **Conférence** | ✅ Softphone « Conférence à trois » ; musique d'attente arrêtée ; le moteur voit **deux ponts à deux** (client ↔ 1004a, 1002 ↔ 1004b), le mixage est fait dans l'application (WebAudio) ; les deux jambes de 1004 émettent en continu |
+| **Micro coupé** sur 1004 | ✅ pris en compte sur les deux jambes (le mixeur remplace la piste micro pour les deux appels) ; non vérifiable à l'oreille sans tête : les deux jambes continuent d'émettre (voix de l'autre partie) |
+| **Se retirer** | ✅ REFER avec Replaces : client et 1002 restent ensemble dans un seul pont, 1004 libéré |
+| **Tout raccrocher** (après une nouvelle conférence) | ✅ les trois jambes tombent en même temps : le client (opérateur) et 1002 journalisent « terminated » |
+
+### 6. Cas limites
+
+| Cas | Résultat |
+|---|---|
+| Transférer pendant que 1002 sonne encore | ✅ la consultation est annulée, REFER simple vers 1002 : le PBX rappelle 1002 pour le client (nouveau canal `Ringing`), 1004 libéré aussitôt ; 1002 décroche → client ↔ 1002 |
+| Le client raccroche pendant la consultation | ✅ l'appel avec 1002 continue (pont 1002 ↔ 1004 toujours actif, Softphone « appel en cours »), puis raccroché normal |
+
+### 🐛 n° 24 — après le transfert, 1004 restait « en appel » jusqu'au BYE du PBX (corrigé)
+
+Après un REFER accepté, le moteur raccroche la jambe remplacée immédiatement mais la jambe
+principale de l'employé **8 s plus tard** (observé deux fois ; 60 s une fois) : pendant ce temps
+le Softphone montrait un appel actif « Appel transféré » et répondait **486 Occupé** aux nouveaux
+appels (« Everyone is busy (1:1/0/0) »). Correction dans `phone.ts` : dès le NOTIFY 200 OK
+(`accepted`), l'application raccroche elle-même ses deux jambes (RFC 5589), sans reprendre le
+client ni promouvoir le collègue entre les deux (sinon un ré-INVITE partait sur un dialogue
+déjà clos : « Invalid status: 8 » dans la page) ; test Vitest ajouté.
+Revérifié : transfert → « Appel terminé » en moins d'une seconde, un appel 1002 → 1004 lancé 6 s
+après sonne et se décroche ; « Se retirer » → idem, client et 1002 restent ensemble ; aucune
+erreur de page sur les deux derniers passages.
+
+Observation mineure : après le transfert « 1002 sonne encore », le moteur retransmet pendant
+~30 s un `200 OK` (ré-INVITE d'attente dont l'ACK n'est pas parti avant la fin du dialogue) ;
+sans effet sur les appels.
+
+### 14 bis — réparation automatique des lignes navigateur (`2808b03`) (22 novembre 2026)
+
+Déployé : pointe `5d69d8c` de `feat/lot-b-attended-transfer`, images `nimbora-pr10` reconstruites
+(API et UI), kit lab `--only nimbora --no-build`, `/api/v1/health` 200. État de référence relevé
+avant les essais pour les quatre postes (nom d'endpoint, modèles confd, transport vu par
+Asterisk, utilisateur d'authentification, empreinte SHA-256 du secret).
+
+| Étape | Résultat |
+|---|---|
+| (2) Endpoint de 1004 remis à la main sur `[webrtc, global]` (confd, compte de service) | ✅ confd relit `['webrtc', 'global']`, secret et utilisateur inchangés |
+| (2) Softphone web 1004 ouvert (il relit `/softphone/config`) | ✅ journal de l'API : `Softphone: browser line v0sleb29 repaired (webrtc template alone)` ; confd : modèles `['webrtc']`, Asterisk : `transport-wss` |
+| (2) Appel 1002 → 1004 | ✅ 1004 sonne (canal `Ringing`) et décroche, pont établi |
+| (3) Endpoint de 1001 remis sur `[webrtc, global]`, puis Console → Postes → Softphones (bloc « Connexion des softphones au PBX ») → **Vérifier les lignes navigateur** | ✅ toast « **Lignes navigateur réparées : 1001** » ; journal : `[PBX org=1] browser lines repaired: 1001` ; `POST /pbx/maintenance/webrtc-lines` 200 |
+| (3) Second clic | ✅ « **4 lignes vérifiées : rien à réparer** » |
+| (3) Lignes SIP classiques 1002 et 1003 | ✅ inchangées : modèles `['global']`, `transport-udp` |
+| (4) Avant/après pour les quatre postes | ✅ **aucune différence** : noms d'endpoint, modèles (1001 et 1004 `['webrtc']`), transports, utilisateurs d'authentification et empreintes des secrets identiques à l'état de référence |
+
+Note de sécurité : un relevé intermédiaire de cette étape (commande de diagnostic sur le moteur)
+a affiché en clair les secrets SIP des quatre postes de test dans la sortie d'outil de la session
+d'assistance ; rien dans le dépôt ni dans ce journal. Ils peuvent être régénérés depuis la
+console (Postes → SIP) ; pour 1002 et 1003, les clients `baresip` du laboratoire sont alors à
+reconfigurer.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**

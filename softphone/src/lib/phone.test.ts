@@ -53,8 +53,9 @@ class Emitter {
         for (const handler of this.handlers[event] ?? []) handler(data);
     }
 }
+let sessionCount = 0;
 class FakeSession extends Emitter {
-    id = "s-1";
+    id = `s-${++sessionCount}`;
     connection = null;
     remote_identity = { uri: { toString: () => "sip:+2250707112233@pbx.example" }, display_name: "Awa" };
     answer = vi.fn(() => this.fire("accepted"));
@@ -146,5 +147,148 @@ describe("Phone", () => {
         expect(placed.uri).toBe("sip:+2250707112233@pbx.example");
         expect(placed.options.pcConfig.iceServers).toEqual(config.ice_servers);
         expect(phone.state.call).toMatchObject({ direction: "outgoing", status: "calling" });
+    });
+});
+
+describe("Phone · consultation, attended transfer, conference", () => {
+    function fakeMixer() {
+        const mixer = {
+            active: false,
+            mic: { enabled: true } as MediaStreamTrack,
+            start: vi.fn(async () => {
+                mixer.active = true;
+                return true;
+            }),
+            stop: vi.fn(async () => {
+                mixer.active = false;
+            }),
+        };
+        return mixer;
+    }
+
+    async function onACall() {
+        const mixer = fakeMixer();
+        const phone = new Phone(config, null, async () => fakeJsSIP, () => mixer as never);
+        await phone.start();
+        const customer = new FakeSession();
+        ua.fire("newRTCSession", { session: customer, originator: "remote" });
+        phone.answer();
+        return { phone, customer, mixer };
+    }
+
+    it("puts the customer on hold, calls a colleague, swaps, then transfers attended", async () => {
+        const { phone, customer } = await onACall();
+        phone.consult("1002");
+        expect(customer.hold).toHaveBeenCalled();
+        const colleague = ua.lastCall!;
+        expect((colleague as unknown as { uri: string }).uri).toBe("sip:1002@pbx.example");
+        expect(phone.state.consult).toMatchObject({ number: "1002", status: "calling" });
+        expect(phone.state.call?.held).toBe(true);
+
+        // Hold and blind transfer are off during a consultation.
+        phone.toggleHold();
+        phone.transfer("1003");
+        expect(customer.refer).not.toHaveBeenCalled();
+
+        colleague.fire("accepted");
+        expect(phone.state.consult?.status).toBe("active");
+        phone.swap();
+        expect(colleague.hold).toHaveBeenCalled();
+        expect(customer.unhold).toHaveBeenCalled();
+        phone.swap();
+        expect(colleague.unhold).toHaveBeenCalled();
+
+        // DTMF and mute go to the colleague, the person being talked to.
+        phone.dtmf("1");
+        expect(colleague.sendDTMF).toHaveBeenCalled();
+        expect(customer.sendDTMF).not.toHaveBeenCalled();
+
+        phone.completeTransfer();
+        const [target, options] = customer.refer.mock.calls[0] as unknown as [unknown, { replaces: unknown; eventHandlers: { failed: () => void } }];
+        expect(target).toBe(colleague.remote_identity.uri);
+        expect(options.replaces).toBe(colleague);
+        options.eventHandlers.failed();
+        expect(phone.state.notice).toBe("Transfert refusé par le PBX");
+    });
+
+    it("hangs up its own two legs once the PBX has accepted the transfer", async () => {
+        const { phone, customer } = await onACall();
+        phone.consult("1002");
+        const colleague = ua.lastCall!;
+        colleague.fire("accepted");
+        phone.completeTransfer();
+        const options = customer.refer.mock.calls[0][1] as unknown as { eventHandlers: { accepted: () => void } };
+        options.eventHandlers.accepted();
+        expect(phone.state.notice).toBe("Appel transféré");
+        expect(colleague.terminate).toHaveBeenCalled();
+        expect(customer.terminate).toHaveBeenCalled();
+        expect(phone.state.call?.status ?? "ended").toBe("ended");
+    });
+
+    it("transfers to a colleague whose phone still rings (blind, through the PBX)", async () => {
+        const { phone, customer } = await onACall();
+        phone.consult("1002");
+        const colleague = ua.lastCall!;
+        phone.completeTransfer();
+        expect(colleague.terminate).toHaveBeenCalled();
+        expect(customer.refer.mock.calls[0][0]).toBe("sip:1002@pbx.example");
+    });
+
+    it("cancels the consultation and goes back to the customer", async () => {
+        const { phone, customer } = await onACall();
+        phone.consult("1002");
+        const colleague = ua.lastCall!;
+        colleague.fire("accepted");
+        phone.cancelConsult();
+        expect(phone.state.consult).toBeNull();
+        expect(customer.unhold).toHaveBeenCalled();
+        expect(phone.state.call?.status).toBe("active");
+    });
+
+    it("keeps the colleague on the line when the customer hangs up", async () => {
+        const { phone, customer } = await onACall();
+        phone.consult("1002");
+        const colleague = ua.lastCall!;
+        colleague.fire("accepted");
+        customer.fire("ended", { cause: "Terminated" });
+        expect(phone.state.consult).toBeNull();
+        expect(phone.state.call).toMatchObject({ number: "1002", status: "active" });
+        phone.hangup();
+        expect(colleague.terminate).toHaveBeenCalled();
+    });
+
+    it("mixes a three-way conference, mutes both, then leaves them together", async () => {
+        const { phone, customer, mixer } = await onACall();
+        phone.consult("1002");
+        const colleague = ua.lastCall!;
+        expect(await phone.startConference()).toBe(false); // not answered yet
+        colleague.fire("accepted");
+        expect(await phone.startConference()).toBe(true);
+        expect(customer.unhold).toHaveBeenCalled();
+        expect(mixer.start).toHaveBeenCalled();
+        expect(phone.state.conference).toBe(true);
+
+        phone.toggleMute();
+        expect(mixer.mic.enabled).toBe(false);
+        expect(phone.state.call?.muted && phone.state.consult?.muted).toBe(true);
+        phone.swap(); // no swapping in a conference
+        expect(colleague.hold).not.toHaveBeenCalled();
+
+        // « Se retirer »: the PBX bridges the two others.
+        phone.completeTransfer();
+        expect(mixer.stop).toHaveBeenCalled();
+        expect((customer.refer.mock.calls[0][1] as { replaces: unknown }).replaces).toBe(colleague);
+    });
+
+    it("ends the conference when the colleague leaves", async () => {
+        const { phone, mixer } = await onACall();
+        phone.consult("1002");
+        const colleague = ua.lastCall!;
+        colleague.fire("accepted");
+        await phone.startConference();
+        colleague.fire("ended", { cause: "Terminated" });
+        expect(mixer.stop).toHaveBeenCalled();
+        expect(phone.state).toMatchObject({ conference: false, consult: null });
+        expect(phone.state.call?.status).toBe("active");
     });
 });

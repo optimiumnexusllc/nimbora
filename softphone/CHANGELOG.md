@@ -1,5 +1,24 @@
 # NIMBORA Softphone — journal des versions
 
+## 1.3.0 — 22 novembre 2026
+
+**Transfert avec consultation et conférence à trois.**
+
+- **Transférer → Appeler d'abord** : le client est mis en attente et l'application appelle le
+  collègue (les collègues disponibles sont proposés). Pendant la consultation :
+  - **Basculer** entre le client et le collègue ;
+  - **Transférer** : le PBX relie le client au collègue et l'employé se retire (transfert
+    assisté, REFER avec Replaces) ; si le collègue n'a pas encore décroché, le PBX l'appelle pour
+    le client ;
+  - **Conférence** : les trois s'entendent, mixage dans l'application ; le micro coupé l'est pour
+    les deux appels ; **Se retirer** laisse le client et le collègue ensemble ;
+  - **Annuler** (ou le bouton rouge) raccroche avec le collègue et reprend le client.
+- Si le client raccroche pendant la consultation, l'appel du collègue continue
+- Dès que le PBX a relié le client et le collègue (transfert ou « Se retirer »), l'application
+  raccroche elle-même ses deux appels : le poste est libre immédiatement au lieu d'attendre le
+  raccroché du PBX (validation en laboratoire, étape 14). normalement.
+- **Transférer directement** reste disponible (transfert aveugle).
+
 ## 1.2.1 — 22 novembre 2026
 
 - Après « Régénérer le mot de passe SIP » dans la console, l'application relit son compte dès
