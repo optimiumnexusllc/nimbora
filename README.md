@@ -459,7 +459,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Offres, abonnements, quotas, Stripe, console opérateur |
 | ✅ | Supervision en direct, centre d'appels humain |
 | ✅ | RGPD et PCI DSS |
-| 🔜 | Tableau de bord « AI Business Hub » : conversations, appels, prospects, rendez-vous, activité par canal |
+| ✅ | Tableau de bord « AI Business Hub » : conversations, appels IA et humains, prospects, rendez-vous, activité par canal, comparaison à la période précédente ([doc](docs/contact-center/business-hub.mdx)) |
 | 🔜 | Contrôle qualité des appels humains |
 | 🔜 | Tests des agents avec des clients simulés |
 

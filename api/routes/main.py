@@ -10,6 +10,7 @@ from api.routes.agent_stream import router as agent_stream_router
 from api.routes.auth import router as auth_router
 from api.routes.blocked_numbers import router as blocked_numbers_router
 from api.routes.business import router as business_router
+from api.routes.business_hub import router as business_hub_router
 from api.routes.campaign import router as campaign_router
 from api.routes.catalog import router as catalog_router
 from api.routes.contact_center import router as contact_center_router
@@ -91,6 +92,7 @@ router.include_router(local_ai_router)
 router.include_router(customers_router)
 router.include_router(catalog_router)
 router.include_router(leads_router)
+router.include_router(business_hub_router)
 router.include_router(privacy_router)
 router.include_router(supervision_router)
 router.include_router(actions_router)

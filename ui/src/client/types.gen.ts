@@ -23123,6 +23123,54 @@ export type ExportLeadsApiV1LeadsExportCsvGetResponses = {
     200: unknown;
 };
 
+export type ReadBusinessHubApiV1BusinessHubGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Period
+         */
+        period?: '7d' | '30d' | '90d';
+    };
+    url: '/api/v1/business-hub';
+};
+
+export type ReadBusinessHubApiV1BusinessHubGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadBusinessHubApiV1BusinessHubGetError = ReadBusinessHubApiV1BusinessHubGetErrors[keyof ReadBusinessHubApiV1BusinessHubGetErrors];
+
+export type ReadBusinessHubApiV1BusinessHubGetResponses = {
+    /**
+     * Response Read Business Hub Api V1 Business Hub Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadBusinessHubApiV1BusinessHubGetResponse = ReadBusinessHubApiV1BusinessHubGetResponses[keyof ReadBusinessHubApiV1BusinessHubGetResponses];
+
 export type ReadSettingsApiV1PrivacySettingsGetData = {
     body?: never;
     headers?: {

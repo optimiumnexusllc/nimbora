@@ -3,6 +3,7 @@ from api.db.agent_trigger_client import AgentTriggerClient
 from api.db.api_key_client import APIKeyClient
 from api.db.blocked_number_client import BlockedNumberClient
 from api.db.builder_run_client import BuilderRunClient
+from api.db.business_hub_client import BusinessHubClient
 from api.db.callback_client import CallbackClient
 from api.db.campaign_client import CampaignClient
 from api.db.catalog_client import CatalogClient
@@ -87,6 +88,7 @@ class DBClient(
     PbxSupervisionClient,
     CatalogClient,
     LeadClient,
+    BusinessHubClient,
 ):
     """
     Unified database client that combines all specialized database operations.

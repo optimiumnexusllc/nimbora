@@ -1,0 +1,43 @@
+---
+title: "AI Business Hub"
+description: "Le tableau de bord de l'entreprise : conversations par canal, appels IA et humains, rendez-vous, prospects — comparés à la période précédente."
+---
+
+La page **AI Business Hub** (menu de gauche, juste sous « Accueil ») répond à une question simple : *qu'ont fait mes agents IA et mon équipe cette semaine, ce mois-ci, ce trimestre ?*
+
+<Frame>
+  <img src="/images/business-hub.png" alt="AI Business Hub : indicateurs, activité par jour et par canal" />
+</Frame>
+
+## Périodes
+
+Choisissez **7, 30 ou 90 jours**. Chaque indicateur est comparé à la période précédente de même durée (par exemple, les 30 jours d'avant), avec le pourcentage d'évolution. « nouveau » signifie qu'il ne s'était rien passé avant.
+
+Les jours sont comptés dans le **fuseau horaire de l'entreprise** (Mon entreprise → fuseau horaire) ; à défaut, en UTC.
+
+## Indicateurs
+
+| Indicateur | Ce qui est compté |
+|---|---|
+| Conversations | Appels IA, appels humains, conversations WhatsApp et discussions web |
+| Appels IA | Appels traités par un agent vocal (entrants, sortants, minutes) |
+| Appels humains | Appels décrochés par un conseiller sur le standard (minutes facturables) |
+| Rendez-vous pris | Rendez-vous réservés pendant la période, et ceux à venir |
+| Nouveaux prospects | Prospects créés, qualifiés, gagnés, et taux de conversion |
+| Nouveaux clients | Fiches clients créées |
+
+## Activité par canal
+
+Le graphique empile, jour par jour, les conversations **Appels IA**, **Appels humains**, **WhatsApp** et **Web**. Le bouton **Tableau** affiche les mêmes chiffres en tableau (avec rendez-vous et prospects par jour) — pratique pour les recopier ou pour une lecture sans couleurs.
+
+## Ce que les agents ont fait
+
+Passations à un humain (et part des appels IA concernés), messages envoyés (SMS, WhatsApp, e-mail), messages WhatsApp échangés, tickets ouverts, rappels planifiés et faits.
+
+## Pipeline ouvert
+
+Nombre de prospects en cours et somme de leurs budgets maximums, par devise. Le lien **Voir le pipeline** ouvre la page [Prospects](/voice-agent/tools/qualify-lead).
+
+## API
+
+`GET /api/v1/business-hub?period=7d|30d|90d` renvoie les mêmes données en JSON (indicateurs, canaux, actions, pipeline et série quotidienne), pour les reprendre dans votre propre outil de reporting.
