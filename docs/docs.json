@@ -146,7 +146,8 @@
               "contact-center/overview",
               "contact-center/supervision",
               "contact-center/smart-routing",
-              "contact-center/business-hub"
+              "contact-center/business-hub",
+              "contact-center/call-quality"
             ]
           },
           {

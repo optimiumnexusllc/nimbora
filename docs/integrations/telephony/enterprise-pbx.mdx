@@ -435,9 +435,13 @@ The list shows who called whom, when, the direction and the duration. You can se
 
 The privacy policy applies to these recordings:
 
-- the **recording retention** period deletes them, files included;
-- **erasing** a customer deletes their recordings;
+- the **recording retention** period deletes them, files included (the PBX keeps its own copy under its own retention, if any);
+- **erasing** a customer deletes their recordings, on the PBX too;
 - an **access request** lists them, with their transcripts.
+
+Deleting a recording from the list removes it **from NIMBORA and from the PBX**. A deleted recording is never imported again, even if the PBX still has a copy: NIMBORA keeps only its identifier, without the audio, the transcript or the phone number.
+
+**Évaluer** opens the call in [quality control](/contact-center/call-quality). The advisor shown is the employee's **own extension**, not the public number that the outbound route presents or that the customer dialled.
 
 <Frame caption="Human call recording: what is recorded, and the recordings kept with their masked transcript">
   <img src="/images/screenshots/pbx-recordings.webp" alt="Recording policy and the list of recorded calls with playback and a transcript where the card number is masked" />

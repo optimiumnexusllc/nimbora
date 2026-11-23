@@ -6,9 +6,15 @@ from datetime import UTC, datetime
 from typing import Any
 
 from sqlalchemy import delete, func, or_, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from api.db.base_client import BaseDBClient
-from api.db.models import PbxCallRecordingModel, PbxConnectionModel, PbxIvrMenuModel
+from api.db.models import (
+    PbxCallRecordingModel,
+    PbxConnectionModel,
+    PbxIvrMenuModel,
+    PbxRecordingTombstoneModel,
+)
 
 _UPDATABLE = {
     "name",
@@ -249,7 +255,13 @@ class PbxCallRecordingClient(BaseDBClient):
                     PbxCallRecordingModel.recording_uuid.in_(uuids),
                 )
             )
-            return set(result.scalars().all())
+            deleted = await session.execute(
+                select(PbxRecordingTombstoneModel.recording_uuid).where(
+                    PbxRecordingTombstoneModel.organization_id == organization_id,
+                    PbxRecordingTombstoneModel.recording_uuid.in_(uuids),
+                )
+            )
+            return set(result.scalars().all()) | set(deleted.scalars().all())
 
     async def create_pbx_recording(
         self, organization_id: int, fields: dict[str, Any]
@@ -286,15 +298,25 @@ class PbxCallRecordingClient(BaseDBClient):
     async def delete_pbx_recording(
         self, organization_id: int, recording_id: int
     ) -> bool:
+        """Delete the row and remember its PBX identifier (never re-imported)."""
         async with self.async_session() as session:
             result = await session.execute(
-                delete(PbxCallRecordingModel).where(
+                delete(PbxCallRecordingModel)
+                .where(
                     PbxCallRecordingModel.id == recording_id,
                     PbxCallRecordingModel.organization_id == organization_id,
                 )
+                .returning(PbxCallRecordingModel.recording_uuid)
             )
+            uuid = result.scalar_one_or_none()
+            if uuid is not None:
+                await session.execute(
+                    pg_insert(PbxRecordingTombstoneModel)
+                    .values(organization_id=organization_id, recording_uuid=uuid)
+                    .on_conflict_do_nothing(constraint="uq_pbx_recording_tombstones")
+                )
             await session.commit()
-            return result.rowcount > 0
+            return uuid is not None
 
     async def list_pbx_recordings_before(
         self, organization_id: int, before: datetime, limit: int = 200

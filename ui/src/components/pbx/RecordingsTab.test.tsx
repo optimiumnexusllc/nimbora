@@ -9,6 +9,7 @@ const mocks = vi.hoisted(() => ({
     list: vi.fn(), policy: vi.fn(), sync: vi.fn(), audio: vi.fn(), remove: vi.fn(),
     toast: { success: vi.fn(), error: vi.fn() },
 }));
+vi.mock("next/navigation", () => ({ useRouter: () => ({ push: vi.fn() }) }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
 vi.mock("@/client/sdk.gen", () => ({
     listRecordingsApiV1PbxRecordingsGet: mocks.list,

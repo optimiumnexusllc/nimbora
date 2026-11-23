@@ -470,6 +470,20 @@ export type AmbientNoiseUploadResponse = {
 };
 
 /**
+ * AnswerIn
+ */
+export type AnswerIn = {
+    /**
+     * Answer
+     */
+    answer: 'yes' | 'partial' | 'no' | 'na';
+    /**
+     * Comment
+     */
+    comment?: string;
+};
+
+/**
  * AppendTextChatMessageRequest
  */
 export type AppendTextChatMessageRequest = {
@@ -2953,6 +2967,28 @@ export type CredentialResponse = {
      * Updated At
      */
     updated_at: string | null;
+};
+
+/**
+ * Criterion
+ */
+export type Criterion = {
+    /**
+     * Key
+     */
+    key?: string;
+    /**
+     * Label
+     */
+    label: string;
+    /**
+     * Description
+     */
+    description?: string;
+    /**
+     * Weight
+     */
+    weight?: number;
 };
 
 /**
@@ -7314,6 +7350,24 @@ export type QualifyLeadToolDefinition = {
 };
 
 /**
+ * QualitySettings
+ */
+export type QualitySettings = {
+    /**
+     * Criteria
+     */
+    criteria: Array<Criterion>;
+    /**
+     * Auto Evaluate
+     */
+    auto_evaluate?: boolean;
+    /**
+     * Sample Percent
+     */
+    sample_percent?: number;
+};
+
+/**
  * QueueCreateRequest
  */
 export type QueueCreateRequest = {
@@ -7858,6 +7912,22 @@ export type RetryConfigResponse = {
      * Retry On Voicemail
      */
     retry_on_voicemail: boolean;
+};
+
+/**
+ * ReviewIn
+ */
+export type ReviewIn = {
+    /**
+     * Answers
+     */
+    answers: {
+        [key: string]: AnswerIn;
+    };
+    /**
+     * Comment
+     */
+    comment?: string;
 };
 
 /**
@@ -23170,6 +23240,388 @@ export type ReadBusinessHubApiV1BusinessHubGetResponses = {
 };
 
 export type ReadBusinessHubApiV1BusinessHubGetResponse = ReadBusinessHubApiV1BusinessHubGetResponses[keyof ReadBusinessHubApiV1BusinessHubGetResponses];
+
+export type ReadQualitySettingsApiV1QualitySettingsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/quality/settings';
+};
+
+export type ReadQualitySettingsApiV1QualitySettingsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadQualitySettingsApiV1QualitySettingsGetError = ReadQualitySettingsApiV1QualitySettingsGetErrors[keyof ReadQualitySettingsApiV1QualitySettingsGetErrors];
+
+export type ReadQualitySettingsApiV1QualitySettingsGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: QualitySettings;
+};
+
+export type ReadQualitySettingsApiV1QualitySettingsGetResponse = ReadQualitySettingsApiV1QualitySettingsGetResponses[keyof ReadQualitySettingsApiV1QualitySettingsGetResponses];
+
+export type SaveQualitySettingsApiV1QualitySettingsPutData = {
+    body: QualitySettings;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/quality/settings';
+};
+
+export type SaveQualitySettingsApiV1QualitySettingsPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SaveQualitySettingsApiV1QualitySettingsPutError = SaveQualitySettingsApiV1QualitySettingsPutErrors[keyof SaveQualitySettingsApiV1QualitySettingsPutErrors];
+
+export type SaveQualitySettingsApiV1QualitySettingsPutResponses = {
+    /**
+     * Successful Response
+     */
+    200: QualitySettings;
+};
+
+export type SaveQualitySettingsApiV1QualitySettingsPutResponse = SaveQualitySettingsApiV1QualitySettingsPutResponses[keyof SaveQualitySettingsApiV1QualitySettingsPutResponses];
+
+export type ListQualityReviewsApiV1QualityReviewsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Status
+         */
+        status?: 'pending' | 'evaluated' | 'reviewed' | 'failed' | null;
+        /**
+         * Agent
+         */
+        agent?: string | null;
+        /**
+         * Days
+         */
+        days?: number;
+        /**
+         * Limit
+         */
+        limit?: number;
+        /**
+         * Offset
+         */
+        offset?: number;
+    };
+    url: '/api/v1/quality/reviews';
+};
+
+export type ListQualityReviewsApiV1QualityReviewsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListQualityReviewsApiV1QualityReviewsGetError = ListQualityReviewsApiV1QualityReviewsGetErrors[keyof ListQualityReviewsApiV1QualityReviewsGetErrors];
+
+export type ListQualityReviewsApiV1QualityReviewsGetResponses = {
+    /**
+     * Response List Quality Reviews Api V1 Quality Reviews Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ListQualityReviewsApiV1QualityReviewsGetResponse = ListQualityReviewsApiV1QualityReviewsGetResponses[keyof ListQualityReviewsApiV1QualityReviewsGetResponses];
+
+export type ReadQualityReviewApiV1QualityReviewsReviewIdGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Review Id
+         */
+        review_id: number;
+    };
+    query?: never;
+    url: '/api/v1/quality/reviews/{review_id}';
+};
+
+export type ReadQualityReviewApiV1QualityReviewsReviewIdGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadQualityReviewApiV1QualityReviewsReviewIdGetError = ReadQualityReviewApiV1QualityReviewsReviewIdGetErrors[keyof ReadQualityReviewApiV1QualityReviewsReviewIdGetErrors];
+
+export type ReadQualityReviewApiV1QualityReviewsReviewIdGetResponses = {
+    /**
+     * Response Read Quality Review Api V1 Quality Reviews  Review Id  Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ReadQualityReviewApiV1QualityReviewsReviewIdGetResponse = ReadQualityReviewApiV1QualityReviewsReviewIdGetResponses[keyof ReadQualityReviewApiV1QualityReviewsReviewIdGetResponses];
+
+export type SubmitQualityReviewApiV1QualityReviewsReviewIdPutData = {
+    body: ReviewIn;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Review Id
+         */
+        review_id: number;
+    };
+    query?: never;
+    url: '/api/v1/quality/reviews/{review_id}';
+};
+
+export type SubmitQualityReviewApiV1QualityReviewsReviewIdPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SubmitQualityReviewApiV1QualityReviewsReviewIdPutError = SubmitQualityReviewApiV1QualityReviewsReviewIdPutErrors[keyof SubmitQualityReviewApiV1QualityReviewsReviewIdPutErrors];
+
+export type SubmitQualityReviewApiV1QualityReviewsReviewIdPutResponses = {
+    /**
+     * Response Submit Quality Review Api V1 Quality Reviews  Review Id  Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SubmitQualityReviewApiV1QualityReviewsReviewIdPutResponse = SubmitQualityReviewApiV1QualityReviewsReviewIdPutResponses[keyof SubmitQualityReviewApiV1QualityReviewsReviewIdPutResponses];
+
+export type EvaluateRecordingApiV1QualityRecordingsRecordingIdEvaluatePostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Recording Id
+         */
+        recording_id: number;
+    };
+    query?: never;
+    url: '/api/v1/quality/recordings/{recording_id}/evaluate';
+};
+
+export type EvaluateRecordingApiV1QualityRecordingsRecordingIdEvaluatePostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type EvaluateRecordingApiV1QualityRecordingsRecordingIdEvaluatePostError = EvaluateRecordingApiV1QualityRecordingsRecordingIdEvaluatePostErrors[keyof EvaluateRecordingApiV1QualityRecordingsRecordingIdEvaluatePostErrors];
+
+export type EvaluateRecordingApiV1QualityRecordingsRecordingIdEvaluatePostResponses = {
+    /**
+     * Response Evaluate Recording Api V1 Quality Recordings  Recording Id  Evaluate Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type EvaluateRecordingApiV1QualityRecordingsRecordingIdEvaluatePostResponse = EvaluateRecordingApiV1QualityRecordingsRecordingIdEvaluatePostResponses[keyof EvaluateRecordingApiV1QualityRecordingsRecordingIdEvaluatePostResponses];
+
+export type StartManualReviewApiV1QualityRecordingsRecordingIdReviewPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Recording Id
+         */
+        recording_id: number;
+    };
+    query?: never;
+    url: '/api/v1/quality/recordings/{recording_id}/review';
+};
+
+export type StartManualReviewApiV1QualityRecordingsRecordingIdReviewPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StartManualReviewApiV1QualityRecordingsRecordingIdReviewPostError = StartManualReviewApiV1QualityRecordingsRecordingIdReviewPostErrors[keyof StartManualReviewApiV1QualityRecordingsRecordingIdReviewPostErrors];
+
+export type StartManualReviewApiV1QualityRecordingsRecordingIdReviewPostResponses = {
+    /**
+     * Response Start Manual Review Api V1 Quality Recordings  Recording Id  Review Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type StartManualReviewApiV1QualityRecordingsRecordingIdReviewPostResponse = StartManualReviewApiV1QualityRecordingsRecordingIdReviewPostResponses[keyof StartManualReviewApiV1QualityRecordingsRecordingIdReviewPostResponses];
+
+export type QualitySummaryApiV1QualitySummaryGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Days
+         */
+        days?: number;
+    };
+    url: '/api/v1/quality/summary';
+};
+
+export type QualitySummaryApiV1QualitySummaryGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type QualitySummaryApiV1QualitySummaryGetError = QualitySummaryApiV1QualitySummaryGetErrors[keyof QualitySummaryApiV1QualitySummaryGetErrors];
+
+export type QualitySummaryApiV1QualitySummaryGetResponses = {
+    /**
+     * Response Quality Summary Api V1 Quality Summary Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type QualitySummaryApiV1QualitySummaryGetResponse = QualitySummaryApiV1QualitySummaryGetResponses[keyof QualitySummaryApiV1QualitySummaryGetResponses];
 
 export type ReadSettingsApiV1PrivacySettingsGetData = {
     body?: never;

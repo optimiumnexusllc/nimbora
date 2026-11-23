@@ -174,6 +174,49 @@ def _parse_time(value: Any) -> datetime | None:
     return parsed if parsed.tzinfo else parsed.replace(tzinfo=UTC)
 
 
+def _party(cdr: dict, side: str) -> tuple[str | None, str | None]:
+    """(extension, name) of one side of a call log.
+
+    On the engine, ``<side>_extension`` of an outbound call's source (or an
+    inbound call's destination) is the public number the route presents or
+    the customer dialled; the employee's own extension is
+    ``<side>_internal_extension`` (lab steps 9 and 17, bugs n° 20 and n° 27).
+    A name that is only that number (« 2250700000001 », « +225 07 00 00 00 01 »)
+    says nothing and is dropped; a real name that merely contains the
+    extension (« Test 1003 (SIP) », « Poste 1004 (navigateur) ») is kept
+    (lab step 17 bis, bug n° 28).
+    """
+    internal = cdr.get(f"{side}_internal_extension")
+    extension = internal or cdr.get(f"{side}_extension")
+    if side == "destination" and not extension:
+        extension = cdr.get("requested_extension")
+    name = cdr.get(f"{side}_internal_name") or cdr.get(f"{side}_name")
+    digits = lambda v: "".join(ch for ch in str(v or "") if ch.isdigit())  # noqa: E731
+    bare = re.sub(r"[\s+().-]", "", str(name or ""))
+    if (
+        name
+        and bare.isdigit()
+        and bare
+        in {digits(cdr.get(f"{side}_extension")), digits(internal), digits(extension)}
+    ):
+        name = None
+    return (
+        str(extension)[:64] if extension else None,
+        str(name)[:128] if name else None,
+    )
+
+
+def call_parties(cdr: dict) -> dict[str, str | None]:
+    source, source_name = _party(cdr, "source")
+    destination, destination_name = _party(cdr, "destination")
+    return {
+        "source": source,
+        "source_name": source_name,
+        "destination": destination,
+        "destination_name": destination_name,
+    }
+
+
 async def import_recording(
     connection, client: PbxClient, cdr: dict, recording: dict, policy: RecordingPolicy
 ):
@@ -215,20 +258,7 @@ async def import_recording(
             "started_at": started,
             "duration_seconds": duration,
             "direction": direction or None,
-            "source": (cdr.get("source_extension") or None)
-            and str(cdr["source_extension"])[:64],
-            "source_name": (cdr.get("source_name") or None)
-            and str(cdr["source_name"])[:128],
-            "destination": (
-                cdr.get("destination_extension")
-                or cdr.get("requested_extension")
-                or None
-            )
-            and str(cdr.get("destination_extension") or cdr.get("requested_extension"))[
-                :64
-            ],
-            "destination_name": (cdr.get("destination_name") or None)
-            and str(cdr["destination_name"])[:128],
+            **call_parties(cdr),
             "customer_phone": phone,
             "storage_backend": backend,
             "storage_key": key,
@@ -245,6 +275,9 @@ async def import_recording(
             )
         except PbxError:
             logger.opt(exception=True).warning("Recording kept on the PBX")
+    from api.services.quality.service import after_recording_import
+
+    await after_recording_import(organization_id, row)
     return row
 
 
@@ -364,7 +397,15 @@ async def audio_url(organization_id: int, recording_id: int) -> str:
     return url
 
 
-async def delete_recording(organization_id: int, recording_id: int) -> bool:
+async def delete_recording(
+    organization_id: int, recording_id: int, *, on_pbx: bool = False, **client_kwargs
+) -> bool:
+    """Delete a recording kept by NIMBORA; it is never imported again.
+
+    ``on_pbx``: also delete the copy the PBX still has (a deletion asked by a
+    person, a GDPR erasure). Best effort: NIMBORA's copy goes regardless.
+    A retention purge leaves the PBX alone (its own retention applies there).
+    """
     from api.db import db_client
 
     row = await db_client.get_pbx_recording(organization_id, recording_id)
@@ -374,6 +415,15 @@ async def delete_recording(organization_id: int, recording_id: int) -> bool:
         await _storage_for(row.storage_backend).adelete_file(row.storage_key)
     except Exception:
         logger.opt(exception=True).warning("Recording file not deleted")
+    if on_pbx and not row.removed_from_pbx:
+        try:
+            connection = await _connection(organization_id)
+            async with client_for(connection, **client_kwargs) as client:
+                await client.delete_recording_media(row.cdr_id, row.recording_uuid)
+        except Exception:  # noqa: BLE001 - the PBX copy may already be gone
+            logger.opt(exception=True).warning(
+                f"[PBX org={organization_id}] recording kept on the PBX"
+            )
     return await db_client.delete_pbx_recording(organization_id, recording_id)
 
 
@@ -408,6 +458,6 @@ async def erase_for_phone(organization_id: int, phone: str) -> int:
     for row in await db_client.list_pbx_recordings_for_phone(
         organization_id, spellings
     ):
-        if await delete_recording(organization_id, row.id):
+        if await delete_recording(organization_id, row.id, on_pbx=True):
             removed += 1
     return removed

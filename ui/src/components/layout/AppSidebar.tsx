@@ -9,6 +9,7 @@ import {
   Building,
   ChevronLeft,
   ChevronRight,
+  ClipboardCheck,
   ClipboardList,
   Database,
   FileText,
@@ -170,6 +171,11 @@ const NAV_SECTIONS: SidebarNavSection[] = [
         title: "Historique des appels",
         url: "/usage",
         icon: TrendingUp,
+      },
+      {
+        title: "Contrôle qualité",
+        url: "/quality",
+        icon: ClipboardCheck,
       },
       {
         title: "Clients",

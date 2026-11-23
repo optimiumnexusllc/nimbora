@@ -294,3 +294,76 @@ async def test_routes(db_session, monkeypatch, storage, test_client_factory):
         assert (
             await client.delete(f"/api/v1/pbx/recordings/{item['id']}")
         ).status_code == 404
+
+
+def test_the_advisor_is_the_internal_extension_not_the_public_number():
+    """Lab step 17 (bug n° 27): an outbound call from 1004 through the route
+    showed the advisor as « 2250700000001 », the number the route presents."""
+    outbound = {
+        "call_direction": "outbound",
+        "source_extension": "2250700000001",
+        "source_name": "2250700000001",
+        "source_internal_extension": "1004",
+        "destination_extension": "0033612345678",
+        "destination_name": "",
+    }
+    parties = recordings.call_parties(outbound)
+    assert parties["source"] == "1004" and parties["source_name"] is None
+    assert parties["destination"] == "0033612345678"
+
+    inbound = {
+        "call_direction": "inbound",
+        "source_extension": "+2250700112233",
+        "source_name": "Awa",
+        "destination_extension": "2250700000001",
+        "destination_internal_extension": "1003",
+        "destination_name": "Koffi Yao",
+    }
+    parties = recordings.call_parties(inbound)
+    assert parties["destination"] == "1003"
+    assert parties["destination_name"] == "Koffi Yao"  # a real name is kept
+    assert parties["source"] == "+2250700112233" and parties["source_name"] == "Awa"
+
+    # Lab step 17 bis (bug n° 28): a real name that merely contains the
+    # extension is a name; only a bare number (however it is spelt) is dropped.
+    named = {**inbound, "destination_name": "Test 1003 (SIP, répondeur automatique)"}
+    assert recordings.call_parties(named)["destination_name"] == (
+        "Test 1003 (SIP, répondeur automatique)"
+    )
+    spelt = {**outbound, "source_name": "+225 07 00 00 00 01"}
+    assert recordings.call_parties(spelt)["source_name"] is None
+    own = {**outbound, "source_name": "1004"}
+    assert recordings.call_parties(own)["source_name"] is None
+
+
+async def test_a_deleted_recording_never_comes_back(
+    db_session, monkeypatch, storage, test_client_factory
+):
+    """Lab step 17: deleted in NIMBORA but still on the PBX, the recording came
+    back with the next sync."""
+    fake = FakePbx()
+    user, org = await _setup(
+        db_session, monkeypatch, fake, policy={"import_enabled": True}
+    )
+    fake.cdr = [_cdr(940, "rec-x"), _cdr(941, "rec-y")]
+    fake.recording_media.update({"rec-x": WAV, "rec-y": WAV})
+    assert (await recordings.sync_recordings(org.id))["imported"] == 2
+    rows, _ = await db_session.list_pbx_recordings(org.id)
+    by_uuid = {r.recording_uuid: r for r in rows}
+
+    # Deleted by a person: here and on the PBX.
+    async with test_client_factory(user) as client:
+        gone = await client.delete(f"/api/v1/pbx/recordings/{by_uuid['rec-x'].id}")
+    assert gone.status_code == 204 and fake.deleted_media == ["rec-x"]
+
+    # Retention: NIMBORA's copy only, the PBX keeps its own.
+    assert await recordings.delete_recording(org.id, by_uuid["rec-y"].id)
+    assert fake.deleted_media == ["rec-x"]
+
+    # Even with both still listed by the PBX, nothing is imported again.
+    assert (await recordings.sync_recordings(org.id))["imported"] == 0
+    assert (await db_session.list_pbx_recordings(org.id))[1] == 0
+    # Another company is not concerned by these identifiers.
+    assert (
+        await db_session.known_pbx_recording_uuids(org.id + 10_000, ["rec-x"]) == set()
+    )

@@ -833,6 +833,73 @@ Secrets SIP exposés à l'étape 14 bis : rien n'a été régénéré, conformé
 Droits temporaires de la session (`/etc/sudoers.d/90-messie-temp`, appartenance au groupe
 `docker`) retirés en fin d'étape.
 
+## Rapport d'étape 17 — PR #15 « contrôle qualité des appels humains » (22 novembre 2026)
+
+Déployé **par l'opérateur** (la session d'assistance n'a plus ni `sudo` ni le groupe `docker`
+depuis l'étape 15 bis) : `feat/call-quality` à `02aaf0b`, images `nimbora-pr15` (API et UI
+construites par la session avant le retrait des droits), migration `a0b1c2d3e4f5` appliquée au
+démarrage du conteneur API (avec `e8f9a0b1c2d3` et `f9a0b1c2d3e4` qui la précèdent sur cette
+branche). Tests API de la branche (qualité et enregistrements) : 12 passés, lancés avant le retrait
+des droits. Toutes les vérifications ci-dessous sont faites sans privilège : API avec les jetons
+des comptes du laboratoire, console et Softphone web pilotés en Chromium. Sans fusion.
+
+| Étape | Résultat |
+|---|---|
+| (1) `GET /api/v1/quality/settings` (org1) | ✅ 200, **6 critères par défaut** (Accueil 1, Écoute et reformulation 2, Vérification de l'identité 1, Réponse apportée 3, Ton et politesse 2, Conclusion 1), évaluation automatique désactivée, échantillon 100 % : les tables sont là |
+| (2) Politique d'enregistrement activée (externes entrants et sortants, internes ; pas de suppression sur le PBX, transcription désactivée faute de clé IA) | ✅ 4 postes modifiés |
+| (2) Appel humain enregistré | ⚠️ écart par rapport à l'énoncé : les clients `baresip` (1002, opérateur) ne se pilotent plus sans privilèges (`incus exec`) ; l'appel humain a donc été **passé depuis le Softphone web 1004 vers l'opérateur** par la route sortante (`0033…`, décroché automatique), 36 s. « Synchroniser » : l'enregistrement apparaît (`outbound`, 36 s, 577 Ko, `transcript_status: none`) |
+| (3) PBX → Enregistrements → « Évaluer » (info-bulle « Pas de transcription : évaluation à l'écoute ») | ✅ ouvre `/quality?review=1`, statut **« À évaluer »**, bouton « Écouter » → lecteur audio sur le lien signé de l'enregistrement, lecture en cours |
+| (3) Réponses : Accueil Oui, Écoute En partie, Vérification de l'identité **Sans objet**, Réponse Oui, Ton Oui, Conclusion Non ; « Retour au conseiller » rempli ; **Valider** | ✅ note calculée **77,8 / 100** avant et après validation = (1 + 0,5×2 + 3 + 2 + 0) / (10 − 1 sans objet) : cohérente avec les poids ; statut « Validé » |
+| (3) Page Qualité | ✅ Note moyenne 77,8, Appels évalués 1, À valider 0 ; onglet **Conseillers** : 1 appel évalué, 1 validé, 77,8 ; onglet Appels évalués : 22/11 21:22, 36 s, Validé, note IA —, note retenue 77,8 |
+| (4) Isolation (API) : org2 et org3 | ✅ `GET /quality/reviews` → 0, `GET /quality/reviews/1` → **404**, `GET /quality/summary` → tout à zéro, `GET /pbx/recordings` → 0 |
+| (4) Isolation (console) : connexion entreprise-a, `/quality` | ✅ compteurs à zéro, aucune table d'appels, `/quality?review=1` n'ouvre aucune fiche |
+| (5) Évaluation par l'IA, « Réévaluer avec l'IA », évaluation automatique « À valider » après import | 🧪 clés fournisseur IA non disponibles (et transcription désactivée) |
+| (6) Remise en état | ✅ Enregistrements → corbeille sur l'enregistrement d'essai (« Enregistrement supprimé », son évaluation disparaît avec lui), politique d'enregistrement remise à son état initial (tout désactivé, 4 postes modifiés), aucun enregistrement ni évaluation restants |
+
+### 🐛 n° 27 — conseiller d'un appel sortant = numéro public (corrigé, à revalider)
+
+Dans l'onglet Conseillers et sur la fiche, le conseiller de l'appel sortant est
+« 2250700000001 · 2250700000001 », c'est-à-dire le **numéro présenté par la route sortante**, et
+non le poste 1004 qui a passé l'appel. Cause : l'import des enregistrements remplit `source`
+avec `source_extension` du journal d'appels du moteur ; pour un appel sortant c'est le numéro
+externe présenté, le poste est dans `source_internal_extension` (même piège que le bug n° 20 de
+l'étape 9 pour le conseiller habituel). `agent_of` prend ensuite `source` pour un `outbound`.
+Correction proposée : à l'import, préférer `source_internal_extension` / nom interne pour la
+source d'un appel sortant (et `destination_internal_extension` pour un entrant), ou stocker
+l'extension interne à part ; test avec la forme réelle du CDR. Non corrigé ici : sans
+privilèges, ni redéploiement ni tests en conteneur possibles.
+
+**Correction** (après l'étape 17) : `recordings.call_parties` prend, de chaque côté de l'appel,
+`<côté>_internal_extension` avant `<côté>_extension`, et écarte un nom qui n'est que ce
+numéro ; test `test_the_advisor_is_the_internal_extension_not_the_public_number` avec la forme
+du CDR relevée au labo. Les enregistrements déjà importés gardent leur ancienne valeur.
+
+### 17 bis — n° 27 et non-réimportation revalidés (`098737d`) (22 novembre 2026)
+
+Déployé par l'opérateur (images API et UI reconstruites depuis `098737d`, conteneurs recréés,
+`alembic current` = `b1c2d3e4f5a6`). Vérification sans privilèges que la nouvelle API répond
+bien : son `openapi.json` contient la nouvelle description de `DELETE /pbx/recordings/{id}`
+(« never comes back »). Un premier passage, fait alors que l'ancienne image tournait encore,
+avait montré l'ancien comportement (réimportation, source = numéro public) : il est sans objet.
+
+| Étape | Résultat |
+|---|---|
+| (1) Enregistrements 7, 8, 9, 10 (importés par l'ancienne image) supprimés depuis la console | ✅ confirmation « Supprimer définitivement cet enregistrement, **ici et sur le PBX** ? », toast « Enregistrement supprimé » ; deux « Synchroniser » : `seen 5, imported 0`, **aucun ne revient** |
+| (2) Nouvel appel sortant Softphone web 1004 → opérateur (37 s), « Synchroniser » | ✅ enregistrement 12 : **source `1004`** (plus le numéro public), destination `0033…`, client `+33…` |
+| (3) Appel entrant client → 1003 passé par l'opérateur (29 s) | ✅ enregistrement 11 : destination (conseiller) **`1003`** ; ❌ **sans son nom** → 🐛 n° 28 |
+| (4) PBX → Enregistrements → « Évaluer » sur l'appel sortant | ✅ fiche **« 1004 »** ; validation à l'écoute (mêmes réponses qu'à l'étape 17) → 77,8 / 100 ; page Qualité : Conseillers « 1004 », 1 appel validé |
+| (5) Remise en état | ✅ enregistrements 11 et 12 supprimés depuis la console, deux synchronisations sans retour (`seen 6, imported 0`), aucune évaluation restante, politique d'enregistrement remise à son état initial (4 postes modifiés) |
+
+### 🐛 n° 28 — le nom du conseiller disparaît quand il contient son numéro (corrigé sur la branche)
+
+Le filtre du n° 27 (« un nom qui n'est que le numéro ne dit rien ») comparait les **chiffres**
+du nom avec l'extension : « Test 1003 (SIP, répondeur automatique) » et « Poste 1004
+(navigateur, test présence) » perdaient donc leur nom. Correction : seul un nom qui n'est
+qu'un numéro, quelle que soit son écriture (« 2250700000001 », « +225 07 00 00 00 01 »,
+« 1004 »), est ignoré ; test unitaire complété. Vérifié sur les fonctions pures en dehors de la
+suite (pytest en conteneur impossible sans privilèges) : le nom des postes 1003 et 1004 est
+conservé, les numéros nus sont écartés. À redéployer pour le voir sur le laboratoire.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**

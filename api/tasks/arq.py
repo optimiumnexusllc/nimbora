@@ -64,6 +64,7 @@ from api.services.pbx.billing import sync_human_minutes
 from api.services.pbx.provisioning import provision_pbx_tenant
 from api.services.pbx.recordings import import_pbx_recordings, sync_all_recordings
 from api.services.privacy.service import run_retention_sweep
+from api.services.quality.service import evaluate_call_quality
 from api.services.whatsapp_messaging.service import close_idle_conversations
 from api.tasks.campaign_tasks import (
     process_campaign_batch,
@@ -96,6 +97,7 @@ class WorkerSettings:
         complete_inactive_text_chat_session,
         finalize_completed_text_chat,
         func(import_pbx_recordings, timeout=600),
+        func(evaluate_call_quality, timeout=180),
         func(provision_pbx_tenant, timeout=300),
     ]
     cron_jobs = [
