@@ -272,6 +272,7 @@ class CustomToolManager:
             ToolCategory.SEND_MESSAGE.value,
             ToolCategory.CREATE_TICKET.value,
             ToolCategory.SEARCH_CATALOG.value,
+            ToolCategory.QUALIFY_LEAD.value,
         }:
             timeout_secs = 25.0
             handler = self._create_action_handler(tool, function_name)

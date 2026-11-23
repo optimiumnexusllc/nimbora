@@ -2778,7 +2778,7 @@ export type CreateToolRequest = {
      *
      * Tool category. Must match definition.type.
      */
-    category?: 'http_api' | 'end_call' | 'transfer_call' | 'transfer_agent' | 'calculator' | 'schedule_callback' | 'book_appointment' | 'send_message' | 'create_ticket' | 'search_catalog' | 'native' | 'integration' | 'mcp';
+    category?: 'http_api' | 'end_call' | 'transfer_call' | 'transfer_agent' | 'calculator' | 'schedule_callback' | 'book_appointment' | 'send_message' | 'create_ticket' | 'search_catalog' | 'qualify_lead' | 'native' | 'integration' | 'mcp';
     /**
      * Icon
      *
@@ -2817,6 +2817,8 @@ export type CreateToolRequest = {
     } & CreateTicketToolDefinition) | ({
         type: 'search_catalog';
     } & SearchCatalogToolDefinition) | ({
+        type: 'qualify_lead';
+    } & QualifyLeadToolDefinition) | ({
         type: 'mcp';
     } & McpToolDefinition);
 };
@@ -4871,6 +4873,82 @@ export type LastCampaignSettingsResponse = {
 };
 
 /**
+ * LeadIn
+ *
+ * A lead as the team edits it in the console.
+ */
+export type LeadIn = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Phone
+     */
+    phone?: string | null;
+    /**
+     * Email
+     */
+    email?: string | null;
+    /**
+     * Company
+     */
+    company?: string | null;
+    /**
+     * Need
+     */
+    need?: string | null;
+    /**
+     * Budget Min
+     */
+    budget_min?: number | string | null;
+    /**
+     * Budget Max
+     */
+    budget_max?: number | string | null;
+    /**
+     * Currency
+     */
+    currency?: string;
+    /**
+     * Timeline
+     */
+    timeline?: string | null;
+    /**
+     * Decision Maker
+     */
+    decision_maker?: boolean | null;
+    /**
+     * Interests
+     */
+    interests?: Array<string>;
+    /**
+     * Stage
+     */
+    stage?: 'new' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost';
+    /**
+     * Owner
+     */
+    owner?: string | null;
+    /**
+     * Notes
+     */
+    notes?: string | null;
+    /**
+     * Lost Reason
+     */
+    lost_reason?: string | null;
+    /**
+     * Next Action
+     */
+    next_action?: string | null;
+    /**
+     * Next Action At
+     */
+    next_action_at?: string | null;
+};
+
+/**
  * LocalAIInfo
  */
 export type LocalAiInfo = {
@@ -5333,6 +5411,20 @@ export type ModelConfigurationSpec = {
     tts?: ServiceSelection | null;
     realtime?: ServiceSelection | null;
     embeddings?: ServiceSelection | null;
+};
+
+/**
+ * MoveRequest
+ */
+export type MoveRequest = {
+    /**
+     * Stage
+     */
+    stage: 'new' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost';
+    /**
+     * Lost Reason
+     */
+    lost_reason?: string | null;
 };
 
 /**
@@ -7174,6 +7266,51 @@ export type PublishWorkflowRequest = {
      * Change Description
      */
     change_description?: string | null;
+};
+
+/**
+ * QualifyLeadConfig
+ *
+ * Qualify prospects during the call; leads land in the Prospects page.
+ */
+export type QualifyLeadConfig = {
+    /**
+     * Currency
+     *
+     * Currency budgets are given in.
+     */
+    currency?: string;
+    /**
+     * Qualified Score
+     *
+     * Score from which a new lead moves to « Qualifié ».
+     */
+    qualified_score?: number;
+};
+
+/**
+ * QualifyLeadToolDefinition
+ */
+export type QualifyLeadToolDefinition = {
+    /**
+     * Schema Version
+     *
+     * Schema version.
+     */
+    schema_version?: number;
+    /**
+     * Messages
+     *
+     * Configured speech. An empty list disables announcements. HTTP/MCP choose one start entry and one entry per delayed timing at random. End-call and transfer tools support one start entry only.
+     */
+    messages?: Array<ToolStartTextMessage | ToolStartAudioMessage | ToolDelayedTextMessage | ToolDelayedAudioMessage>;
+    /**
+     * Type
+     *
+     * Tool type.
+     */
+    type: 'qualify_lead';
+    config?: QualifyLeadConfig;
 };
 
 /**
@@ -10629,6 +10766,8 @@ export type UpdateToolRequest = {
     } & CreateTicketToolDefinition) | ({
         type: 'search_catalog';
     } & SearchCatalogToolDefinition) | ({
+        type: 'qualify_lead';
+    } & QualifyLeadToolDefinition) | ({
         type: 'mcp';
     } & McpToolDefinition) | null;
     /**
@@ -22711,6 +22850,278 @@ export type AgentPreviewApiV1CatalogAgentPreviewPostResponses = {
 };
 
 export type AgentPreviewApiV1CatalogAgentPreviewPostResponse = AgentPreviewApiV1CatalogAgentPreviewPostResponses[keyof AgentPreviewApiV1CatalogAgentPreviewPostResponses];
+
+export type ListLeadsApiV1LeadsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: {
+        /**
+         * Stage
+         */
+        stage?: 'new' | 'qualified' | 'proposal' | 'negotiation' | 'won' | 'lost' | null;
+        /**
+         * Q
+         */
+        q?: string | null;
+    };
+    url: '/api/v1/leads';
+};
+
+export type ListLeadsApiV1LeadsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListLeadsApiV1LeadsGetError = ListLeadsApiV1LeadsGetErrors[keyof ListLeadsApiV1LeadsGetErrors];
+
+export type ListLeadsApiV1LeadsGetResponses = {
+    /**
+     * Response List Leads Api V1 Leads Get
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type ListLeadsApiV1LeadsGetResponse = ListLeadsApiV1LeadsGetResponses[keyof ListLeadsApiV1LeadsGetResponses];
+
+export type CreateLeadApiV1LeadsPostData = {
+    body: LeadIn;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/leads';
+};
+
+export type CreateLeadApiV1LeadsPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateLeadApiV1LeadsPostError = CreateLeadApiV1LeadsPostErrors[keyof CreateLeadApiV1LeadsPostErrors];
+
+export type CreateLeadApiV1LeadsPostResponses = {
+    /**
+     * Response Create Lead Api V1 Leads Post
+     *
+     * Successful Response
+     */
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type CreateLeadApiV1LeadsPostResponse = CreateLeadApiV1LeadsPostResponses[keyof CreateLeadApiV1LeadsPostResponses];
+
+export type DeleteLeadApiV1LeadsLeadIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Lead Id
+         */
+        lead_id: number;
+    };
+    query?: never;
+    url: '/api/v1/leads/{lead_id}';
+};
+
+export type DeleteLeadApiV1LeadsLeadIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteLeadApiV1LeadsLeadIdDeleteError = DeleteLeadApiV1LeadsLeadIdDeleteErrors[keyof DeleteLeadApiV1LeadsLeadIdDeleteErrors];
+
+export type DeleteLeadApiV1LeadsLeadIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteLeadApiV1LeadsLeadIdDeleteResponse = DeleteLeadApiV1LeadsLeadIdDeleteResponses[keyof DeleteLeadApiV1LeadsLeadIdDeleteResponses];
+
+export type UpdateLeadApiV1LeadsLeadIdPutData = {
+    body: LeadIn;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Lead Id
+         */
+        lead_id: number;
+    };
+    query?: never;
+    url: '/api/v1/leads/{lead_id}';
+};
+
+export type UpdateLeadApiV1LeadsLeadIdPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateLeadApiV1LeadsLeadIdPutError = UpdateLeadApiV1LeadsLeadIdPutErrors[keyof UpdateLeadApiV1LeadsLeadIdPutErrors];
+
+export type UpdateLeadApiV1LeadsLeadIdPutResponses = {
+    /**
+     * Response Update Lead Api V1 Leads  Lead Id  Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type UpdateLeadApiV1LeadsLeadIdPutResponse = UpdateLeadApiV1LeadsLeadIdPutResponses[keyof UpdateLeadApiV1LeadsLeadIdPutResponses];
+
+export type MoveLeadApiV1LeadsLeadIdStagePostData = {
+    body: MoveRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Lead Id
+         */
+        lead_id: number;
+    };
+    query?: never;
+    url: '/api/v1/leads/{lead_id}/stage';
+};
+
+export type MoveLeadApiV1LeadsLeadIdStagePostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type MoveLeadApiV1LeadsLeadIdStagePostError = MoveLeadApiV1LeadsLeadIdStagePostErrors[keyof MoveLeadApiV1LeadsLeadIdStagePostErrors];
+
+export type MoveLeadApiV1LeadsLeadIdStagePostResponses = {
+    /**
+     * Response Move Lead Api V1 Leads  Lead Id  Stage Post
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type MoveLeadApiV1LeadsLeadIdStagePostResponse = MoveLeadApiV1LeadsLeadIdStagePostResponses[keyof MoveLeadApiV1LeadsLeadIdStagePostResponses];
+
+export type ExportLeadsApiV1LeadsExportCsvGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/leads/export.csv';
+};
+
+export type ExportLeadsApiV1LeadsExportCsvGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ExportLeadsApiV1LeadsExportCsvGetError = ExportLeadsApiV1LeadsExportCsvGetErrors[keyof ExportLeadsApiV1LeadsExportCsvGetErrors];
+
+export type ExportLeadsApiV1LeadsExportCsvGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: unknown;
+};
 
 export type ReadSettingsApiV1PrivacySettingsGetData = {
     body?: never;

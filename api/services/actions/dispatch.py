@@ -13,6 +13,7 @@ ACTION_CATEGORIES = (
     "send_message",
     "create_ticket",
     "search_catalog",
+    "qualify_lead",
 )
 
 
@@ -37,6 +38,10 @@ async def run_action(
             from api.services.catalog.service import handle_catalog
 
             return await handle_catalog(ctx, config, args)
+        if category == "qualify_lead":
+            from api.services.leads.service import handle_lead
+
+            return await handle_lead(ctx, config, args)
         raise ActionError(f"Unknown action tool '{category}'")
     except ActionError as exc:
         return {"status": "error", "error": str(exc)}

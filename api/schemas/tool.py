@@ -39,6 +39,7 @@ ToolCategoryValue = Literal[
     "send_message",
     "create_ticket",
     "search_catalog",
+    "qualify_lead",
     "native",
     "integration",
     "mcp",
@@ -990,6 +991,29 @@ class SearchCatalogToolDefinition(ToolDefinitionBase):
     config: SearchCatalogConfig = Field(default_factory=SearchCatalogConfig)
 
 
+class QualifyLeadConfig(BaseModel):
+    """Qualify prospects during the call; leads land in the Prospects page."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    currency: str = Field(
+        default="XOF",
+        pattern=r"^[A-Z]{3}$",
+        description="Currency budgets are given in.",
+    )
+    qualified_score: int = Field(
+        default=60,
+        ge=10,
+        le=100,
+        description="Score from which a new lead moves to « Qualifié ».",
+    )
+
+
+class QualifyLeadToolDefinition(ToolDefinitionBase):
+    type: Literal["qualify_lead"] = Field(description="Tool type.")
+    config: QualifyLeadConfig = Field(default_factory=QualifyLeadConfig)
+
+
 class McpToolDefinition(ToolDefinitionBase):
     """Persisted MCP tool definition."""
 
@@ -1008,6 +1032,7 @@ ToolDefinition = Annotated[
     | SendMessageToolDefinition
     | CreateTicketToolDefinition
     | SearchCatalogToolDefinition
+    | QualifyLeadToolDefinition
     | McpToolDefinition,
     Field(discriminator="type"),
 ]

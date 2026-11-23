@@ -220,7 +220,7 @@ reliés à leur historique : un visiteur ne peut pas usurper le numéro d'un aut
 
 <p align="center"><img src="docs/images/screenshots/customer-channels.webp" alt="Historique client multicanal" width="88%"></p>
 
-### ⚡ Des agents qui agissent : rendez-vous, messages, tickets, catalogue
+### ⚡ Des agents qui agissent : rendez-vous, messages, tickets, catalogue, prospects
 
 Pendant l'appel, l'agent ne se contente pas de répondre : il **fait**.
 
@@ -235,6 +235,9 @@ Pendant l'appel, l'agent ne se contente pas de répondre : il **fait**.
 - **Cherche dans votre catalogue** (produits, biens immobiliers, chambres, prestations, véhicules) avec
   les mots et le budget du client : nom, prix, disponibilité, stock et caractéristiques, sans jamais
   inventer. Catalogue saisi dans la console ou importé en CSV, essai « comme l'agent ».
+- **Qualifie les prospects** : besoin, budget, échéance, décideur, intérêts, avec un score sur 100 et
+  la prochaine question à poser ; le prospect arrive dans un **pipeline** (Nouveau → Qualifié →
+  Proposition → Négociation → Gagné / Perdu), complété à l'appel suivant du même numéro.
 
 Tout ce que les agents ont fait se retrouve dans la page **Activité**.
 
@@ -446,7 +449,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | ✅ | Actions : rendez-vous (CalDAV, Google), SMS / WhatsApp / e-mail, tickets (Zendesk, Freshdesk) |
 | ✅ | Rappels automatiques, passation IA → humain avec fiche de contexte |
 | ✅ | **Catalogue** : produits, biens, chambres, prestations, véhicules avec prix (devise et unité), stock, disponibilité et caractéristiques libres ; import / export CSV ; outil « Rechercher dans le catalogue » (mots sans accents, budget, détails d'un article, types limités par outil) ; essai « comme l'agent » |
-| 🔜 | Prospects : qualification (besoin, budget), pipeline |
+| ✅ | **Prospects** : qualification par l'agent (besoin, budget, échéance, décideur, intérêts, score sur 100 et prochaine question), un prospect ouvert par numéro, passage automatique à « Qualifié », **pipeline** en colonnes avec budgets par étape, motif de perte, export CSV |
 | ✅ | **Routage intelligent** des passations IA → humain : client VIP, **conseiller habituel** (appris des appels du PBX), compétence demandée par l'IA, langue, destination par défaut — selon qui est libre **à l'instant** ; si personne n'est libre : file, rappel planifié ou l'IA continue ; **simulateur** qui explique chaque décision |
 
 ### Phase 4 — SaaS commercial

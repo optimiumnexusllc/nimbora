@@ -13,6 +13,7 @@ import {
     PhoneForwarded,
     PhoneOff,
     Puzzle,
+    Target,
     Ticket as TicketIcon,
 } from "lucide-react";
 import { type ReactNode } from "react";
@@ -46,6 +47,7 @@ export type ToolCategory =
     | "send_message"
     | "create_ticket"
     | "search_catalog"
+    | "qualify_lead"
     | "native"
     | "integration"
     | "mcp";
@@ -246,6 +248,19 @@ export const TOOL_CATEGORIES: ToolCategoryConfig[] = [
         },
     },
     {
+        value: "qualify_lead",
+        label: "Qualify Lead",
+        description: "Record the prospect's need, budget and timeline; leads land in the sales pipeline",
+        icon: Target,
+        iconName: "target",
+        iconColor: "#EAB308",
+        autoFill: {
+            name: "Qualify Lead",
+            description:
+                "Record the caller's project as soon as they describe it, then after each new answer (need, budget, timeline, who decides, what interests them). Ask what the tool says is still unknown.",
+        },
+    },
+    {
         value: "mcp",
         label: "MCP Server",
         description: "Connect a customer MCP server; its tools become available to the agent",
@@ -314,6 +329,8 @@ export function getToolTypeLabel(category: string): string {
             return "Create Ticket Tool";
         case "search_catalog":
             return "Search Catalog Tool";
+        case "qualify_lead":
+            return "Qualify Lead Tool";
         case "native":
             return "Native Tool";
         case "integration":
@@ -462,6 +479,7 @@ export function createToolDefinition(category: ToolCategory): ToolDefinition {
         case "send_message":
         case "create_ticket":
         case "search_catalog":
+        case "qualify_lead":
             return { schema_version: 1, type: category, messages: [], config: {} } as unknown as ToolDefinition;
         case "http_api":
         default:

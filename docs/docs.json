@@ -86,6 +86,7 @@
                       "voice-agent/tools/send-message",
                       "voice-agent/tools/create-ticket",
                       "voice-agent/tools/search-catalog",
+                      "voice-agent/tools/qualify-lead",
                       "voice-agent/tools/end-call"
                     ]
                   },

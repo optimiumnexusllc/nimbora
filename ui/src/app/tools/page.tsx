@@ -310,6 +310,8 @@ export default function ToolsPage() {
                 return <Badge variant="secondary">Ticket</Badge>;
             case "search_catalog":
                 return <Badge variant="secondary">Catalog</Badge>;
+            case "qualify_lead":
+                return <Badge variant="secondary">Lead</Badge>;
             case "native":
                 return <Badge variant="secondary">Native</Badge>;
             case "integration":

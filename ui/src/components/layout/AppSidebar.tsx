@@ -28,6 +28,7 @@ import {
   Settings,
   ShieldCheck,
   Store,
+  Target,
   TrendingUp,
   Users,
   Workflow,
@@ -168,6 +169,11 @@ const NAV_SECTIONS: SidebarNavSection[] = [
         title: "Clients",
         url: "/customers",
         icon: Users,
+      },
+      {
+        title: "Prospects",
+        url: "/leads",
+        icon: Target,
       },
       {
         title: "Catalogue",

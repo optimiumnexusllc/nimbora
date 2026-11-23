@@ -1,0 +1,52 @@
+---
+title: "Qualify Lead"
+description: "The agent records each prospect's need, budget, timeline and decision power during the call; the team follows the leads through the sales pipeline."
+---
+
+With a **Qualify Lead** tool, the agent turns an interested caller into a lead on the **Prospects** page. During the call it records:
+- the need;
+- the budget, from and to;
+- the timeline;
+- whether the caller decides alone;
+- what interests them;
+- their name, e-mail or company.
+
+It can record these one at a time, as the conversation goes.
+
+## Score and next question
+
+Each answer adds to a score out of 100:
+
+| Known | Points |
+|---|---|
+| Need | 25 |
+| Budget | 25 |
+| Timeline | 20 |
+| Decides alone (with others: half) | 15 |
+| Name or e-mail | 10 |
+| Interests | 5 |
+
+After each save, the tool tells the agent what is **still unknown**, so the agent asks the next useful question instead of reading out a form. Once everything is known, the tool suggests the next step: a visit, a quote or an appointment.
+
+When a new lead reaches the tool's threshold (60 by default), it moves to **Qualifié** by itself. On the Prospects page, leads at 70 or more show as « Chaud », from 40 as « Tiède », and below that as « Froid ».
+
+## One lead per prospect
+
+The next call from the same number completes the **open** lead (Nouveau to Négociation) instead of creating another one. A lead marked won or lost stays closed: a new project from that caller starts a new lead. A web chat without a phone number keeps one lead per conversation. When customer memory knows the caller, the lead is linked to their customer profile.
+
+## Pipeline
+
+**Prospects** shows six columns: **Nouveau → Qualifié → Proposition → Négociation → Gagné / Perdu**. Each column shows its number of leads and the total of their maximum budgets. Change a lead's stage from its card; marking it lost asks why. Open a card to edit it, set an owner and a next action, or add notes. **Exporter** downloads every lead as CSV.
+
+The tool's settings are the currency budgets are given in (XOF by default) and the score from which a new lead becomes « Qualifié ».
+
+Combine it with [Search Catalog](/voice-agent/tools/search-catalog): the agent searches the items that fit the budget, then records the ones the caller liked as interests.
+
+## API
+
+| Method | Path | Purpose |
+|---|---|---|
+| `GET` | `/api/v1/leads?stage=&q=` | Leads, best score first, and the pipeline |
+| `POST` / `PUT` / `DELETE` | `/api/v1/leads[/{id}]` | Add, change, delete |
+| `POST` | `/api/v1/leads/{id}/stage` | `{stage, lost_reason}`; won and lost close the lead |
+| `GET` | `/api/v1/leads/export.csv` | CSV export |
