@@ -993,7 +993,7 @@ du laboratoire, console et Softphones web pilotés en Chromium. Sans fusion.
 
 | Étape | Résultat |
 |---|---|
-| (1) `GET /api/v1/health` | ✅ `build_commit: "50a10f9"`, **`object_store: "seaweedfs"`**, **`legacy_minio_files: 0`**. Sorties de `copy` / `verify` / `switch` : non transmises à la session (à coller par l'opérateur : nombre d'objets copiés, aucun manquant) |
+| (1) `GET /api/v1/health` | ✅ `build_commit: "50a10f9"`, **`object_store: "seaweedfs"`**, **`legacy_minio_files: 0`**. Sorties de la migration (opérateur) : **copy** « 1 objets (16044 octets) : 1 copiés, 0 déjà présents, 0 manquants, 0 de taille différente » ; **verify** « 1 objets (16044 octets) : 0 copiés, 0 déjà présents, 0 manquants, 0 de taille différente » ; **switch** « Lignes mises à jour : {'workflow_runs': 0, 'workflow_recordings': 0, 'pbx_call_recordings': 0} ». L'unique objet copié n'était référencé par aucune ligne (reste d'un essai antérieur) : aucun fichier en service à migrer, cohérent avec `legacy_minio_files: 0` |
 | (2) Anciens fichiers importés avant la migration | 🧪 **aucun fichier antérieur sur le laboratoire** : 0 enregistrement (tous supprimés aux étapes précédentes), 0 document de base de connaissances, 0 enregistrement d'appel IA ; `legacy_minio_files: 0` est cohérent. Rien à écouter ni à ouvrir d'ancien |
 | (3) Nouveau document : `POST /knowledge-base/upload-url` → lien de dépôt signé sur `app.optimiumnexus.com/voice-audio/knowledge_base/1/…` ; `PUT` du fichier texte (121 octets) | ✅ 200, en-tête **`Server: SeaweedFS 30GB 4.55`**, ETag renvoyé ; `process-document` → document listé, contenu relu par l'API ; `GET /s3/signed-url` → lien signé ouvert : 200 `text/plain`, même serveur, contenu intact. ⚠️ `processing_status: failed` avec « Add a NIMBORA provider with a service key to use this feature » : l'indexation exige un fournisseur hébergé ou une clé IA, absents du laboratoire (hors stockage) |
 | (3) Nouvel appel humain enregistré | ✅ politique d'enregistrement activée, appel **Softphone web 1004 → Softphone web 1001** (33 s, décroché sur 1001 ; les clients `baresip` du laboratoire étaient arrivés au bout de leur durée de vie de 24 h et ne se relancent pas sans privilèges) ; « Synchroniser » → enregistrement 14 (`internal`, 1004 → 1001, 533 804 octets) |
@@ -1001,6 +1001,14 @@ du laboratoire, console et Softphones web pilotés en Chromium. Sans fusion.
 | (4) Sécurité | ✅ même clé **sans paramètres de signature → 403 `AccessDenied`** ; **signature modifiée → 403 `SignatureDoesNotMatch`** (pour l'enregistrement comme pour le document) |
 | (5) Isolation | ✅ org2 : `GET /pbx/recordings/14/audio` → 404, liste des enregistrements vide, `GET /knowledge-base/documents/{uuid d'org1}` → 404, 0 document |
 | Remise en état | ✅ enregistrement 14 supprimé depuis la console (« ici et sur le PBX »), synchronisation sans retour, document supprimé, politique d'enregistrement remise à son état initial, 0 enregistrement et 0 document |
+
+### Fin d'étape — MinIO retiré
+
+L'opérateur a ajouté `MINIO_RETIRED=true` et relancé le kit : **MinIO retiré, volume et sauvegarde
+conservés**. Vérifié ensuite sans privilèges : `GET /api/v1/health` → `object_store: "seaweedfs"`,
+`legacy_minio_files: 0` ; un document téléversé (lien de dépôt signé, `PUT` 200 servi par
+« SeaweedFS 30GB 4.55 », `process-document` 200) se relit par lien signé (200, `text/plain`, même
+serveur) et reste refusé sans signature (403) ; document supprimé ensuite, 0 restant.
 
 Empreinte de l'image SeaweedFS : le compose de la branche référence `${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.55}`
 et le serveur s'annonce « SeaweedFS 30GB 4.55 » ; l'empreinte (`@sha256:…`) à épingler n'a pas été
