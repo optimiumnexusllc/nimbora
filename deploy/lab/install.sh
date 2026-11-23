@@ -102,7 +102,10 @@ set_kv() {
     fi
     cat "$tmp" > "$file"; rm -f "$tmp"
 }
-get_kv() { grep -E "^$2=" "$1" 2>/dev/null | head -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//'; }
+# Empty (and success) when the key or the file is missing: with set -e and
+# pipefail a failing grep would stop the kit silently (REGISTRY removed, lab
+# step 18).
+get_kv() { { grep -E "^$2=" "$1" 2>/dev/null || true; } | head -1 | cut -d= -f2- | sed -e 's/^"//' -e 's/"$//'; }
 ensure_secret() {  # ensure_secret FILE KEY [generator]
     [[ -n "$(get_kv "$1" "$2")" ]] || set_kv "$1" "$2" "$(${3:-openssl rand -hex 32})"
 }

@@ -51,7 +51,11 @@ def env(tmp_path: Path):
 
 def run(script: Path, *args: str, env: dict, check=True, **extra):
     return subprocess.run(
-        ["bash", str(script), *args], env={**env, **extra}, capture_output=True, text=True, check=check
+        ["bash", str(script), *args],
+        env={**env, **extra},
+        capture_output=True,
+        text=True,
+        check=check,
     )
 
 
@@ -71,13 +75,21 @@ def test_backup_restore_round_trip_with_encryption(tmp_path, env):
     metric = (tmp_path / "textfile" / "nimbora_platform_backup.prom").read_text()
     assert "nimbora_platform_backup_last_success_timestamp_seconds" in metric
 
-    checked = run(RESTORE, str(backup), "--check", env=env, BACKUP_PASSPHRASE_FILE=str(key))
+    checked = run(
+        RESTORE, str(backup), "--check", env=env, BACKUP_PASSPHRASE_FILE=str(key)
+    )
     assert "Archives readable." in checked.stdout
     run(RESTORE, str(backup), "--yes", env=env, BACKUP_PASSPHRASE_FILE=str(key))
     assert (tmp_path / "restored.dump").read_text() == "PGDMP-fake-dump"
-    assert (tmp_path / "minio-restored" / "nimbora" / "call.wav").read_text() == "recording\n"
+    assert (
+        tmp_path / "minio-restored" / "nimbora" / "call.wav"
+    ).read_text() == "recording\n"
     log = (tmp_path / "docker.log").read_text()
-    assert log.index("compose stop api ui") < log.index("pg_restore") < log.index("compose up -d")
+    assert (
+        log.index("compose stop api ui")
+        < log.index("pg_restore")
+        < log.index("compose up -d")
+    )
 
 
 def test_restore_refuses_an_altered_backup(tmp_path, env):

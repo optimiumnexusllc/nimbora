@@ -53,7 +53,9 @@ class Api:
         if self.token:
             request.add_header("X-Auth-Token", self.token)
         try:
-            with urllib.request.urlopen(request, context=self.context, timeout=30) as response:
+            with urllib.request.urlopen(
+                request, context=self.context, timeout=30
+            ) as response:
                 payload = response.read()
         except urllib.error.HTTPError as error:
             detail = error.read().decode(errors="replace")[:300]
@@ -61,7 +63,9 @@ class Api:
         return json.loads(payload) if payload else None
 
 
-def with_options(options: list[list[str]], wanted: dict[str, list[str]]) -> list[list[str]]:
+def with_options(
+    options: list[list[str]], wanted: dict[str, list[str]]
+) -> list[list[str]]:
     """Return ``options`` with the ``wanted`` keys replaced (multi-valued keys allowed)."""
     kept = [opt for opt in options if opt[0] not in wanted]
     for key, values in wanted.items():
@@ -83,7 +87,12 @@ def main() -> None:
 
     start, end = args.rtp_range.split("-", 1)
     api = Api(args.url, args.insecure)
-    token = api.call("POST", AUTH + "/token", {"expiration": 600}, basic=(args.root_user, args.root_password))
+    token = api.call(
+        "POST",
+        AUTH + "/token",
+        {"expiration": 600},
+        basic=(args.root_user, args.root_password),
+    )
     api.token = token["data"]["token"]
 
     wanted = {
@@ -98,9 +107,15 @@ def main() -> None:
     for transport in transports:
         options = with_options(transport["options"], wanted)
         if options != transport["options"]:
-            api.call("PUT", CONFD + f"/sip/transports/{transport['uuid']}", {"name": transport["name"], "options": options})
+            api.call(
+                "PUT",
+                CONFD + f"/sip/transports/{transport['uuid']}",
+                {"name": transport["name"], "options": options},
+            )
             changed += 1
-        print(f"transport {transport['name']}: {'mis à jour' if options != transport['options'] else 'déjà à jour'}")
+        print(
+            f"transport {transport['name']}: {'mis à jour' if options != transport['options'] else 'déjà à jour'}"
+        )
 
     rtp = api.call("GET", CONFD + "/asterisk/rtp/general")
     options = dict(rtp.get("options") or {})

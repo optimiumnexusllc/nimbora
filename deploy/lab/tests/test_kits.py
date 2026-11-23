@@ -29,7 +29,9 @@ def bash_function(script: Path, name: str, *args: str) -> str:
         match = re.search(rf"^{name}\(\)\s*\{{\n.*?^\}}", source, re.S | re.M)
     assert match, f"{name}() not found in {script}"
     cmd = match.group(0) + "\n" + " ".join([name, *(f"'{a}'" for a in args)])
-    return subprocess.run(["bash", "-c", cmd], capture_output=True, text=True, check=True).stdout
+    return subprocess.run(
+        ["bash", "-c", cmd], capture_output=True, text=True, check=True
+    ).stdout
 
 
 @pytest.mark.parametrize("script", SCRIPTS, ids=lambda p: f"{p.parent.name}/{p.name}")
@@ -52,7 +54,10 @@ def test_tenant_name_with_space_is_one_argument():
 
     rendered = ast.literal_eval(value)
     assert shlex.split(f"wazo-auth-cli tenant create {rendered}") == [
-        "wazo-auth-cli", "tenant", "create", "Ivoire Immo",
+        "wazo-auth-cli",
+        "tenant",
+        "create",
+        "Ivoire Immo",
     ]
 
 
@@ -65,7 +70,8 @@ def test_lab_firewall_rules_are_tagged_and_flushable():
     """Every rule the lab adds carries the comment it later removes by."""
     source = (DEPLOY / "lab" / "firewall.sh").read_text()
     inserts = [
-        line for line in source.splitlines()
+        line
+        for line in source.splitlines()
         if "iptables -I DOCKER-USER" in line or "iptables -t nat -I PREROUTING" in line
     ]
     assert inserts, "no iptables insert found"
@@ -74,7 +80,7 @@ def test_lab_firewall_rules_are_tagged_and_flushable():
     assert "flush_tagged filter DOCKER-USER" in source
     assert "flush_tagged nat PREROUTING" in source
     # First run: grep finds nothing and must not abort the script (pipefail).
-    assert '|| true; }' in source
+    assert "|| true; }" in source
 
 
 def test_pbx_inventory_defines_ari_port_with_its_address():
@@ -84,7 +90,11 @@ def test_pbx_inventory_defines_ari_port_with_its_address():
     127.0.0.1 and the platform cannot reach ARI (seen on the lab PBX).
     """
     source = (DEPLOY / "pbx" / "install.sh").read_text()
-    inventory = source[source.index("[uc_engine:vars]"):source.index("EOF", source.index("[uc_engine:vars]"))]
+    inventory = source[
+        source.index("[uc_engine:vars]") : source.index(
+            "EOF", source.index("[uc_engine:vars]")
+        )
+    ]
     assert re.search(r"^b2bua_listen_address = 0\.0\.0\.0$", inventory, re.M)
     assert re.search(r"^b2bua_port_http = 5039$", inventory, re.M)
     # sysconfd has no authentication: its port must NOT be set, or the same
@@ -106,23 +116,33 @@ def run_pbx_install_argument_parsing(*args: str) -> subprocess.CompletedProcess:
     )
     head += '\nprintf "tenant_name = %s\\n" "$(ansible_quote "$COMPANY")"\n'
     return subprocess.run(
-        ["bash", "-c", head + ' "$@"', "install.sh", *args], capture_output=True, text=True
+        ["bash", "-c", head + ' "$@"', "install.sh", *args],
+        capture_output=True,
+        text=True,
     )
 
 
 def test_pbx_install_accepts_company_name_with_spaces():
     result = run_pbx_install_argument_parsing(
-        "--nimbora-url", "https://app.example.com", "--nimbora-ip", "203.0.113.10",
-        "--company", "OPTIMIUM NEXUS LLC",
+        "--nimbora-url",
+        "https://app.example.com",
+        "--nimbora-ip",
+        "203.0.113.10",
+        "--company",
+        "OPTIMIUM NEXUS LLC",
     )
     assert result.returncode == 0, result.stderr + result.stdout
-    assert 'tenant_name = \'"OPTIMIUM NEXUS LLC"\'' in result.stdout
+    assert "tenant_name = '\"OPTIMIUM NEXUS LLC\"'" in result.stdout
 
 
 def test_pbx_install_refuses_company_name_with_quotes():
     result = run_pbx_install_argument_parsing(
-        "--nimbora-url", "https://app.example.com", "--nimbora-ip", "203.0.113.10",
-        "--company", 'Ivoire "Immo"',
+        "--nimbora-url",
+        "https://app.example.com",
+        "--nimbora-ip",
+        "203.0.113.10",
+        "--company",
+        'Ivoire "Immo"',
     )
     assert result.returncode == 1
     assert "guillemet" in result.stdout + result.stderr
@@ -130,7 +150,13 @@ def test_pbx_install_refuses_company_name_with_quotes():
 
 def render_pbx_firewall(**options: str) -> str:
     """Render the PBX kit's nftables file the way install.sh --firewall-only would."""
-    args = ["--nimbora-url", "https://app.example.com", "--nimbora-ip", "203.0.113.10", "--firewall-only"]
+    args = [
+        "--nimbora-url",
+        "https://app.example.com",
+        "--nimbora-ip",
+        "203.0.113.10",
+        "--firewall-only",
+    ]
     for key, value in options.items():
         args += [f"--{key.replace('_', '-')}", value]
     script = (DEPLOY / "pbx" / "install.sh").read_text()
@@ -140,8 +166,15 @@ def render_pbx_firewall(**options: str) -> str:
     )
     # Print the file instead of writing /etc and loading nft.
     head = head.replace("cat > /etc/nftables.d-nimbora-pbx.conf <<EOF", "cat <<EOF")
-    head = head[: head.index("  grep -q 'nftables.d-nimbora-pbx.conf'")] + "}\napply_firewall\n"
-    result = subprocess.run(["bash", "-c", head + ' "$@"', "install.sh", *args], capture_output=True, text=True)
+    head = (
+        head[: head.index("  grep -q 'nftables.d-nimbora-pbx.conf'")]
+        + "}\napply_firewall\n"
+    )
+    result = subprocess.run(
+        ["bash", "-c", head + ' "$@"', "install.sh", *args],
+        capture_output=True,
+        text=True,
+    )
     assert result.returncode == 0, result.stderr + result.stdout
     return result.stdout
 
@@ -151,21 +184,41 @@ def test_pbx_firewall_denies_by_default_and_opens_only_the_documented_ports():
     assert "policy drop;" in rules
     assert "iif lo accept" in rules
     assert "ct state established,related accept" in rules
-    assert "udp sport 67 udp dport 68 accept" in rules            # DHCP lease keeps working
-    assert "    tcp dport 22 accept" in rules                      # SSH from anywhere by default
+    assert "udp sport 67 udp dport 68 accept" in rules  # DHCP lease keeps working
+    assert "    tcp dport 22 accept" in rules  # SSH from anywhere by default
     assert "    tcp dport 443 accept" in rules
     assert "tcp dport 5039 ip saddr { 127.0.0.1, 203.0.113.10 } accept" in rules
     assert "tcp dport 5038 ip saddr 127.0.0.1 accept" in rules
     assert "    udp dport 5060 accept" in rules
     assert "    udp dport 10000-20000 accept" in rules
-    for closed in ("5672", "25672", "15672", "4369", " 25 ", "2000", "8667", "9498", "9499", "dport 80 "):
-        assert f"dport {closed}" not in rules and f"{closed} accept" not in rules, closed
+    for closed in (
+        "5672",
+        "25672",
+        "15672",
+        "4369",
+        " 25 ",
+        "2000",
+        "8667",
+        "9498",
+        "9499",
+        "dport 80 ",
+    ):
+        assert f"dport {closed}" not in rules and f"{closed} accept" not in rules, (
+            closed
+        )
 
 
 def test_pbx_firewall_restricts_sip_and_opens_phones_on_request():
-    rules = render_pbx_firewall(sip_from="198.51.100.0/24,203.0.113.5", phones_from="192.168.10.0/24", rtp_range="20000-30000")
+    rules = render_pbx_firewall(
+        sip_from="198.51.100.0/24,203.0.113.5",
+        phones_from="192.168.10.0/24",
+        rtp_range="20000-30000",
+    )
     assert "ip saddr { 198.51.100.0/24, 203.0.113.5 } udp dport 5060 accept" in rules
-    assert "ip saddr { 198.51.100.0/24, 203.0.113.5 } udp dport 20000-30000 accept" in rules
+    assert (
+        "ip saddr { 198.51.100.0/24, 203.0.113.5 } udp dport 20000-30000 accept"
+        in rules
+    )
     assert "ip saddr { 192.168.10.0/24 } tcp dport { 8667, 9498, 9499 } accept" in rules
     assert "    udp dport 5060 accept" not in rules
 
@@ -175,11 +228,26 @@ def test_pbx_firewall_can_close_sip_and_rejects_bad_sources():
     assert "5060" not in rules and "dport 22" not in rules
     script = (DEPLOY / "pbx" / "install.sh").read_text()
     head = script[: script.index('if [[ "$FIREWALL_ONLY" == 1 ]]; then')]
-    head = head.replace("[[ $EUID -eq 0 ]]", "true").replace("grep -q 'VERSION_CODENAME=bookworm' /etc/os-release", "true")
-    bad = subprocess.run(["bash", "-c", head + ' "$@"', "install.sh", "--nimbora-url", "https://a.example.com",
-                          "--nimbora-ip", "203.0.113.10", "--sip-from", "office"], capture_output=True, text=True)
+    head = head.replace("[[ $EUID -eq 0 ]]", "true").replace(
+        "grep -q 'VERSION_CODENAME=bookworm' /etc/os-release", "true"
+    )
+    bad = subprocess.run(
+        [
+            "bash",
+            "-c",
+            head + ' "$@"',
+            "install.sh",
+            "--nimbora-url",
+            "https://a.example.com",
+            "--nimbora-ip",
+            "203.0.113.10",
+            "--sip-from",
+            "office",
+        ],
+        capture_output=True,
+        text=True,
+    )
     assert bad.returncode == 1 and "--sip-from" in bad.stdout + bad.stderr
-
 
 
 FAIL2BAN = DEPLOY / "pbx" / "templates" / "fail2ban"
@@ -200,7 +268,9 @@ def fail2ban_regexes(filter_file: Path) -> list[re.Pattern]:
 
     parser = configparser.ConfigParser(interpolation=None)
     parser.read(filter_file)
-    lines = [l.strip() for l in parser["Definition"]["failregex"].splitlines() if l.strip()]
+    lines = [
+        l.strip() for l in parser["Definition"]["failregex"].splitlines() if l.strip()
+    ]
     return [re.compile(l.replace("<HOST>", r"(?P<host>[0-9a-fA-F.:]+)")) for l in lines]
 
 
@@ -210,7 +280,9 @@ def test_fail2ban_filter_matches_refused_logins_only():
     hits = [p.search(WAZO_AUTH_FAILURE) for p in patterns]
     assert any(hits), "the refused-login line must match"
     assert next(h for h in hits if h).group("host") == "203.0.113.9"
-    assert not any(p.search(WAZO_AUTH_RESPONSE) for p in patterns), "a plain 401 response line must not"
+    assert not any(p.search(WAZO_AUTH_RESPONSE) for p in patterns), (
+        "a plain 401 response line must not"
+    )
 
 
 def test_fail2ban_jail_targets_wazo_auth_and_spares_the_platform():
@@ -227,25 +299,37 @@ def test_fail2ban_jail_targets_wazo_auth_and_spares_the_platform():
     assert "iptables-multiport" in jail["action"] and "443" in jail["action"]
     source = (DEPLOY / "pbx" / "install.sh").read_text()
     assert "__NIMBORA_IPS__#${platform_ips}" in source
-    assert 'getent ahostsv4 "$DOMAIN"' in source        # the platform's public address too
+    assert 'getent ahostsv4 "$DOMAIN"' in source  # the platform's public address too
 
 
 def test_tenant_contexts_cover_what_the_platform_reads_by_type():
     """A tenant made with wazo-auth-cli has no context; the platform needs one of each kind."""
     import importlib.util
 
-    spec = importlib.util.spec_from_file_location("ensure_tenant_contexts", DEPLOY / "pbx" / "scripts" / "ensure_tenant_contexts.py")
-    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    spec = importlib.util.spec_from_file_location(
+        "ensure_tenant_contexts",
+        DEPLOY / "pbx" / "scripts" / "ensure_tenant_contexts.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
     contexts = module.desired_contexts(module.slugify("Entreprise test"))
     assert [c["type"] for c in contexts] == ["internal", "incall", "outcall"]
-    assert [c["name"] for c in contexts] == ["entreprise-test-internal", "entreprise-test-incall", "entreprise-test-outcall"]
+    assert [c["name"] for c in contexts] == [
+        "entreprise-test-internal",
+        "entreprise-test-incall",
+        "entreprise-test-outcall",
+    ]
     internal = contexts[0]
-    assert internal["user_ranges"] == [{"start": "1000", "end": "1999"}]      # extensions 1001, 1002…
+    assert internal["user_ranges"] == [
+        {"start": "1000", "end": "1999"}
+    ]  # extensions 1001, 1002…
     assert internal["queue_ranges"] == [{"start": "3000", "end": "3999"}]
     assert all(c["enabled"] for c in contexts)
     assert module.slugify("  OPTIMIUM NEXUS LLC ") == "optimium-nexus-llc"
     source = (DEPLOY / "pbx" / "install.sh").read_text()
-    assert "ensure_tenant_contexts.py" in source and source.index("create_service_account.py") < source.index("ensure_tenant_contexts.py")
+    assert "ensure_tenant_contexts.py" in source and source.index(
+        "create_service_account.py"
+    ) < source.index("ensure_tenant_contexts.py")
 
 
 def test_lab_secrets_file_default_survives_a_partial_run():
@@ -264,8 +348,14 @@ def test_lab_kit_can_run_the_shared_pbx_of_the_operator():
     assert "--shared-pbx) SHARED_PBX=1" in source
     assert "echo --operator" in source
     assert "provisioning-account.json" in source
-    for key in ("PBX_PROVISIONING_URL", "PBX_PROVISIONING_PASSWORD", "PBX_PROVISIONING_VERIFY_TLS",
-                "PBX_PROVISIONING_ARI_ENDPOINT", "PBX_PROVISIONING_ARI_PASSWORD", "PBX_PROVISIONING_ARI_WS_CLIENT"):
+    for key in (
+        "PBX_PROVISIONING_URL",
+        "PBX_PROVISIONING_PASSWORD",
+        "PBX_PROVISIONING_VERIFY_TLS",
+        "PBX_PROVISIONING_ARI_ENDPOINT",
+        "PBX_PROVISIONING_ARI_PASSWORD",
+        "PBX_PROVISIONING_ARI_WS_CLIENT",
+    ):
         assert f'set_kv "$ENV" {key}' in source, key
     # The kit never exposes the ARI: the provisioning URL and ARI stay on the private bridge.
     assert 'PBX_PROVISIONING_URL "https://$PBX_IP"' in source
@@ -290,7 +380,7 @@ def test_pbx_install_schedules_the_nightly_backup():
 def test_pbx_firewall_only_also_installs_the_node_exporter():
     """--metrics-from added after the install must install the exporter, not only open 9100."""
     script = (DEPLOY / "pbx" / "install.sh").read_text()
-    block = script[script.index('if [[ "$FIREWALL_ONLY" == 1 ]]; then'):]
+    block = script[script.index('if [[ "$FIREWALL_ONLY" == 1 ]]; then') :]
     block = block[: block.index("exit 0")]
     assert "apply_monitoring" in block
 
@@ -301,11 +391,15 @@ def test_lab_kit_observability_phase():
     assert "--observability) OBSERVABILITY=1" in source
     assert 'set_kv "$ENV" ENABLE_PROMETHEUS_METRICS true' in source
     assert 'ensure_secret "$ENV" NIMBORA_DEVOPS_SECRET' in source
-    assert "echo --metrics-from $(bridge_gateway)" in source          # PBX exporter opened to the host only
-    assert "--trusted-proxy $(bridge_gateway)" in source               # the PBX logs the real client behind Traefik
-    assert 'chmod 644 "$OBS/devops_secret"' in source                  # readable by Prometheus (nobody)
-    assert "gw_priority: 1" in source                                  # reach the PBX via the stack bridge
-    assert "--web.listen-address=%s:9100" in source                    # host exporter never public
+    assert (
+        "echo --metrics-from $(bridge_gateway)" in source
+    )  # PBX exporter opened to the host only
+    assert (
+        "--trusted-proxy $(bridge_gateway)" in source
+    )  # the PBX logs the real client behind Traefik
+    assert 'chmod 644 "$OBS/devops_secret"' in source  # readable by Prometheus (nobody)
+    assert "gw_priority: 1" in source  # reach the PBX via the stack bridge
+    assert "--web.listen-address=%s:9100" in source  # host exporter never public
 
 
 def test_pbx_node_exporter_reads_the_backup_textfile_directory():
@@ -316,19 +410,45 @@ def test_pbx_node_exporter_reads_the_backup_textfile_directory():
     assert "/etc/default/prometheus-node-exporter" in script
 
 
-def test_tenant_contexts_fill_the_ranges_of_engine_default_contexts(monkeypatch, capsys):
+def test_tenant_contexts_fill_the_ranges_of_engine_default_contexts(
+    monkeypatch, capsys
+):
     """The 26.11 engine gives a new tenant default contexts with incall_ranges []:
     the script fills the empty ranges and keeps those set by hand."""
     import importlib.util
     import sys
 
-    spec = importlib.util.spec_from_file_location("ensure_tenant_contexts", DEPLOY / "pbx" / "scripts" / "ensure_tenant_contexts.py")
-    module = importlib.util.module_from_spec(spec); spec.loader.exec_module(module)
+    spec = importlib.util.spec_from_file_location(
+        "ensure_tenant_contexts",
+        DEPLOY / "pbx" / "scripts" / "ensure_tenant_contexts.py",
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
     contexts = [
-        {"id": 1, "name": "default-internal", "type": "internal", "label": "x", "enabled": True,
-         "user_ranges": [{"start": "1000", "end": "1099"}], "contexts": []},
-        {"id": 2, "name": "default-incall", "type": "incall", "label": "y", "enabled": True, "incall_ranges": []},
-        {"id": 3, "name": "default-outcall", "type": "outcall", "label": "z", "enabled": True},
+        {
+            "id": 1,
+            "name": "default-internal",
+            "type": "internal",
+            "label": "x",
+            "enabled": True,
+            "user_ranges": [{"start": "1000", "end": "1099"}],
+            "contexts": [],
+        },
+        {
+            "id": 2,
+            "name": "default-incall",
+            "type": "incall",
+            "label": "y",
+            "enabled": True,
+            "incall_ranges": [],
+        },
+        {
+            "id": 3,
+            "name": "default-outcall",
+            "type": "outcall",
+            "label": "z",
+            "enabled": True,
+        },
     ]
     calls = []
 
@@ -341,23 +461,47 @@ def test_tenant_contexts_fill_the_ranges_of_engine_default_contexts(monkeypatch,
             if path.endswith("/token"):
                 return {"data": {"token": "t"}}
             if path.endswith("/tenants"):
-                return {"items": [{"uuid": "u1", "name": "Entreprise test", "slug": ""}]}
+                return {
+                    "items": [{"uuid": "u1", "name": "Entreprise test", "slug": ""}]
+                }
             if path.endswith("/contexts") and method == "GET":
                 return {"items": contexts}
             return None
 
     monkeypatch.setattr(module, "Api", FakeApi)
-    monkeypatch.setattr(sys, "argv", ["x", "--root-password", "p", "--tenant-name", "Entreprise test"])
+    monkeypatch.setattr(
+        sys, "argv", ["x", "--root-password", "p", "--tenant-name", "Entreprise test"]
+    )
     module.main()
     puts = {path: body for method, path, body in calls if method == "PUT"}
     incall = puts["/api/confd/1.1/contexts/2"]
     assert [r["did_length"] for r in incall["incall_ranges"]] == list(range(4, 16))
     internal = puts["/api/confd/1.1/contexts/1"]
     assert "user_ranges" not in internal and internal["queue_ranges"]
-    assert "/api/confd/1.1/contexts/3" not in puts   # nothing missing
+    assert "/api/confd/1.1/contexts/3" not in puts  # nothing missing
     assert puts["/api/confd/1.1/contexts/1/contexts"] == {"contexts": [{"id": 3}]}
 
 
 def test_lab_shared_pbx_allows_its_private_address_in_saas_mode():
     source = (DEPLOY / "lab" / "install.sh").read_text()
     assert 'set_kv "$ENV" PBX_ALLOWED_HOSTS "$PBX_IP"' in source
+
+
+def test_get_kv_never_stops_the_kit_on_a_missing_key(tmp_path):
+    """Lab step 18: REGISTRY removed from .env, the kit stopped silently
+    (set -euo pipefail + a grep without match in an assignment)."""
+    import re
+    import subprocess
+
+    kit = (DEPLOY / "lab" / "install.sh").read_text()
+    get_kv = re.search(r"^get_kv\(\) \{.*\}$", kit, re.M).group(0)
+    env = tmp_path / "kit.env"
+    env.write_text('REGISTRY="nimbora-pr15"\nOTHER=1\n')
+    script = f"""set -euo pipefail
+{get_kv}
+a="$(get_kv {env} REGISTRY)"; b="$(get_kv {env} MISSING)"; c="$(get_kv {tmp_path}/none.env X)"
+echo "$a|${{b:-nimbora}}|$c|done"
+"""
+    out = subprocess.run(["bash", "-c", script], capture_output=True, text=True)
+    assert out.returncode == 0, out.stderr
+    assert out.stdout.strip() == "nimbora-pr15|nimbora||done"
