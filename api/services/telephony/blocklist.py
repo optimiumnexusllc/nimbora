@@ -13,6 +13,7 @@ A person who tells an agent they no longer want to be called (the
 
 from __future__ import annotations
 
+import asyncio
 import csv
 import io
 import re
@@ -84,6 +85,13 @@ async def find_block(
             await db_client.record_blocked_hit(organization_id, entry.id)
         return entry
     except Exception:
+        # A cancelled caller (a campaign batch being stopped) can see its
+        # cancellation turned into a driver error ("connection was closed in
+        # the middle of operation"). Swallowing it would let the caller go on
+        # and dial a contact whose claim is being handed back: re-raise.
+        task = asyncio.current_task()
+        if task is not None and task.cancelling():
+            raise asyncio.CancelledError from None
         logger.opt(exception=True).warning("Blocked number lookup failed")
         return None
 
