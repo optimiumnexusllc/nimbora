@@ -188,3 +188,11 @@ def test_lab_kit_routes_the_audio_path_to_the_chosen_store():
     assert 'audio_server="http://nimbora_minio:9000"' in kit
     assert "  seaweedfs:\n    container_name: nimbora_seaweedfs" in override
     assert "profiles+=,minio" in kit and "MINIO_RETIRED" in kit
+
+
+def test_the_api_image_carries_the_migration_tool():
+    """The documented `docker compose exec api python -m scripts.migrate_object_store`
+    needs the tool inside the image (it was left out of the COPY list)."""
+    dockerfile = (REPO / "api" / "Dockerfile").read_text()
+    assert "./scripts/migrate_object_store.py" in dockerfile
+    assert (REPO / "scripts" / "migrate_object_store.py").is_file()
