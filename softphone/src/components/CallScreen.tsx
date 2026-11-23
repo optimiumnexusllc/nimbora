@@ -1,4 +1,4 @@
-import { ArrowLeftRight, ArrowRightLeft, Grid3x3, LogOut, Mic, MicOff, Pause, Phone, PhoneCall, PhoneOff, Play, Users, X } from "lucide-react";
+import { ArrowLeftRight, ArrowRightLeft, CircleParking, Grid3x3, LogOut, Mic, MicOff, Pause, Phone, PhoneCall, PhoneOff, Play, Users, X } from "lucide-react";
 import { useEffect, useState } from "react";
 
 import { formatDuration, initials, isDialable } from "../lib/format";
@@ -58,6 +58,7 @@ export function CallScreen({
     conference = false,
     notice = null,
     colleagues = [],
+    parking = [],
     onConsult,
     onSwap,
     onCompleteTransfer,
@@ -81,6 +82,8 @@ export function CallScreen({
     notice?: string | null;
     /** Suggested for a transfer: colleagues and their presence. */
     colleagues?: Colleague[];
+    /** Parking lots: « Parquer » transfers the call there. */
+    parking?: { name: string; extension: string }[];
     onConsult?: (target: string) => void;
     onSwap?: () => void;
     onCompleteTransfer?: () => void;
@@ -111,7 +114,9 @@ export function CallScreen({
                 <p className="call-status" data-testid="call-status">
                     {conference
                         ? `Conférence à trois · ${elapsed}`
-                        : call.status === "active"
+                        : call.intercom && call.status === "active"
+                          ? `Interphone · ${elapsed}`
+                          : call.status === "active"
                           ? call.held
                               ? `En attente · ${elapsed}`
                               : elapsed
@@ -165,6 +170,23 @@ export function CallScreen({
                             {suggestions.map((c) => (
                                 <button key={c.extension} type="button" className={`chip ${target === c.extension ? "on" : ""}`} onClick={() => chooseTarget(c.extension)}>
                                     <span className="presence-dot available inline" aria-hidden /> {c.name} · {c.extension}
+                                </button>
+                            ))}
+                        </div>
+                    )}
+                    {parking.length > 0 && (
+                        <div className="chips" aria-label="Parquer l'appel">
+                            {parking.map((lot) => (
+                                <button
+                                    key={lot.extension}
+                                    type="button"
+                                    className="chip"
+                                    onClick={() => {
+                                        onTransfer(lot.extension);
+                                        setPanel("none");
+                                    }}
+                                >
+                                    <CircleParking size={14} /> Parquer · {lot.name}
                                 </button>
                             ))}
                         </div>

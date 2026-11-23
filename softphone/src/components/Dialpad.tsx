@@ -1,4 +1,4 @@
-import { Delete, Phone, Voicemail } from "lucide-react";
+import { Delete, Phone, PhoneIncoming, Voicemail } from "lucide-react";
 import { useCallback, useEffect } from "react";
 
 import { cleanNumber, isDialable } from "../lib/format";
@@ -50,12 +50,15 @@ export function Dialpad({
     onCall,
     disabled,
     voicemailCode,
+    pickupCode,
 }: {
     value: string;
     onChange: (value: string) => void;
     onCall: (number: string) => void;
     disabled: boolean;
     voicemailCode?: string;
+    /** « Intercepter » dials it: picks up a call ringing on a colleague's phone. */
+    pickupCode?: string;
 }) {
     const call = useCallback(() => {
         if (!disabled && isDialable(value)) onCall(cleanNumber(value));
@@ -103,7 +106,13 @@ export function Dialpad({
                 <button type="button" className="call-button" aria-label="Appeler" disabled={disabled || !isDialable(value)} onClick={call}>
                     <Phone size={28} />
                 </button>
-                <span />
+                {pickupCode ? (
+                    <button type="button" className="ghost icon" aria-label="Intercepter l'appel d'un collègue" title={`Intercepter (${pickupCode})`} disabled={disabled} onClick={() => onCall(pickupCode)}>
+                        <PhoneIncoming size={22} />
+                    </button>
+                ) : (
+                    <span />
+                )}
             </div>
         </section>
     );

@@ -5660,6 +5660,18 @@ export type OrganizationPreferencesResponse = {
 };
 
 /**
+ * OutboundHoursRequest
+ */
+export type OutboundHoursRequest = {
+    /**
+     * Opening Hours Only
+     *
+     * Outgoing calls only during the opening hours of « Mon entreprise »
+     */
+    opening_hours_only: boolean;
+};
+
+/**
  * OutboundRouteRequest
  */
 export type OutboundRouteRequest = {
@@ -5699,6 +5711,70 @@ export type OverflowRequest = {
      * After Seconds
      */
     after_seconds?: number;
+};
+
+/**
+ * PagingRequest
+ */
+export type PagingRequest = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Number
+     *
+     * Dialled after *11
+     */
+    number: string;
+    /**
+     * Members
+     *
+     * Extensions (user uuids) whose phones answer by themselves
+     */
+    members: Array<string>;
+    /**
+     * Callers
+     *
+     * Who may call it; empty = everyone
+     */
+    callers?: Array<string>;
+    /**
+     * Duplex
+     *
+     * Both ways (intercom) or one way (announcement)
+     */
+    duplex?: boolean;
+};
+
+/**
+ * ParkingLotRequest
+ */
+export type ParkingLotRequest = {
+    /**
+     * Name
+     */
+    name?: string;
+    /**
+     * Extension
+     *
+     * Number calls are transferred to, to park them
+     */
+    extension: string;
+    /**
+     * Slots Start
+     */
+    slots_start: string;
+    /**
+     * Slots End
+     */
+    slots_end: string;
+    /**
+     * Timeout
+     *
+     * Seconds before a parked call rings back
+     */
+    timeout?: number;
 };
 
 /**
@@ -5934,6 +6010,22 @@ export type PhoneNumberUpdateRequest = {
     extra_metadata?: {
         [key: string]: unknown;
     } | null;
+};
+
+/**
+ * PickupGroupRequest
+ */
+export type PickupGroupRequest = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Members
+     *
+     * Extensions (user uuids) that pick up each other's calls
+     */
+    members: Array<string>;
 };
 
 /**
@@ -25976,6 +26068,487 @@ export type SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutResponses = {
 
 export type SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutResponse = SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutResponses[keyof SaveCallSettingsApiV1PbxExtensionsUserIdCallSettingsPutResponses];
 
+export type ListPickupGroupsApiV1PbxPickupGroupsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/pickup-groups';
+};
+
+export type ListPickupGroupsApiV1PbxPickupGroupsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListPickupGroupsApiV1PbxPickupGroupsGetError = ListPickupGroupsApiV1PbxPickupGroupsGetErrors[keyof ListPickupGroupsApiV1PbxPickupGroupsGetErrors];
+
+export type ListPickupGroupsApiV1PbxPickupGroupsGetResponses = {
+    /**
+     * Response List Pickup Groups Api V1 Pbx Pickup Groups Get
+     *
+     * Successful Response
+     */
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type ListPickupGroupsApiV1PbxPickupGroupsGetResponse = ListPickupGroupsApiV1PbxPickupGroupsGetResponses[keyof ListPickupGroupsApiV1PbxPickupGroupsGetResponses];
+
+export type CreatePickupGroupApiV1PbxPickupGroupsPostData = {
+    body: PickupGroupRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/pickup-groups';
+};
+
+export type CreatePickupGroupApiV1PbxPickupGroupsPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreatePickupGroupApiV1PbxPickupGroupsPostError = CreatePickupGroupApiV1PbxPickupGroupsPostErrors[keyof CreatePickupGroupApiV1PbxPickupGroupsPostErrors];
+
+export type CreatePickupGroupApiV1PbxPickupGroupsPostResponses = {
+    /**
+     * Response Create Pickup Group Api V1 Pbx Pickup Groups Post
+     *
+     * Successful Response
+     */
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type CreatePickupGroupApiV1PbxPickupGroupsPostResponse = CreatePickupGroupApiV1PbxPickupGroupsPostResponses[keyof CreatePickupGroupApiV1PbxPickupGroupsPostResponses];
+
+export type DeletePickupGroupApiV1PbxPickupGroupsGroupIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Group Id
+         */
+        group_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/pickup-groups/{group_id}';
+};
+
+export type DeletePickupGroupApiV1PbxPickupGroupsGroupIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeletePickupGroupApiV1PbxPickupGroupsGroupIdDeleteError = DeletePickupGroupApiV1PbxPickupGroupsGroupIdDeleteErrors[keyof DeletePickupGroupApiV1PbxPickupGroupsGroupIdDeleteErrors];
+
+export type DeletePickupGroupApiV1PbxPickupGroupsGroupIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeletePickupGroupApiV1PbxPickupGroupsGroupIdDeleteResponse = DeletePickupGroupApiV1PbxPickupGroupsGroupIdDeleteResponses[keyof DeletePickupGroupApiV1PbxPickupGroupsGroupIdDeleteResponses];
+
+export type ListParkingLotsApiV1PbxParkingLotsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/parking-lots';
+};
+
+export type ListParkingLotsApiV1PbxParkingLotsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListParkingLotsApiV1PbxParkingLotsGetError = ListParkingLotsApiV1PbxParkingLotsGetErrors[keyof ListParkingLotsApiV1PbxParkingLotsGetErrors];
+
+export type ListParkingLotsApiV1PbxParkingLotsGetResponses = {
+    /**
+     * Response List Parking Lots Api V1 Pbx Parking Lots Get
+     *
+     * Successful Response
+     */
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type ListParkingLotsApiV1PbxParkingLotsGetResponse = ListParkingLotsApiV1PbxParkingLotsGetResponses[keyof ListParkingLotsApiV1PbxParkingLotsGetResponses];
+
+export type CreateParkingLotApiV1PbxParkingLotsPostData = {
+    body: ParkingLotRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/parking-lots';
+};
+
+export type CreateParkingLotApiV1PbxParkingLotsPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateParkingLotApiV1PbxParkingLotsPostError = CreateParkingLotApiV1PbxParkingLotsPostErrors[keyof CreateParkingLotApiV1PbxParkingLotsPostErrors];
+
+export type CreateParkingLotApiV1PbxParkingLotsPostResponses = {
+    /**
+     * Response Create Parking Lot Api V1 Pbx Parking Lots Post
+     *
+     * Successful Response
+     */
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type CreateParkingLotApiV1PbxParkingLotsPostResponse = CreateParkingLotApiV1PbxParkingLotsPostResponses[keyof CreateParkingLotApiV1PbxParkingLotsPostResponses];
+
+export type ListParkedCallsApiV1PbxParkedCallsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/parked-calls';
+};
+
+export type ListParkedCallsApiV1PbxParkedCallsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListParkedCallsApiV1PbxParkedCallsGetError = ListParkedCallsApiV1PbxParkedCallsGetErrors[keyof ListParkedCallsApiV1PbxParkedCallsGetErrors];
+
+export type ListParkedCallsApiV1PbxParkedCallsGetResponses = {
+    /**
+     * Response List Parked Calls Api V1 Pbx Parked Calls Get
+     *
+     * Successful Response
+     */
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type ListParkedCallsApiV1PbxParkedCallsGetResponse = ListParkedCallsApiV1PbxParkedCallsGetResponses[keyof ListParkedCallsApiV1PbxParkedCallsGetResponses];
+
+export type DeleteParkingLotApiV1PbxParkingLotsLotIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Lot Id
+         */
+        lot_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/parking-lots/{lot_id}';
+};
+
+export type DeleteParkingLotApiV1PbxParkingLotsLotIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeleteParkingLotApiV1PbxParkingLotsLotIdDeleteError = DeleteParkingLotApiV1PbxParkingLotsLotIdDeleteErrors[keyof DeleteParkingLotApiV1PbxParkingLotsLotIdDeleteErrors];
+
+export type DeleteParkingLotApiV1PbxParkingLotsLotIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeleteParkingLotApiV1PbxParkingLotsLotIdDeleteResponse = DeleteParkingLotApiV1PbxParkingLotsLotIdDeleteResponses[keyof DeleteParkingLotApiV1PbxParkingLotsLotIdDeleteResponses];
+
+export type ListPagingsApiV1PbxPagingsGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/pagings';
+};
+
+export type ListPagingsApiV1PbxPagingsGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListPagingsApiV1PbxPagingsGetError = ListPagingsApiV1PbxPagingsGetErrors[keyof ListPagingsApiV1PbxPagingsGetErrors];
+
+export type ListPagingsApiV1PbxPagingsGetResponses = {
+    /**
+     * Response List Pagings Api V1 Pbx Pagings Get
+     *
+     * Successful Response
+     */
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type ListPagingsApiV1PbxPagingsGetResponse = ListPagingsApiV1PbxPagingsGetResponses[keyof ListPagingsApiV1PbxPagingsGetResponses];
+
+export type CreatePagingApiV1PbxPagingsPostData = {
+    body: PagingRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/pagings';
+};
+
+export type CreatePagingApiV1PbxPagingsPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreatePagingApiV1PbxPagingsPostError = CreatePagingApiV1PbxPagingsPostErrors[keyof CreatePagingApiV1PbxPagingsPostErrors];
+
+export type CreatePagingApiV1PbxPagingsPostResponses = {
+    /**
+     * Response Create Paging Api V1 Pbx Pagings Post
+     *
+     * Successful Response
+     */
+    201: {
+        [key: string]: unknown;
+    };
+};
+
+export type CreatePagingApiV1PbxPagingsPostResponse = CreatePagingApiV1PbxPagingsPostResponses[keyof CreatePagingApiV1PbxPagingsPostResponses];
+
+export type DeletePagingApiV1PbxPagingsPagingIdDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Paging Id
+         */
+        paging_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/pagings/{paging_id}';
+};
+
+export type DeletePagingApiV1PbxPagingsPagingIdDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type DeletePagingApiV1PbxPagingsPagingIdDeleteError = DeletePagingApiV1PbxPagingsPagingIdDeleteErrors[keyof DeletePagingApiV1PbxPagingsPagingIdDeleteErrors];
+
+export type DeletePagingApiV1PbxPagingsPagingIdDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type DeletePagingApiV1PbxPagingsPagingIdDeleteResponse = DeletePagingApiV1PbxPagingsPagingIdDeleteResponses[keyof DeletePagingApiV1PbxPagingsPagingIdDeleteResponses];
+
+export type SetOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPutData = {
+    body: OutboundHoursRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Outcall Id
+         */
+        outcall_id: number;
+    };
+    query?: never;
+    url: '/api/v1/pbx/outbound-routes/{outcall_id}/hours';
+};
+
+export type SetOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type SetOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPutError = SetOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPutErrors[keyof SetOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPutErrors];
+
+export type SetOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPutResponses = {
+    /**
+     * Response Set Outbound Route Hours Api V1 Pbx Outbound Routes  Outcall Id  Hours Put
+     *
+     * Successful Response
+     */
+    200: {
+        [key: string]: unknown;
+    };
+};
+
+export type SetOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPutResponse = SetOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPutResponses[keyof SetOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPutResponses];
+
 export type ListConferencesApiV1PbxConferencesGetData = {
     body?: never;
     headers?: {
@@ -26927,6 +27500,45 @@ export type DirectoryApiV1SoftphoneDirectoryGetResponses = {
 };
 
 export type DirectoryApiV1SoftphoneDirectoryGetResponse = DirectoryApiV1SoftphoneDirectoryGetResponses[keyof DirectoryApiV1SoftphoneDirectoryGetResponses];
+
+export type ParkedApiV1SoftphoneParkedGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/softphone/parked';
+};
+
+export type ParkedApiV1SoftphoneParkedGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ParkedApiV1SoftphoneParkedGetError = ParkedApiV1SoftphoneParkedGetErrors[keyof ParkedApiV1SoftphoneParkedGetErrors];
+
+export type ParkedApiV1SoftphoneParkedGetResponses = {
+    /**
+     * Response Parked Api V1 Softphone Parked Get
+     *
+     * Successful Response
+     */
+    200: Array<{
+        [key: string]: unknown;
+    }>;
+};
+
+export type ParkedApiV1SoftphoneParkedGetResponse = ParkedApiV1SoftphoneParkedGetResponses[keyof ParkedApiV1SoftphoneParkedGetResponses];
 
 export type SavePresenceApiV1SoftphonePresencePutData = {
     body: SoftphonePresenceRequest;

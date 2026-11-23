@@ -1,7 +1,7 @@
-import { Crown, PhoneIncoming, PhoneMissed, PhoneOutgoing, RefreshCw, Search, Users } from "lucide-react";
+import { CircleParking, Crown, PhoneIncoming, PhoneMissed, PhoneOutgoing, RefreshCw, Search, Users } from "lucide-react";
 import { useEffect, useMemo, useState } from "react";
 
-import type { Customer, Directory, Presence, RecentCall } from "../lib/api";
+import type { Customer, Directory, ParkedCall, Presence, RecentCall } from "../lib/api";
 import { formatDuration, initials } from "../lib/format";
 
 const when = (iso: string | null) => {
@@ -19,11 +19,14 @@ export function Recents({
     loading,
     onCall,
     onRefresh,
+    parked = [],
 }: {
     calls: RecentCall[] | null;
     loading: boolean;
     onCall: (number: string) => void;
     onRefresh: () => void;
+    /** Calls waiting in a parking lot: dial the slot to take one. */
+    parked?: ParkedCall[];
 }) {
     return (
         <section className="list-page">
@@ -33,6 +36,29 @@ export function Recents({
                     <RefreshCw size={18} className={loading ? "spin" : ""} />
                 </button>
             </header>
+            {parked.length > 0 && (
+                <>
+                    <h3 className="section-title">Appels parqués</h3>
+                    <ul className="list">
+                        {parked.map((p) => (
+                            <li key={`${p.lot}-${p.slot}`}>
+                                <button type="button" className="row" onClick={() => onCall(p.slot)} data-testid="parked">
+                                    <CircleParking size={18} className="muted" />
+                                    <span className="row-main">
+                                        <span>{p.name || p.number || "Appelant"}</span>
+                                        <span className="tiny muted">
+                                            Place {p.slot}
+                                            {p.lot ? ` · ${p.lot}` : ""} · attend depuis {formatDuration(p.waiting_seconds)}
+                                        </span>
+                                    </span>
+                                    <span className="mono muted">Reprendre</span>
+                                </button>
+                            </li>
+                        ))}
+                    </ul>
+                    <h3 className="section-title">Récents</h3>
+                </>
+            )}
             {!calls?.length ? (
                 <p className="empty muted">{loading ? "Chargement…" : "Aucun appel récent."}</p>
             ) : (

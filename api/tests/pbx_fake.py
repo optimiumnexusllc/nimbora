@@ -195,6 +195,12 @@ class FakePbx:
         # True: global Asterisk settings answer 401 to a non-master token,
         # like the real engine does for a company's service account.
         self.asterisk_master_only = False
+        # True: wazo-amid answers 401 to every token but a master-tenant one
+        # (required_master_tenant on each /action), like the real engine.
+        self.amid_master_only = False
+        # (username, password) of the platform operator, a master-tenant account.
+        self.operator_credentials: tuple[str, str] | None = None
+        self.master_tokens: set[str] = set()
         self.agent_actions: list[tuple[str, str, dict]] = []
         self.hung_up: list[str] = []
         self.password_resets: list[tuple[str, str]] = []
@@ -283,6 +289,10 @@ class FakePbx:
         self.user_services: dict[int, dict] = {}
         self.user_fallbacks: dict[int, dict] = {}
         self.conferences: list[dict] = []
+        self.callpickups: list[dict] = []
+        self.parkinglots: list[dict] = []
+        self.pagings: list[dict] = []
+        self.parked: list[dict] = []  # calld parked calls, keyed by lot_id
         self.participants: dict[int, list[dict]] = {}
         self.participant_actions: list[tuple[int, str, str]] = []
         self.user_settings: dict[str, dict] = {}
@@ -325,13 +335,24 @@ class FakePbx:
             expected = base64.b64encode(
                 f"{self.username}:{self.password}".encode()
             ).decode()
-            if request.headers.get("authorization") != f"Basic {expected}":
+            operator = (
+                "Basic "
+                + base64.b64encode(
+                    ":".join(self.operator_credentials).encode()
+                ).decode()
+                if self.operator_credentials
+                else None
+            )
+            given = request.headers.get("authorization")
+            if given != f"Basic {expected}" and given != operator:
                 return httpx.Response(
                     401, json={"reason": ["Authentication Failed"], "status_code": 401}
                 )
             self.token_requests += 1
             token = str(uuid.uuid4())
             self.tokens.add(token)
+            if operator and given == operator:
+                self.master_tokens.add(token)
             return httpx.Response(
                 200,
                 json={
@@ -1267,6 +1288,103 @@ class FakePbx:
             store[user_id] = body
             return httpx.Response(204)
 
+        # ----- call pickup groups, parking lots, paging
+        users_by_uuid = {u["uuid"]: u for u in self.users}
+        for kind, roles in (
+            ("callpickups", ("interceptors", "targets")),
+            ("pagings", ("members", "callers")),
+        ):
+            store = getattr(self, kind)
+            if path == f"{prefix}/{kind}" and method == "GET":
+                return httpx.Response(200, json={"items": store, "total": len(store)})
+            if path == f"{prefix}/{kind}" and method == "POST":
+                if kind == "pagings" and any(
+                    x["number"] == body.get("number") for x in store
+                ):
+                    return httpx.Response(
+                        400, json=["Resource Error - Paging already exists"]
+                    )
+                item = {"id": self._id(), **body, **{r: {"users": []} for r in roles}}
+                store.append(item)
+                return httpx.Response(201, json=item)
+            m = re.fullmatch(rf"{prefix}/{kind}/(\d+)", path)
+            if m and method == "DELETE":
+                item = next((x for x in store if x["id"] == int(m.group(1))), None)
+                if item is None:
+                    return httpx.Response(404, json=["Resource Not Found"])
+                store.remove(item)
+                return httpx.Response(204)
+            m = re.fullmatch(rf"{prefix}/{kind}/(\d+)/(\w+)/users", path)
+            if m and method == "PUT" and m.group(2) in roles:
+                item = next((x for x in store if x["id"] == int(m.group(1))), None)
+                if item is None:
+                    return httpx.Response(404, json=["Resource Not Found"])
+                for u in body.get("users") or []:
+                    if u.get("uuid") not in users_by_uuid:
+                        return httpx.Response(404, json=["Resource Not Found - User"])
+                item[m.group(2)] = {
+                    "users": [
+                        {
+                            "uuid": u["uuid"],
+                            "firstname": users_by_uuid[u["uuid"]].get("firstname"),
+                            "lastname": users_by_uuid[u["uuid"]].get("lastname"),
+                        }
+                        for u in body.get("users") or []
+                    ]
+                }
+                return httpx.Response(204)
+        if path == f"{prefix}/parkinglots" and method == "GET":
+            return httpx.Response(
+                200, json={"items": self.parkinglots, "total": len(self.parkinglots)}
+            )
+        if path == f"{prefix}/parkinglots" and method == "POST":
+            lot = {"id": self._id(), "extensions": [], **body}
+            self.parkinglots.append(lot)
+            return httpx.Response(201, json=lot)
+        m = re.fullmatch(rf"{prefix}/parkinglots/(\d+)", path)
+        if m and method == "DELETE":
+            lot = next(
+                (x for x in self.parkinglots if x["id"] == int(m.group(1))), None
+            )
+            if lot is None:
+                return httpx.Response(404, json=["Resource Not Found - ParkingLot"])
+            self.parkinglots.remove(lot)
+            return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/parkinglots/(\d+)/extensions/(\d+)", path)
+        if m and method == "PUT":
+            lot = next(
+                (x for x in self.parkinglots if x["id"] == int(m.group(1))), None
+            )
+            extension = next(
+                (e for e in self.extensions if e["id"] == int(m.group(2))), None
+            )
+            if lot is None or extension is None:
+                return httpx.Response(404, json=["Resource Not Found"])
+            lot["extensions"] = [{"id": extension["id"], "exten": extension["exten"]}]
+            return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/outcalls/(\d+)/schedules/(\d+)", path)
+        if m and method in {"PUT", "DELETE"}:
+            outcall = next(
+                (o for o in self.outcalls if o["id"] == int(m.group(1))), None
+            )
+            schedule = next(
+                (x for x in self.schedules if x["id"] == int(m.group(2))), None
+            )
+            if outcall is None or schedule is None:
+                return httpx.Response(404, json=["Resource Not Found"])
+            current = outcall.setdefault("schedules", [])
+            if method == "PUT":
+                if current and current[0]["id"] != schedule["id"]:
+                    return httpx.Response(
+                        400, json=["Resource Error - Outcall already has a schedule"]
+                    )
+                outcall["schedules"] = [
+                    {"id": schedule["id"], "name": schedule.get("name")}
+                ]
+            else:
+                outcall["schedules"] = [x for x in current if x["id"] != schedule["id"]]
+            return httpx.Response(204)
+
         # ----- conferences
         if path == f"{prefix}/conferences" and method == "GET":
             return httpx.Response(
@@ -1380,6 +1498,33 @@ class FakePbx:
             parts = path.split("/")
             self.agent_actions.append((parts[-2], parts[-1], body or {}))
             return httpx.Response(204)
+        m = re.fullmatch(r"/api/calld/1.0/parkinglots/(\d+)", path)
+        if m and method == "GET":
+            # wazo-calld: the lot with its waiting calls, this tenant only.
+            lot = next(
+                (x for x in self.parkinglots if x["id"] == int(m.group(1))), None
+            )
+            if lot is None:
+                return httpx.Response(404, json={"message": "No such parking lot"})
+            calls = [p for p in self.parked if p.get("lot_id") == lot["id"]]
+            return httpx.Response(
+                200,
+                json={
+                    "id": lot["id"],
+                    "name": lot.get("name"),
+                    "slots_start": lot.get("slots_start"),
+                    "slots_end": lot.get("slots_end"),
+                    "calls": calls,
+                },
+            )
+        if (
+            path.startswith("/api/amid/")
+            and self.amid_master_only
+            and request.headers.get("x-auth-token") not in self.master_tokens
+        ):
+            return httpx.Response(
+                401, json={"reason": ["Unauthorized"], "status_code": 401}
+            )
         if path == "/api/amid/1.0/action/QueueStatus" and method == "POST":
             name = (body or {}).get("Queue")
             known = {q["name"] for q in self.queues}
@@ -1510,6 +1655,9 @@ def install(monkeypatch, fake: FakePbx) -> None:
         return real(settings, **kwargs)
 
     monkeypatch.setattr(service, "PbxClient", factory)
+    from api.services.pbx import supervision
+
+    monkeypatch.setattr(supervision, "PbxClient", factory)
     monkeypatch.setattr(service, "assert_pbx_url_allowed", lambda url: None)
 
 

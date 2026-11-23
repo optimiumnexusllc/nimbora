@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({
     createRoute: vi.fn(),
     deleteRoute: vi.fn(),
     test: vi.fn(),
+    hours: vi.fn(),
     toast: { success: vi.fn(), error: vi.fn() },
 }));
 vi.mock("sonner", () => ({ toast: mocks.toast }));
@@ -21,6 +22,7 @@ vi.mock("@/client/sdk.gen", () => ({
     createOutboundRouteApiV1PbxOutboundRoutesPost: mocks.createRoute,
     deleteOutboundRouteApiV1PbxOutboundRoutesOutcallIdDelete: mocks.deleteRoute,
     testDialApiV1PbxOutboundRoutesTestPost: mocks.test,
+    setOutboundRouteHoursApiV1PbxOutboundRoutesOutcallIdHoursPut: mocks.hours,
 }));
 
 const trunk = (id: number, label: string, extra: Partial<PbxTrunk> = {}): PbxTrunk => ({
@@ -113,5 +115,17 @@ describe("TrunksTab", () => {
             fireEvent.click(within(route).getByRole("button", { name: "Supprimer Sortie" }));
         });
         expect(mocks.deleteRoute).toHaveBeenCalledWith({ path: { outcall_id: 50 } });
+    });
+
+    it("limits a route to the opening hours", async () => {
+        mocks.hours.mockResolvedValue({ data: {} });
+        const onChanged = vi.fn();
+        const routes = [{ id: 50, name: "Sortie", enabled: true, internal_caller_id: false, opening_hours_only: false, trunks: [], rules: [] }];
+        render(<TrunksTab trunks={[trunk(1, "Orange")]} routes={routes} presets={presets} onChanged={onChanged} />);
+        await act(async () => {
+            fireEvent.click(screen.getByRole("switch", { name: "Heures d'ouverture seulement pour Sortie" }));
+        });
+        expect(mocks.hours).toHaveBeenCalledWith({ path: { outcall_id: 50 }, body: { opening_hours_only: true } });
+        expect(onChanged).toHaveBeenCalled();
     });
 });

@@ -549,6 +549,76 @@ class PbxClient:
         """Registration state and live call count of every trunk."""
         return await self._items("calld", "/trunks")
 
+    # ---- call pickup groups, parking lots, paging (intercom / announcements)
+    async def callpickups(self) -> list[dict]:
+        return await self._items("confd", "/callpickups", limit=500)
+
+    async def create_callpickup(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/callpickups", json=body)
+
+    async def delete_callpickup(self, callpickup_id: int) -> None:
+        await self.request("confd", "DELETE", f"/callpickups/{callpickup_id}")
+
+    async def set_callpickup_users(
+        self, callpickup_id: int, role: str, users: list[dict]
+    ) -> None:
+        """``role``: "interceptors" (who can pick up) or "targets" (whose calls)."""
+        await self.request(
+            "confd",
+            "PUT",
+            f"/callpickups/{callpickup_id}/{role}/users",
+            json={"users": users},
+        )
+
+    async def parkinglots(self) -> list[dict]:
+        return await self._items("confd", "/parkinglots", limit=500)
+
+    async def create_parkinglot(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/parkinglots", json=body)
+
+    async def delete_parkinglot(self, parkinglot_id: int) -> None:
+        await self.request("confd", "DELETE", f"/parkinglots/{parkinglot_id}")
+
+    async def associate_parkinglot_extension(
+        self, parkinglot_id: int, extension_id: int
+    ) -> None:
+        await self.request(
+            "confd",
+            "PUT",
+            f"/parkinglots/{parkinglot_id}/extensions/{extension_id}",
+        )
+
+    async def pagings(self) -> list[dict]:
+        return await self._items("confd", "/pagings", limit=500)
+
+    async def create_paging(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/pagings", json=body)
+
+    async def delete_paging(self, paging_id: int) -> None:
+        await self.request("confd", "DELETE", f"/pagings/{paging_id}")
+
+    async def set_paging_users(
+        self, paging_id: int, role: str, users: list[dict]
+    ) -> None:
+        """``role``: "members" (phones that answer) or "callers" (who may call)."""
+        await self.request(
+            "confd", "PUT", f"/pagings/{paging_id}/{role}/users", json={"users": users}
+        )
+
+    async def associate_outcall_schedule(
+        self, outcall_id: int, schedule_id: int
+    ) -> None:
+        await self.request(
+            "confd", "PUT", f"/outcalls/{outcall_id}/schedules/{schedule_id}"
+        )
+
+    async def dissociate_outcall_schedule(
+        self, outcall_id: int, schedule_id: int
+    ) -> None:
+        await self.request(
+            "confd", "DELETE", f"/outcalls/{outcall_id}/schedules/{schedule_id}"
+        )
+
     async def outcalls(self) -> list[dict]:
         return await self._items("confd", "/outcalls", limit=500)
 
@@ -864,6 +934,12 @@ class PbxClient:
         )
         return [m for m in body or [] if isinstance(m, dict)]
 
+    async def parkinglot_calls(self, lot_id: int) -> dict:
+        """One parking lot with the calls waiting in it, from wazo-calld, which
+        is tenant aware. (The AMI ParkedCalls action only answers master-tenant
+        tokens, never a company's service account: lab step 15.)"""
+        return await self.request("calld", "GET", f"/parkinglots/{lot_id}")
+
     async def queue_statistics(self, **params) -> list[dict]:
         return await self._items("call_logd", "/queues/statistics", **params)
 
@@ -919,6 +995,7 @@ REQUIRED_ACL: dict[str, str] = {
     # supervision
     "originate": "calld.calls.create",
     "queue_status": "amid.action.QueueStatus.create",
+    "parkinglot_calls": "calld.parkings.{lot_id}.read",
     "queue_statistics": "call-logd.queues.statistics.read",
     "agent_statistics": "call-logd.agents.statistics.read",
     # administration
@@ -999,6 +1076,22 @@ REQUIRED_ACL: dict[str, str] = {
     "user_fallbacks": "confd.users.{user_id}.fallbacks.read",
     "set_user_fallbacks": "confd.users.{user_id}.fallbacks.update",
     # conferences
+    "callpickups": "confd.callpickups.read",
+    "create_callpickup": "confd.callpickups.create",
+    "delete_callpickup": "confd.callpickups.{callpickup_id}.delete",
+    "set_callpickup_users_interceptors": "confd.callpickups.{callpickup_id}.interceptors.users.update",
+    "set_callpickup_users_targets": "confd.callpickups.{callpickup_id}.targets.users.update",
+    "parkinglots": "confd.parkinglots.read",
+    "create_parkinglot": "confd.parkinglots.create",
+    "delete_parkinglot": "confd.parkinglots.{parkinglot_id}.delete",
+    "associate_parkinglot_extension": "confd.parkinglots.{parkinglot_id}.extensions.{extension_id}.update",
+    "pagings": "confd.pagings.read",
+    "create_paging": "confd.pagings.create",
+    "delete_paging": "confd.pagings.{paging_id}.delete",
+    "set_paging_users_members": "confd.pagings.{paging_id}.members.users.update",
+    "set_paging_users_callers": "confd.pagings.{paging_id}.callers.users.update",
+    "associate_outcall_schedule": "confd.outcalls.{outcall_id}.schedules.{schedule_id}.update",
+    "dissociate_outcall_schedule": "confd.outcalls.{outcall_id}.schedules.{schedule_id}.delete",
     "conferences": "confd.conferences.read",
     "create_conference": "confd.conferences.create",
     "delete_conference": "confd.conferences.{conference_id}.delete",

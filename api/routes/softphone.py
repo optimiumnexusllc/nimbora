@@ -99,6 +99,17 @@ class SoftphonePresenceRequest(BaseModel):
     status: str = Field(default="", max_length=128)
 
 
+@router.get("/parked")
+async def parked(
+    authorization: str | None = Header(default=None),
+) -> list[dict[str, Any]]:
+    """Calls waiting in the company's parking lots: dial the slot to take one."""
+    from api.services.pbx.teamwork import organization_parked_calls
+
+    device = await _device(authorization)
+    return await _call(organization_parked_calls(device.organization_id))
+
+
 @router.put("/presence")
 async def save_presence(
     request: SoftphonePresenceRequest, authorization: str | None = Header(default=None)

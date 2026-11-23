@@ -123,6 +123,8 @@ export type PbxOutboundRoute = {
     name: string;
     enabled: boolean;
     internal_caller_id: boolean;
+    /** Outgoing calls only during the opening hours of « Mon entreprise ». */
+    opening_hours_only?: boolean;
     trunks: { id: number; label: string }[];
     rules: DialRule[];
 };

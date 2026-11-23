@@ -2,7 +2,7 @@
 
 import type { Platform } from "./format";
 
-export const APP_VERSION = "1.3.0";
+export const APP_VERSION = "1.4.0";
 
 export type IceServer = { urls: string[] | string; username?: string; credential?: string };
 export type SoftphoneConfig = {
@@ -19,7 +19,17 @@ export type SoftphoneConfig = {
         sip_domain: string;
     };
     ice_servers: IceServer[];
-    features: { voicemail_code: string; transfer: boolean; dnd: boolean };
+    features: {
+        voicemail_code: string;
+        transfer: boolean;
+        dnd: boolean;
+        /** Parking lots offered in « Parquer ». */
+        parking?: { name: string; extension: string }[];
+        /** Dialled by « Intercepter » (call pickup group). */
+        pickup_code?: string;
+        /** Answer calls from an intercom / announcement by themselves. */
+        intercom_auto_answer?: boolean;
+    };
 };
 export type RecentCall = {
     id: number;
@@ -41,6 +51,7 @@ export type Customer = {
     calls: number;
     last_seen_at: string | null;
 };
+export type ParkedCall = { lot: string | null; slot: string; number: string; name: string | null; waiting_seconds: number; parked_by: string | null };
 export type Directory = {
     people: { name: string; extension: string; me: boolean; presence?: Presence }[];
     services: { name: string; extension: string; kind: "group" | "queue" }[];
@@ -134,6 +145,9 @@ export class SoftphoneApi {
     }
     directory(query = "") {
         return this.call<Directory>("GET", query ? `/directory?q=${encodeURIComponent(query)}` : "/directory");
+    }
+    parked() {
+        return this.call<ParkedCall[]>("GET", "/parked");
     }
     savePresence(state: "available" | "away" | "offline", status = "") {
         return this.call<Presence>("PUT", "/presence", { state, status });

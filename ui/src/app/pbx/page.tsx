@@ -68,6 +68,7 @@ import { RoutingTab } from "@/components/pbx/RoutingTab";
 import { ScheduleDialog } from "@/components/pbx/ScheduleDialog";
 import { SoftphoneDialog } from "@/components/pbx/SoftphoneDialog";
 import { SoftphonesSection } from "@/components/pbx/SoftphonesSection";
+import { TeamTab } from "@/components/pbx/TeamTab";
 import { TrunksTab } from "@/components/pbx/TrunksTab";
 import {
     DIRECTION_LABELS,
@@ -483,6 +484,7 @@ export default function PbxPage() {
                             <Cable className="size-3.5" /> Lignes opérateurs
                         </TabsTrigger>
                         <TabsTrigger value="recordings">Enregistrements</TabsTrigger>
+                        <TabsTrigger value="team">Équipe</TabsTrigger>
                         <TabsTrigger value="routing">Routage</TabsTrigger>
                         <TabsTrigger value="logs">Journal</TabsTrigger>
                     </TabsList>
@@ -784,6 +786,10 @@ export default function PbxPage() {
 
                     <TabsContent value="recordings">
                         <RecordingsTab users={inventory.users} />
+                    </TabsContent>
+
+                    <TabsContent value="team">
+                        <TeamTab users={inventory.users} />
                     </TabsContent>
 
                     <TabsContent value="routing">

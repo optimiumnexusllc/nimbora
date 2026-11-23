@@ -105,3 +105,34 @@ describe("Settings · my presence", () => {
         expect(screen.queryByTestId("my-presence")).toBeNull();
     });
 });
+
+describe("Recents · parked calls", () => {
+    it("lists parked calls and takes one back by dialling its slot", async () => {
+        const { Recents } = await import("./Lists");
+        const onCall = vi.fn();
+        render(
+            <Recents
+                calls={[]}
+                loading={false}
+                onCall={onCall}
+                onRefresh={vi.fn()}
+                parked={[{ lot: "Accueil", slot: "702", number: "+2250700112233", name: "Awa Koné", waiting_seconds: 65, parked_by: null }]}
+            />,
+        );
+        const row = screen.getByTestId("parked");
+        expect(row.textContent).toContain("Awa Koné");
+        expect(row.textContent).toContain("Place 702");
+        fireEvent.click(row);
+        expect(onCall).toHaveBeenCalledWith("702");
+    });
+});
+
+describe("Dialpad · pickup", () => {
+    it("intercepts a colleague's ringing call with the pickup code", async () => {
+        const { Dialpad } = await import("./Dialpad");
+        const onCall = vi.fn();
+        render(<Dialpad value="" onChange={vi.fn()} onCall={onCall} disabled={false} pickupCode="*8" />);
+        fireEvent.click(screen.getByRole("button", { name: "Intercepter l'appel d'un collègue" }));
+        expect(onCall).toHaveBeenCalledWith("*8");
+    });
+});

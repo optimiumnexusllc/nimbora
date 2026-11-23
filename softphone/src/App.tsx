@@ -6,7 +6,7 @@ import { CallScreen } from "./components/CallScreen";
 import { Dialpad } from "./components/Dialpad";
 import { Contacts, Recents } from "./components/Lists";
 import { Settings } from "./components/Settings";
-import { ApiError, type Directory, forget, type HandoffCard, loadSaved, type RecentCall, save, SoftphoneApi, type SoftphoneConfig, type Status } from "./lib/api";
+import { ApiError, type Directory, forget, type HandoffCard, loadSaved, type ParkedCall, type RecentCall, save, SoftphoneApi, type SoftphoneConfig, type Status } from "./lib/api";
 import { parsePairingLink, type PairingLink } from "./lib/format";
 import { notify, onPairingLink, Ringtone } from "./lib/native";
 import { AUTH_REFUSED, Phone, type Snapshot } from "./lib/phone";
@@ -136,6 +136,23 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
         void loadRecents();
     }, [session, loadRecents]);
 
+    // Parked calls, while Récents is open (they are taken by dialling the slot).
+    const [parked, setParked] = useState<ParkedCall[]>([]);
+    useEffect(() => {
+        if (!session || tab !== "recents" || !session.config.features.parking?.length) {
+            setParked([]);
+            return;
+        }
+        const load = () =>
+            void session.api
+                .parked()
+                .then(setParked)
+                .catch(() => setParked([]));
+        load();
+        const timer = setInterval(load, 10_000);
+        return () => clearInterval(timer);
+    }, [session, tab]);
+
     // Colleagues' presence changes all the time: refresh while Contacts is open.
     useEffect(() => {
         if (!session || tab !== "contacts") return;
@@ -259,8 +276,10 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
             )}
 
             <div className="content">
-                {tab === "dial" && <Dialpad value={dial} onChange={setDial} onCall={call} disabled={!registered} voicemailCode={config.features.voicemail_code} />}
-                {tab === "recents" && <Recents calls={recents} loading={loadingRecents} onCall={call} onRefresh={() => void loadRecents()} />}
+                {tab === "dial" && (
+                    <Dialpad value={dial} onChange={setDial} onCall={call} disabled={!registered} voicemailCode={config.features.voicemail_code} pickupCode={config.features.pickup_code} />
+                )}
+                {tab === "recents" && <Recents calls={recents} loading={loadingRecents} onCall={call} onRefresh={() => void loadRecents()} parked={parked} />}
                 {tab === "contacts" && <Contacts directory={directory} onCall={call} onSearchCustomers={searchCustomers} />}
                 {tab === "settings" && (
                     <Settings
@@ -321,6 +340,7 @@ export function App({ makeApi = defaultMakeApi }: { makeApi?: (server: string, t
                     conference={snapshot.conference}
                     notice={snapshot.notice}
                     colleagues={(directory?.people ?? []).filter((p) => !p.me)}
+                    parking={config.features.parking ?? []}
                     onConsult={config.features.transfer ? (target) => phoneRef.current?.consult(target) : undefined}
                     onSwap={() => phoneRef.current?.swap()}
                     onCompleteTransfer={() => phoneRef.current?.completeTransfer()}
