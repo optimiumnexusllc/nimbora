@@ -2473,6 +2473,74 @@ class PbxRecordingTombstoneModel(Base):
     deleted_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
+class AgentTestModel(Base):
+    """A test of an agent against a customer played by the AI: who the
+    customer is and what they want, what the agent must achieve."""
+
+    __tablename__ = "agent_tests"
+    __table_args__ = (
+        Index("ix_agent_tests_org_workflow", "organization_id", "workflow_id"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    workflow_id = Column(
+        Integer, ForeignKey("workflows.id", ondelete="CASCADE"), nullable=False
+    )
+    name = Column(String(120), nullable=False)
+    # Who the customer is, what they want and how they behave (free text).
+    persona = Column(Text, nullable=False)
+    opening = Column(String(500), nullable=True)
+    success_criteria = Column(JSON, nullable=False, default=list)
+    must_call = Column(JSON, nullable=False, default=list)
+    must_not_call = Column(JSON, nullable=False, default=list)
+    forbidden_phrases = Column(JSON, nullable=False, default=list)
+    # {function_name: result} returned instead of running the tool.
+    mock_results = Column(JSON, nullable=False, default=dict)
+    initial_context = Column(JSON, nullable=False, default=dict)
+    max_turns = Column(Integer, nullable=False, default=8)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    updated_at = Column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(UTC),
+        onupdate=lambda: datetime.now(UTC),
+    )
+
+
+class AgentTestRunModel(Base):
+    """One run of a test: the conversation, the checks and the verdict."""
+
+    __tablename__ = "agent_test_runs"
+    __table_args__ = (
+        Index("ix_agent_test_runs_test_created", "test_id", "created_at"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=False
+    )
+    test_id = Column(
+        Integer, ForeignKey("agent_tests.id", ondelete="CASCADE"), nullable=False
+    )
+    workflow_id = Column(
+        Integer, ForeignKey("workflows.id", ondelete="CASCADE"), nullable=False
+    )
+    # draft | published: the version of the agent that was tested.
+    version = Column(String(16), nullable=False, default="draft")
+    definition_id = Column(Integer, nullable=True)
+    # queued | running | passed | failed | error
+    status = Column(String(16), nullable=False, default="queued")
+    result = Column(JSON, nullable=True)
+    error = Column(String(500), nullable=True)
+    started_by_user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+    finished_at = Column(DateTime(timezone=True), nullable=True)
+
+
 class CallQualitySettingsModel(Base):
     """The quality grid of a company for its human calls, and how calls are
     picked for evaluation."""

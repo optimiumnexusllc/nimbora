@@ -1,0 +1,52 @@
+---
+title: "Tests avec des clients simulés"
+description: "Le modèle de langage de l'entreprise joue des clients face à votre agent, puis juge chaque conversation selon vos critères."
+---
+
+Avant de mettre un agent en ligne, ou après chaque modification, testez-le face à des **clients simulés** : la cliente pressée, le client mécontent, la demande hors sujet, le cas limite. Menu de l'agent (⋮) → **Tests clients simulés**.
+
+<Frame>
+  <img src="/images/agent-tests.png" alt="Résultat d'un test : verdict par critère et conversation" />
+</Frame>
+
+## Un test
+
+| Champ | Rôle |
+|---|---|
+| **Le client** | Qui il est, ce qu'il veut, ce qu'il sait, comment il se comporte — à la deuxième personne (« Tu es Awa, pressée, tu veux une chambre vue mer ce soir, 90 000 F au plus »). |
+| Première phrase | Facultative : sinon le client simulé répond lui-même à l'accueil de l'agent. |
+| **Critères de réussite** | Un par ligne, vérifiables dans la conversation (« Annonce le prix », « Propose de réserver »). Le modèle les juge un par un et explique pourquoi. |
+| Outils à utiliser / interdits | Noms de fonction : vérifiés exactement, sans modèle. |
+| Phrases interdites | L'agent ne doit jamais les dire. |
+| Résultats simulés | Ce que renvoie chaque outil, par nom de fonction (JSON). Sans cela : un succès neutre. |
+| Contexte de l'appel | Les variables des consignes (`{{customer_name}}`…). |
+| Répliques maximum | 2 à 15 répliques du client. |
+
+**Proposer des tests** en prépare quatre à partir des consignes de l'agent : un cas nominal, un client pressé ou mécontent, une demande hors sujet, un cas limite. Ajoutez ceux qui vous conviennent, puis ajustez-les.
+
+## Ce qui est testé, et ce qui ne l'est pas
+
+Le test rejoue la conversation **en texte** avec les **mêmes consignes, outils et étapes** qu'un appel réel, sur le **brouillon en cours** ou la **version publiée** :
+
+- **Aucun outil n'agit réellement** : pas de SMS, de rendez-vous, de ticket, de prospect, de transfert ni de raccrochage. Leur résultat est simulé, et l'appel s'arrête comme il s'arrêterait (transfert, fin d'appel).
+- **La recherche dans le catalogue** utilise vos **vrais articles**, car elle ne modifie rien : les prix et les stocks annoncés sont ceux de la plateforme.
+- La **base de connaissances** n'est pas interrogée : fournissez un résultat simulé pour la couvrir.
+- La **voix** (délais, interruptions, audio), l'**extraction de variables** et le **chargement de données avant l'appel** ne sont pas couverts ; le résultat le signale.
+
+Le client, l'agent et le juge sont joués par le **modèle de langage configuré pour l'entreprise** (Modèles IA). Avec un fournisseur compatible OpenAI (OpenAI, Groq, OpenRouter, Azure, Mistral, Together…), l'agent choisit ses outils exactement comme en appel ; avec les autres, les outils lui sont décrits dans la consigne, et le résultat le précise.
+
+## Résultat
+
+Un test est **réussi** quand tous les critères sont atteints, que les vérifications d'outils et de phrases passent et que l'agent n'a fait aucune erreur d'outil. Le détail montre le verdict par critère avec sa raison, la conversation complète, les outils utilisés avec leurs arguments, et comment la conversation s'est terminée.
+
+Les tests tournent en arrière-plan (plusieurs appels au modèle chacun) ; la page se met à jour d'elle-même.
+
+## API
+
+| Méthode | Chemin | Rôle |
+|---|---|---|
+| `GET` | `/api/v1/agent-tests?workflow_id=…` | Tests de l'agent, avec leur dernier résultat |
+| `POST` / `PUT` / `DELETE` | `/api/v1/agent-tests[/{id}]` | Créer, modifier, supprimer |
+| `POST` | `/api/v1/agent-tests/run` | Lancer (`workflow_id`, `test_ids` facultatif, `version` : `draft` ou `published`) |
+| `POST` | `/api/v1/agent-tests/suggest` | Tests proposés à partir des consignes (non enregistrés) |
+| `GET` | `/api/v1/agent-tests/{id}/runs`, `/api/v1/agent-tests/runs/{run_id}` | Historique, détail d'une exécution |

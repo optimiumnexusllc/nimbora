@@ -1,4 +1,5 @@
 from api.db.actions_client import ActionsClient
+from api.db.agent_test_client import AgentTestClient
 from api.db.agent_trigger_client import AgentTriggerClient
 from api.db.api_key_client import APIKeyClient
 from api.db.blocked_number_client import BlockedNumberClient
@@ -91,6 +92,7 @@ class DBClient(
     LeadClient,
     BusinessHubClient,
     QualityClient,
+    AgentTestClient,
 ):
     """
     Unified database client that combines all specialized database operations.

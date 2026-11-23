@@ -7,6 +7,7 @@ from pydantic import BaseModel
 
 from api.routes.actions import router as actions_router
 from api.routes.agent_stream import router as agent_stream_router
+from api.routes.agent_tests import router as agent_tests_router
 from api.routes.auth import router as auth_router
 from api.routes.blocked_numbers import router as blocked_numbers_router
 from api.routes.business import router as business_router
@@ -95,6 +96,7 @@ router.include_router(catalog_router)
 router.include_router(leads_router)
 router.include_router(business_hub_router)
 router.include_router(quality_router)
+router.include_router(agent_tests_router)
 router.include_router(privacy_router)
 router.include_router(supervision_router)
 router.include_router(actions_router)

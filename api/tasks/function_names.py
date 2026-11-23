@@ -10,4 +10,5 @@ class FunctionNames:
     FINALIZE_COMPLETED_TEXT_CHAT = "finalize_completed_text_chat"
     IMPORT_PBX_RECORDINGS = "import_pbx_recordings"
     EVALUATE_CALL_QUALITY = "evaluate_call_quality"
+    RUN_AGENT_TEST = "run_agent_test"
     PROVISION_PBX_TENANT = "provision_pbx_tenant"
