@@ -937,6 +937,26 @@ Déployé par l'opérateur avec le kit (construction marquée du commit). Sessio
 | (2) Hub après cet appel | ✅ appels humains **34 → 35** (conversations 35), minutes 18 : le nouvel appel est compté |
 | (3) Remise en état | ✅ enregistrement 13 supprimé depuis la console (« ici et sur le PBX »), synchronisation sans retour (`seen 7, imported 0`), politique d'enregistrement remise à son état initial (4 postes modifiés), 0 enregistrement |
 
+## Rapport d'étape 18 — laboratoire revenu sur `main` (`948f1e8`, PR #1 à #16 fusionnées) (23 novembre 2026)
+
+Déployé par l'opérateur avec le kit (REGISTRY retiré du `.env`, images sous le nom par défaut).
+Session sans `sudo` ni `docker` : API avec les jetons du laboratoire, console et Softphone web
+pilotés en Chromium. Softphone web 1.4.0 construit depuis `main`.
+
+| Étape | Résultat |
+|---|---|
+| (1) `GET /api/v1/health` → `build_commit` | ❌ **`25b4aee`** et non `948f1e8` : l'image en service a été construite depuis la pointe de `chore/deploy-build-stamp`, pas depuis le commit de fusion. Le code est le même (la fusion n'ajoute que le journal) ; le marquage, lui, ne reflète pas `main`. À reconstruire avec le kit depuis `main` pour que le contrôle de version en service soit juste |
+| (2) Console org1 : PBX → Postes | ✅ quatre postes et deux appareils Softphone listés, présence 1001 « Hors ligne », 1002 « Disponible », 1003 « Disponible », 1004 « Hors ligne » (application fermée) |
+| (2) PBX → Routage | ✅ onglet, politique et simulateur rendus |
+| (2) PBX → Équipe | ✅ parking « Accueil » 700 (701-720) et interphone « Directeur » (`*111`) présents ; ⚠️ le groupe d'interception « Accueil » (1002 + 1004) de l'étape 15 **avait disparu du moteur** (liste vide, recréation acceptée sous l'identifiant 1) ; recréé pour le laboratoire |
+| (2) PBX → Enregistrements | ✅ bloc politique affiché, « Aucun enregistrement » |
+| (2) Catalogue, Prospects, AI Business Hub, Contrôle qualité | ✅ les quatre pages s'ouvrent sans erreur de page, sans réponse 5xx ni toast d'erreur ; hub : 6 indicateurs (35 appels humains, 35 conversations), qualité : 4 compteurs, catalogue et prospects vides |
+| (2) Softphone web 1004 | ✅ « Disponible » ; appel 1004 → 1002 : « Ça sonne… » (1002 est un client `baresip` à décroché manuel, non pilotable sans privilèges : appel non établi, raccroché) ; appel 1004 → 1003 (décroché automatique) **établi** 20 s puis « Appel terminé » |
+| (3) Isolation : même parcours connecté comme entreprise-a (org2) | ✅ Postes : seul « Agent A 1001 » ; Équipe : aucun groupe, parking ni interphone ; Enregistrements vides ; catalogue 0, prospects 0, hub tout à zéro, qualité 0 ; aucune erreur de page |
+
+Aucun appel ni objet d'essai laissé en place (le groupe « Accueil » recréé est un objet du
+laboratoire, comme le parking et l'interphone).
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
