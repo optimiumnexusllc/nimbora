@@ -384,6 +384,8 @@ sudo ./install.sh --app-domain app.mondomaine.com --pbx-domain pbx.mondomaine.co
   --brand "NIMBORA" --company "Mon entreprise"
 ```
 
+Pour mettre à jour : `git pull` puis `sudo ./install.sh … --only nimbora`. Les migrations s'appliquent au démarrage de l'API. `GET /api/v1/health` renvoie `build_commit`, le commit dont l'image en service est construite, et le kit avertit si ce n'est pas celui du dépôt (« image non reconstruite ? »).
+
 Principaux réglages de la plateforme :
 
 | Variable | Rôle |
@@ -419,7 +421,7 @@ blanche** : chaque entreprise dispose de ses agents IA, nourris de ses informati
 
 Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle · 🔜 prévu
 
-> **État au 22 novembre 2026** : les lots A (SaaS multi-entreprises sur le PBX partagé) et B (premiers volets du centre d'appels complet) sont fusionnés dans `main` (PR #1 à #7), chacun validé sur un moteur réel Wazo Platform 26.11 dans le laboratoire mono-serveur ; le détail, étape par étape, est dans le [journal de validation](docs/validation/phase5-lab.md). Les points encore 🧪 attendent surtout des clés de fournisseur IA (appels IA de bout en bout) ou des systèmes réels (paquets du Softphone sur chaque OS).
+> **État au 23 novembre 2026** : `main` contient les PR #1 à #16. Elles couvrent le SaaS multi-entreprises sur le PBX partagé et le centre d'appels complet : routage intelligent, présence, rotation SIP, transfert avec consultation et conférence, interception, parcage, interphone, horaires sortants, supervision en direct. S'y ajoutent le catalogue, les prospects, l'AI Business Hub, le contrôle qualité des appels humains et le marquage des images par leur commit. Chaque PR a été validée sur un moteur réel Wazo Platform 26.11 dans le laboratoire mono-serveur (étapes 1 à 17 bis du [journal de validation](docs/validation/phase5-lab.md)). Les points encore 🧪 attendent surtout des clés de fournisseur IA (appels IA de bout en bout, outils d'agent, évaluation qualité par l'IA) ou des systèmes réels (paquets du Softphone sur chaque OS). Une installation neuve depuis `main` embarque tout cela. Après déploiement, `GET /api/v1/health` → `build_commit` doit égaler `git rev-parse --short=7 HEAD`.
 
 ### Phase 1 — Moteur universel
 

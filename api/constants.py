@@ -205,6 +205,16 @@ def _get_version() -> str:
 # Application version (read from pyproject.toml)
 APP_VERSION = _get_version()
 
+
+def _build_commit() -> str | None:
+    """Commit the running image was built from (Docker build argument
+    GIT_COMMIT); ``None`` for an image built without it."""
+    value = (os.getenv("NIMBORA_BUILD_COMMIT") or "").strip()
+    return None if value in ("", "unknown") else value[:40]
+
+
+BUILD_COMMIT = _build_commit()
+
 # Country code mapping: ISO country code -> international dialing prefix
 COUNTRY_CODES = {
     "US": "1",  # United States

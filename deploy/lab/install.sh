@@ -318,14 +318,36 @@ if runs nimbora; then
     fi
     chmod 600 "$ENV"
 
+    # The images are built under the name the stack runs (REGISTRY in .env),
+    # stamped with the checkout's commit, so /api/v1/health tells what runs.
+    REGISTRY_NAME="$(get_kv "$ENV" REGISTRY)"; REGISTRY_NAME="${REGISTRY_NAME:-nimbora}"
+    COMMIT="$(git -C "$REPO_DIR" rev-parse --short=7 HEAD 2>/dev/null || echo unknown)"
     if [[ "$BUILD" == "1" ]]; then
-        log "Construction des images (longue sur un petit serveur ; --no-build pour la sauter)"
-        docker build -q -f "$REPO_DIR/api/Dockerfile" -t nimbora/nimbora-api:latest "$REPO_DIR" >/dev/null
-        ok "image nimbora/nimbora-api:latest"
-        docker build -q -f "$REPO_DIR/ui/Dockerfile" -t nimbora/nimbora-ui:latest "$REPO_DIR" >/dev/null
-        ok "image nimbora/nimbora-ui:latest"
+        log "Construction des images de $COMMIT (longue sur un petit serveur ; --no-build pour la sauter)"
+        for svc in api ui; do
+            docker build -q --build-arg GIT_COMMIT="$COMMIT" -f "$REPO_DIR/$svc/Dockerfile" \
+                -t "$REGISTRY_NAME/nimbora-$svc:latest" "$REPO_DIR" >/dev/null
+            ok "image $REGISTRY_NAME/nimbora-$svc:latest ($COMMIT)"
+        done
     fi
+    # --force-recreate is not needed: compose recreates a container whose image changed.
     (cd "$DEPLOY_DIR" && docker compose up -d --remove-orphans)
+    # What actually runs, compared with this checkout (lab step 17: a build
+    # done under another name left the previous API in service, unnoticed).
+    running=""
+    for _ in $(seq 1 30); do
+        running="$(docker exec nimbora_api python -c "import json,urllib.request;print(json.load(urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')).get('build_commit') or '')" 2>/dev/null || true)"
+        [[ -n "$running" ]] && break
+        sleep 4
+    done
+    if [[ -z "$running" ]]; then
+        warn "Version de l'API en service inconnue (image construite sans GIT_COMMIT, ou API pas encore prête)."
+    elif [[ "$COMMIT" != "unknown" && "$running" != "$COMMIT"* && "$COMMIT" != "$running"* ]]; then
+        warn "L'API en service vient de $running, ce dépôt est à $COMMIT : image non reconstruite ?"
+        warn "Relancez sans --no-build, ou construisez $REGISTRY_NAME/nimbora-api:latest depuis ce dépôt."
+    else
+        ok "API en service construite depuis $running (ce dépôt)"
+    fi
     # The stack's bridge now exists: re-apply the firewall so its rules bind to it.
     systemctl restart "$UNIT"
     ok "Pile démarrée : $(cd "$DEPLOY_DIR" && docker compose ps --format '{{.Name}} {{.Status}}' | tr '\n' ';')"

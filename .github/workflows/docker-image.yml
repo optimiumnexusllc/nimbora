@@ -116,6 +116,7 @@ jobs:
           context: ${{ matrix.service.context }}
           file: ${{ matrix.service.dockerfile }}
           platforms: ${{ matrix.platform.name }}
+          build-args: GIT_COMMIT=${{ github.sha }}
           outputs: 'type=image,"name=${{ secrets.DOCKERHUB_USERNAME }}/${{ matrix.service.name }},${{ env.REGISTRY_GHCR }}/${{ secrets.GHCR_USERNAME }}/${{ matrix.service.name }}",push-by-digest=true,name-canonical=true,push=true'
           cache-from: type=gha,scope=${{ matrix.service.name }}-${{ matrix.platform.short }}
           cache-to: type=gha,mode=max,scope=${{ matrix.service.name }}-${{ matrix.platform.short }}

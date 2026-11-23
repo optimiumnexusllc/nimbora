@@ -4343,6 +4343,10 @@ export type HealthResponse = {
      */
     version: string;
     /**
+     * Build Commit
+     */
+    build_commit?: string | null;
+    /**
      * Backend Api Endpoint
      */
     backend_api_endpoint: string;

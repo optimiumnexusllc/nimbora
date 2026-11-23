@@ -180,5 +180,10 @@ USER nimbora
 # Expose the port FastAPI will run on
 EXPOSE 8000
 
+# The commit this image was built from, shown by /api/v1/health so an operator
+# can check what is actually running (deploy/lab/install.sh passes it).
+ARG GIT_COMMIT=unknown
+ENV NIMBORA_BUILD_COMMIT=$GIT_COMMIT
+
 # Run the FastAPI app with uvicorn
 CMD ["./scripts/start_services_docker.sh"]
