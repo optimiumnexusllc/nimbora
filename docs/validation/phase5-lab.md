@@ -1040,6 +1040,38 @@ Session sans `sudo` ni `docker` : requêtes HTTP et Chromium sans interface. San
 | (4) Accueil après connexion (`/workflow/create`, capture `home-acme.png`) | ✅ en-tête « Acme Voix v1.51.0 », seule image `acme-mark.svg`, `--primary` calculée `#0a7d4f`, aucune occurrence de NIMBORA dans le texte ni dans les attributs |
 | (5) Contrôle des mentions du moteur (PR #30), lancé par l'opérateur sur le vrai PBX à 08:21:45 UTC | ✅ sortie : « **Aucune mention du moteur (pages, SIP, e-mails, interface).** », aucune ligne MENTION ni ERREUR, **code de sortie 0** ; rien n'a été modifié sur le PBX. ⚠️ le crochet APT ajouté par la PR #30 n'est **pas installé** (le kit PBX n'a pas été relancé) : non vérifié |
 
+## Rapport d'étape 22 — PR #32 « musique d'attente de l'entreprise » (24 novembre 2026)
+
+Déployé par l'opérateur : `feat/pbx-hold-music` (`245da48`) ; `create_service_account.py --provisioner`
+relancé avec la politique d'approvisionnement de la PR #33, puis le compte dédié d'« Entreprise test »
+(politique d'intégration **136 ACL**, même mot de passe). Session sans `sudo` ni `docker` : API avec les
+jetons du laboratoire, console pilotée en Chromium. Sans fusion.
+
+### 🐛 n° 29 — approvisionnement refusé par une ACL périmée (corrigé, PR #33)
+
+Après le passage de l'opérateur à 136 ACL, `POST /pbx/provision` (org2) répondait 502 « accès refusé
+(`required_access: amid.action.ParkedCalls.create`) » : la politique du tenant d'org2 portait encore
+cette ACL (accordée à l'étape 15), que l'opérateur ne détenait plus ; wazo-auth lui interdisait de
+modifier une politique contenant un droit qu'il n'a pas. Le code tolérait « opérateur plus ancien que
+l'entreprise » mais pas ce cas. Correction PR #33 : l'opérateur **garde les droits retirés** (dont
+`amid.action.ParkedCalls.create`) dans `provisioning-policy.json`, et peut ainsi mettre les politiques
+des tenants à jour. De même, le compte dédié d'org1 devait être recréé pour recevoir `confd.moh.*` :
+avant cela `GET /pbx/hold-music` répondait 502 « accès refusé `confd.moh.read` ».
+
+| Étape | Résultat |
+|---|---|
+| (1) `GET /api/v1/health` | ✅ `build_commit: "245da48"` |
+| (1) `GET /pbx/hold-music` (org1) | ✅ 200 : inactif au départ, **texte proposé en français** (profil sans langue déclarée, défaut français) : « Merci de patienter, un conseiller va vous répondre dans un instant. » |
+| (2) `POST /pbx/provision` (org2) | ✅ 200 après la PR #33 (502 avant, voir n° 29) ; relecture de la politique sur le moteur (136 ACL sans `amid.action.ParkedCalls.create`) **non faite** : exige l'accès au moteur, à confirmer par l'opérateur |
+| (3) Console → PBX → Files → « Musique d'attente » (captures `pbx-hold-music.png`, puis `pbx-hold-music-publie.png`) | ✅ bloc rendu avec les trois choix de musique, l'annonce facultative préremplie du texte proposé en français, le sélecteur « Voix de l'annonce » (« Voix par défaut de l'organisation »), « Publier sur le PBX » |
+| (4) « Écouter » la musique générée (`GET /pbx/hold-music/sample`) | ✅ 200 `audio/wav`, `Cache-Control: no-store`, mono, **8 000 Hz**, 16 bits, 320 044 octets (20 s) |
+| (4) « Écouter » l'annonce (`POST /pbx/prompts/preview`) | 🧪 409 « Aucune voix configurée : choisissez des modèles par défaut dans « Modèles » avant de générer les messages. » — aucun fournisseur TTS sur le laboratoire |
+| (5) Publication musique générée **+ annonce** | 🧪 même 409 (annonce impossible sans voix) ; **publication musique seule** → ✅ 200 : `active: true`, `music: true`, `announcement: false`, **1 file et 1 parcage** ; console : badge « **En service** · 1 file et 1 parcage » |
+| (6) Parcage d'essai « Essai musique » (800, places 801-805) | ✅ créé avec `music_on_hold` = classe de l'entreprise (le code le pose à la création) ; preuve côté API : le compteur passe à « **En service · 1 file et 2 parcages** », la nouvelle classe est bien la sienne (un parcage à la classe `default` ne serait pas compté) ; supprimé ensuite, compteur revenu à 1 parcage |
+| (7) `moh show classes` / `moh show files` sur Asterisk | ⏳ sortie à coller par l'opérateur : classe de l'entreprise et ses deux fichiers (musique ; annonce absente ici) |
+| (8) Musique laissée en service | ✅ non retirée : à écouter en appelant la file « Support test » (3000) ou en parquant un appel sur 700 |
+| (4 bis) 504 passagers de la page Files (`voicemails`, `conferences`, `groups`) vus lors de la première capture | ✅ non reproduits : 30 lectures des trois routes → toutes 200 ; aucune 5xx pendant les deux captures suivantes |
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
