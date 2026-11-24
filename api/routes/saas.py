@@ -273,8 +273,8 @@ async def start_checkout(request: CheckoutRequest, user: UserModel = Depends(get
             organization_id=organization_id,
             plan_code=plan.code,
             price_id=plan.stripe_price_id,
-            success_url=f"{UI_APP_URL}/billing?checkout=success",
-            cancel_url=f"{UI_APP_URL}/billing?checkout=cancel",
+            success_url=f"{UI_APP_URL}/subscription?checkout=success",
+            cancel_url=f"{UI_APP_URL}/subscription?checkout=cancel",
             customer_id=subscription.stripe_customer_id,
             customer_email=subscription.billing_email or user.email,
         )
@@ -312,8 +312,8 @@ async def _reseller_checkout(organization, plan_code: str, user: UserModel):
             monthly_price_cents=plan.monthly_price_cents,
             account_id=reseller.stripe_account_id,
             commission_percent=resellers.bps_to_percent(reseller.commission_bps),
-            success_url=f"{UI_APP_URL}/billing?checkout=success",
-            cancel_url=f"{UI_APP_URL}/billing?checkout=cancel",
+            success_url=f"{UI_APP_URL}/subscription?checkout=success",
+            cancel_url=f"{UI_APP_URL}/subscription?checkout=cancel",
             customer_id=subscription.stripe_customer_id,
             customer_email=subscription.billing_email or user.email,
         )
@@ -349,7 +349,7 @@ async def open_billing_portal(user: UserModel = Depends(get_user)):
     try:
         url = await stripe_billing.create_portal_session(
             customer_id=subscription.stripe_customer_id,
-            return_url=f"{UI_APP_URL}/billing",
+            return_url=f"{UI_APP_URL}/subscription",
         )
     except httpx.HTTPError:
         raise HTTPException(status_code=502, detail="Payment provider unavailable")

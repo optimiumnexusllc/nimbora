@@ -186,6 +186,8 @@ async def test_company_pays_its_reseller_minus_the_commission(
     assert session["subscription_data[application_fee_percent]"] == "17.5"
     assert session["metadata[organization_id]"] == str(org_id)
     assert session["metadata[plan_code]"] == code
+    # Back on the page that confirms the payment.
+    assert session["success_url"].endswith("/subscription?checkout=success")
 
     # Stripe confirms: the company is active on its reseller's offer.
     outcome = await stripe_billing.handle_event(
