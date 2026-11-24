@@ -57,7 +57,10 @@ SERVER_IP = os.getenv("SERVER_IP", "")
 BACKEND_API_ENDPOINT = (
     os.getenv("BACKEND_API_ENDPOINT") or PUBLIC_BASE_URL or "http://localhost:8000"
 )
-UI_APP_URL = os.getenv("UI_APP_URL", "http://localhost:3010")
+# Origin of the interface, for links the API hands to browsers (invitations,
+# Stripe return pages, embed links). The interface shares the deployment's
+# public origin, so PUBLIC_BASE_URL is the default.
+UI_APP_URL = os.getenv("UI_APP_URL") or PUBLIC_BASE_URL or "http://localhost:3010"
 
 DATABASE_URL = os.environ["DATABASE_URL"]
 REDIS_URL = os.environ["REDIS_URL"]
