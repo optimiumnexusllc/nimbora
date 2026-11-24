@@ -1,9 +1,9 @@
 {{- /*
-Browser-visible MinIO route. Mounted under the shared API/UI hostname at
+Browser-visible object-store route (bundled SeaweedFS or MinIO, external MinIO). Mounted under the shared API/UI hostname at
 /voice-audio/* to mirror the existing nginx pass-through. Operators who
 want a dedicated hostname can edit this template.
 */ -}}
-{{- if and (eq .Values.exposure.mode "gatewayApi") (or (eq .Values.storage.mode "internalMinio") (eq .Values.storage.mode "externalMinio")) }}
+{{- if and (eq .Values.exposure.mode "gatewayApi") (has .Values.storage.mode (list "internalSeaweedfs" "internalMinio" "externalMinio")) }}
 apiVersion: gateway.networking.k8s.io/v1
 kind: HTTPRoute
 metadata:
@@ -33,7 +33,10 @@ spec:
             type: PathPrefix
             value: /voice-audio/
       backendRefs:
-        {{- if eq .Values.storage.mode "internalMinio" }}
+        {{- if eq .Values.storage.mode "internalSeaweedfs" }}
+        - name: {{ include "nimbora.seaweedfsHost" . }}
+          port: 8333
+        {{- else if eq .Values.storage.mode "internalMinio" }}
         - name: {{ include "nimbora.minioHost" . }}
           port: 9000
         {{- else }}

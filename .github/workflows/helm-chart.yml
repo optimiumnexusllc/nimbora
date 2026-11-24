@@ -1,0 +1,22 @@
+name: Helm chart
+
+# Lints and renders deploy/helm/nimbora (helm and yq come with the runner).
+on:
+  push:
+    branches: [main]
+    paths: ["deploy/helm/**", ".github/workflows/helm-chart.yml"]
+  pull_request:
+    paths: ["deploy/helm/**", ".github/workflows/helm-chart.yml"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  render:
+    name: Lint and render
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: helm version && yq --version
+      - run: deploy/helm/tests/render-test.sh

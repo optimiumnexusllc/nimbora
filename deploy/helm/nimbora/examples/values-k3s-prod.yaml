@@ -13,7 +13,9 @@ image:
 # --- Bundled stateful deps (in-cluster, on local-path PVCs) -----------------
 database: { mode: internal }
 redis:    { mode: internal }
-storage:  { mode: internalMinio }
+# Object store: bundled SeaweedFS. A release installed before with these values
+# ran MinIO: keep `internalMinio` or migrate first (README « Object storage »).
+storage:  { mode: internalSeaweedfs }
 
 # --- HTTP exposure ----------------------------------------------------------
 exposure:
@@ -109,8 +111,8 @@ redisinternal:
     requests: { cpu: 50m,  memory: 64Mi }
     limits:   { cpu: 300m, memory: 256Mi }
 
-# --- Internal MinIO (audio + artifacts on node disk) -----------------------
-minio:
+# --- Internal SeaweedFS (audio + artifacts on node disk) -------------------
+seaweedfs:
   persistence: { size: 10Gi, storageClass: local-path }
   resources:
     requests: { cpu: 50m,  memory: 128Mi }

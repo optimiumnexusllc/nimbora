@@ -43,7 +43,15 @@ spec:
                 name: {{ include "nimbora.web.fullname" . }}
                 port:
                   number: {{ .Values.web.service.port }}
-          {{- if or (eq .Values.storage.mode "internalMinio") (eq .Values.storage.mode "externalMinio") }}
+          {{- if eq .Values.storage.mode "internalSeaweedfs" }}
+          - path: /voice-audio/
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "nimbora.seaweedfsHost" . }}
+                port:
+                  number: 8333
+          {{- else if or (eq .Values.storage.mode "internalMinio") (eq .Values.storage.mode "externalMinio") }}
           - path: /voice-audio/
             pathType: Prefix
             backend:

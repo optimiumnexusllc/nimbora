@@ -1,13 +1,16 @@
-{{- if eq .Values.storage.mode "internalMinio" }}
+{{- if include "nimbora.bundledStore" . }}
 {{- /*
-Bundled MinIO for storage.mode=internalMinio, nimbora's MinIO image. Single
-replica (Recreate strategy — the RWO volume can't be shared). The app creates
-its bucket on first use (bucket_exists → make_bucket), so no provisioning Job.
+Credentials of the bundled object store, MinIO or SeaweedFS (the name
+<release>-minio is kept so existing releases keep their generated password).
+Consumed by the server and by the app (MINIO_ACCESS_KEY / MINIO_SECRET_KEY,
+wired in nimbora.dbEnv): one source of truth, so they can't drift.
 
-The root credentials live in <release>-minio and are consumed BOTH by the MinIO
-server (MINIO_ROOT_USER / MINIO_ROOT_PASSWORD) and by the app (MINIO_ACCESS_KEY /
-MINIO_SECRET_KEY, wired in nimbora.dbEnv) — one source of truth, so they can't
-drift. For production use storage.mode=s3 or externalMinio.
+MinIO below runs for storage.mode=internalMinio (releases installed before
+SeaweedFS) and during a migration (internalSeaweedfs +
+minio.keepDuringMigration). Single replica (Recreate strategy — the RWO volume
+can't be shared). The app creates its bucket on first use. Its volume is kept
+by Helm when MinIO stops being rendered (helm.sh/resource-policy: keep): remove
+it by hand once the files are migrated and checked.
 */}}
 apiVersion: v1
 kind: Secret
@@ -21,6 +24,8 @@ type: Opaque
 stringData:
   root-user: {{ .Values.minio.auth.rootUser | default "minioadmin" | quote }}
   root-password: {{ include "nimbora.minioRootPassword" . | quote }}
+{{- end }}
+{{- if include "nimbora.runMinio" . }}
 ---
 apiVersion: v1
 kind: Service
@@ -48,6 +53,8 @@ kind: PersistentVolumeClaim
 metadata:
   name: {{ .Release.Name }}-minio
   namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
   labels:
     {{- include "nimbora.labels" . | nindent 4 }}
     app.kubernetes.io/component: minio
@@ -88,7 +95,12 @@ spec:
         - name: minio
           image: {{ printf "%s/%s:%s" (.Values.minio.image.registry | default "docker.io") .Values.minio.image.repository (.Values.minio.image.tag | toString) | quote }}
           imagePullPolicy: {{ .Values.minio.image.pullPolicy | default "IfNotPresent" }}
+          # Bitnami's entrypoint runs the command as given (same as the compose
+          # files); root keeps the /data layout written by the former image.
+          securityContext:
+            runAsUser: 0
           args:
+            - minio
             - server
             - /data
             - --console-address
