@@ -156,7 +156,13 @@ class TenantUpdateRequest(BaseModel):
 
 
 # --------------------------------------------------------------------- helpers
-def _plan_response(plan: SubscriptionPlanModel) -> PlanResponse:
+def _plan_response(
+    plan: SubscriptionPlanModel, purchasable: bool | None = None
+) -> PlanResponse:
+    """purchasable: a platform plan needs a Stripe price; a reseller's offer
+    has none and is paid through the reseller's account, so the caller says."""
+    if purchasable is None:
+        purchasable = bool(plan.stripe_price_id and stripe_billing.is_configured())
     return PlanResponse(
         code=plan.code,
         name=plan.name,
@@ -172,7 +178,7 @@ def _plan_response(plan: SubscriptionPlanModel) -> PlanResponse:
         max_human_seats=plan.max_human_seats,
         max_campaigns=plan.max_campaigns,
         features={k: bool(v) for k, v in (plan.features or {}).items()},
-        purchasable=bool(plan.stripe_price_id and stripe_billing.is_configured()),
+        purchasable=purchasable,
         is_public=plan.is_public,
         is_active=plan.is_active,
     )
@@ -329,8 +335,19 @@ async def list_my_plans(user: UserModel = Depends(get_user)):
     organization_id = _require_org(user)
     organization = await db_client.get_organization_by_id(organization_id)
     if organization is not None and organization.reseller_id is not None:
+        reseller = await db_client.get_reseller(organization.reseller_id)
+        purchasable = bool(
+            stripe_billing.is_configured()
+            and reseller is not None
+            and reseller.stripe_account_id
+            and reseller.stripe_charges_enabled
+        )
         plans = await db_client.list_reseller_plans(organization.reseller_id)
-        return [_plan_response(plan) for plan in plans if plan.is_active]
+        return [
+            _plan_response(plan, purchasable=purchasable)
+            for plan in plans
+            if plan.is_active
+        ]
     await subscription_service.ensure_default_plans()
     plans = await db_client.list_subscription_plans(public_only=True)
     return [_plan_response(plan) for plan in plans]

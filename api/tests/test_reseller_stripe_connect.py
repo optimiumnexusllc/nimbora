@@ -208,6 +208,25 @@ async def test_company_pays_its_reseller_minus_the_commission(
     assert (sub.status, sub.plan.code) == ("active", code)
 
 
+async def test_offers_are_purchasable_once_the_reseller_takes_payments(
+    db_session, saas_on, stripe, as_user
+):
+    """The company's subscription page shows « Choisir cette offre » only for
+    purchasable offers: a reseller's offer has no Stripe price of its own, it
+    is purchasable as soon as its reseller can take payments."""
+    _, admin, owner, code, _ = await _reseller_with_company(db_session, as_user)
+    async with as_user(owner) as client:
+        before = (await client.get("/api/v1/saas/subscription/plans")).json()
+    async with as_user(admin) as client:
+        await client.post("/api/v1/reseller/stripe/onboarding")
+        stripe.account = {"charges_enabled": True, "details_submitted": True}
+        await client.get("/api/v1/reseller/stripe")
+    async with as_user(owner) as client:
+        after = (await client.get("/api/v1/saas/subscription/plans")).json()
+    assert [(p["code"], p["purchasable"]) for p in before] == [(code, False)]
+    assert [(p["code"], p["purchasable"]) for p in after] == [(code, True)]
+
+
 async def test_account_updated_events_follow_the_reseller_account(
     db_session, saas_on, stripe, as_user
 ):
