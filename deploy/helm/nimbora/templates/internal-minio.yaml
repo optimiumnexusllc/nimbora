@@ -1,6 +1,6 @@
 {{- if eq .Values.storage.mode "internalMinio" }}
 {{- /*
-Bundled MinIO for storage.mode=internalMinio, nimbora's MinIO image. Single
+Bundled MinIO for storage.mode=internalMinio, Bitnami's build of the last open-source MinIO release. Single
 replica (Recreate strategy — the RWO volume can't be shared). The app creates
 its bucket on first use (bucket_exists → make_bucket), so no provisioning Job.
 
@@ -88,7 +88,12 @@ spec:
         - name: minio
           image: {{ printf "%s/%s:%s" (.Values.minio.image.registry | default "docker.io") .Values.minio.image.repository (.Values.minio.image.tag | toString) | quote }}
           imagePullPolicy: {{ .Values.minio.image.pullPolicy | default "IfNotPresent" }}
+          # Bitnami's entrypoint runs the command as given (same as the compose
+          # files); root keeps the /data layout written by the former image.
+          securityContext:
+            runAsUser: 0
           args:
+            - minio
             - server
             - /data
             - --console-address

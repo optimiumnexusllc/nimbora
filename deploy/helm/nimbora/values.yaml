@@ -647,13 +647,14 @@ redisinternal:
     limits: { cpu: 500m, memory: 256Mi }
 
 minio:
-  # MinIO built from the community fork by quay.io/minio/minio (upstream
-  # MinIO no longer publishes images). Root creds are shared with the app (single
-  # source of truth) so they can't drift; the app creates its bucket on first use.
+  # MinIO removed its own images from quay.io and Docker Hub: Bitnami's build of
+  # the last open-source release (2025-04-22), pinned like the compose files.
+  # Root creds are shared with the app (single source of truth) so they can't
+  # drift; the app creates its bucket on first use.
   image:
-    registry: quay.io
-    repository: minio/minio
-    tag: "RELEASE.2025-04-22T22-12-26Z"
+    registry: docker.io
+    repository: bitnamilegacy/minio
+    tag: "2025.4.22@sha256:50cec18ac4184af4671a78aedd5554942c8ae105d51a465fa82037949046da01"
     pullPolicy: IfNotPresent
   auth:
     rootUser: minioadmin
