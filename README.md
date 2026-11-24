@@ -561,7 +561,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | 🔜 | Messages vocaux et musique d'attente générés par les voix IA locales, dans la langue de l'entreprise |
 | 🔜 | Applications mobile et de bureau à la marque, notifications sans service tiers |
 | 🔜 | Connexion Google / Microsoft par NIMBORA plutôt que par le service hébergé du fournisseur du moteur |
-| 🧪 | **Contrôle automatique des mentions résiduelles du moteur** après chaque mise à jour de paquets (crochet APT) et chaque semaine : page d'accueil et en-têtes HTTP, en-têtes SIP (requête `OPTIONS` réelle), expéditeurs et gabarits des e-mails, interface web du moteur ; journal, métriques et 3 alertes Prometheus (`scripts/check_whitelabel.py`). Testé contre un faux PBX ; à valider sur le moteur réel |
+| 🧪 | **Contrôle automatique des mentions résiduelles du moteur** après chaque mise à jour de paquets (crochet APT) et chaque semaine : page d'accueil et en-têtes HTTP, en-têtes SIP (requête `OPTIONS` réelle), expéditeurs et gabarits des e-mails, interface web du moteur ; journal, métriques et 3 alertes Prometheus (`scripts/check_whitelabel.py`). Testé contre un faux PBX, puis lancé sur le moteur réel du laboratoire (étape 21 : aucune mention, code 0). 🧪 Le déclenchement après une vraie mise à jour de paquets (crochet APT) n'a pas encore tourné |
 | 🔜 | Miroir de paquets et publication des sources de toute modification du moteur (GPL-3.0) |
 
 ### Phase 6 — Plateforme revendable en marque blanche
