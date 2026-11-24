@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Nightly backup of the platform: PostgreSQL dump, call recordings (MinIO) and
-# configuration.
+# Nightly backup of the platform: PostgreSQL dump, the object store (call
+# recordings, transcripts, documents: SeaweedFS, and MinIO on installs made
+# before while it still holds files) and configuration.
 #   ./scripts/backup.sh [/var/backups/nimbora]
 # Cron (03:15 every night):
 #   15 3 * * * /opt/nimbora/deploy/enterprise/scripts/backup.sh >> /var/log/nimbora-backup.log 2>&1
@@ -18,6 +19,7 @@ if [[ -f backup.env ]]; then source backup.env; fi
 DEST="${1:-${BACKUP_DIR:-/var/backups/nimbora}}"
 KEEP_DAYS="${KEEP_DAYS:-14}"
 TEXTFILE_DIR="${TEXTFILE_DIR:-/var/lib/prometheus/node-exporter}"
+SEAWEEDFS_VOLUME="${SEAWEEDFS_VOLUME:-nimbora-enterprise_seaweedfs_data}"
 MINIO_VOLUME="${MINIO_VOLUME:-nimbora-enterprise_minio_data}"
 STAMP="$(date -u +%Y%m%d-%H%M%S)"
 TARGET="$DEST/$STAMP"
@@ -50,11 +52,23 @@ chmod 700 "$DEST"
 log "database"
 docker compose exec -T postgres pg_dump -U postgres -Fc postgres > "$TARGET/postgres.dump"
 
-log "recordings"
-docker run --rm \
-  -v "$MINIO_VOLUME":/data:ro \
-  -v "$TARGET":/backup \
-  alpine tar czf /backup/minio.tar.gz -C /data .
+files=(postgres.dump)
+for store in seaweedfs minio; do
+  volume="$SEAWEEDFS_VOLUME"
+  if [[ $store == minio ]]; then volume="$MINIO_VOLUME"; fi
+  if docker volume inspect "$volume" > /dev/null 2>&1; then
+    log "object store ($store)"
+    docker run --rm \
+      -v "$volume":/data:ro \
+      -v "$TARGET":/backup \
+      alpine tar czf "/backup/$store.tar.gz" -C /data .
+    files+=("$store.tar.gz")
+  fi
+done
+if [[ ${#files[@]} == 1 ]]; then
+  log "no object store volume ($SEAWEEDFS_VOLUME, $MINIO_VOLUME): recordings not saved"
+  false
+fi
 
 log "configuration"
 config=()
@@ -63,8 +77,13 @@ for path in .env backup.env generated asterisk; do
 done
 tar czf "$TARGET/config.tar.gz" -T /dev/null "${config[@]}"
 
-for file in postgres.dump minio.tar.gz config.tar.gz; do encrypt "$TARGET/$file"; done
-(cd "$TARGET" && sha256sum -- postgres.dump* minio.tar.gz* config.tar.gz* > SHA256SUMS)
+files+=(config.tar.gz)
+sums=()
+for file in "${files[@]}"; do
+  encrypt "$TARGET/$file"
+  if [[ -f "$TARGET/$file.enc" ]]; then sums+=("$file.enc"); else sums+=("$file"); fi
+done
+(cd "$TARGET" && sha256sum -- "${sums[@]}" > SHA256SUMS)
 
 if [[ -n "${BACKUP_RSYNC_TARGET:-}" ]]; then
   log "off-site copy to $BACKUP_RSYNC_TARGET"

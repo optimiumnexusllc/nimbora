@@ -92,6 +92,15 @@ for key in POSTGRES_PASSWORD REDIS_PASSWORD MINIO_ROOT_PASSWORD OSS_JWT_SECRET \
   ensure_secret "$key"
 done
 
+# ---------------------------------------------------------- 2b. Object store
+# SeaweedFS for new installs; MinIO kept where its volume exists until the
+# files are migrated (scripts/object_store.sh). Written into .env, so a plain
+# `docker compose up` afterwards keeps the same store.
+# shellcheck source=scripts/object_store.sh
+source "$HERE/scripts/object_store.sh"
+NEED_MINIO="$(enterprise_object_store .env docker)"
+log "Object store: $(get_env OBJECT_STORE)${NEED_MINIO:+ (MinIO kept running: its files are not migrated yet)}"
+
 # ------------------------------------------------- 3. Asterisk configuration
 log "Rendering Asterisk configuration"
 mkdir -p generated/asterisk
@@ -128,6 +137,8 @@ fi
 if [[ $NO_START -eq 0 ]]; then
   log "Building and starting the platform (first build takes a while)"
   docker compose build
+  # compose up does not stop a service whose profile is no longer active.
+  if [[ -z "$NEED_MINIO" ]]; then docker compose --profile minio rm -sf minio >/dev/null 2>&1 || true; fi
   docker compose up -d
   log "Downloading local AI models (voices, speech recognition, LLM)"
   ./scripts/pull_models.sh || log "Model download incomplete — re-run ./scripts/pull_models.sh"

@@ -14,7 +14,7 @@ Call recordings, transcripts, knowledge-base documents and campaign files are st
 The bundled store's keys are `MINIO_ROOT_USER` / `MINIO_ROOT_PASSWORD` in `.env`, whichever store it is (the names are kept so every install script works unchanged). `GET /api/v1/health` returns `object_store`, and `legacy_minio_files` when files are still on MinIO while another store is active.
 
 <Note>
-**Updating an install made before.** The install and update scripts (`remote_up.sh`, `scripts/update_remote.sh`, `scripts/start_docker.sh`, the lab kit) find the existing MinIO volume and write `OBJECT_STORE=minio`: nothing changes until you migrate. If you run `docker compose up` by hand after updating, set `OBJECT_STORE=minio` and `COMPOSE_PROFILES=minio` in `.env` first — otherwise new files go to SeaweedFS and the old ones stay on a MinIO that is no longer started (the API logs it, and `/api/v1/health` shows `legacy_minio_files`).
+**Updating an install made before.** The install and update scripts (`remote_up.sh`, `scripts/update_remote.sh`, `scripts/start_docker.sh`, the lab kit, `deploy/enterprise/install.sh`) find the existing MinIO volume and write `OBJECT_STORE=minio`: nothing changes until you migrate. If you run `docker compose up` by hand after updating, set `OBJECT_STORE=minio` and `COMPOSE_PROFILES=minio` in `.env` first — otherwise new files go to SeaweedFS and the old ones stay on a MinIO that is no longer started (the API logs it, and `/api/v1/health` shows `legacy_minio_files`).
 </Note>
 
 ## A private bucket and signed links
@@ -69,7 +69,7 @@ For an install made before SeaweedFS became the default (`OBJECT_STORE=minio`). 
 
 <Steps>
   <Step title="Switch new files to SeaweedFS">
-    In `.env`: `OBJECT_STORE=seaweedfs` (keep `minio` in `COMPOSE_PROFILES` if you set it by hand), then restart with your usual command (`./remote_up.sh`, the lab kit `--only nimbora`). The API creates the `voice-audio` bucket on SeaweedFS at start-up.
+    In `.env`: `OBJECT_STORE=seaweedfs` (keep `minio` in `COMPOSE_PROFILES` if you set it by hand), then restart with your usual command (`./remote_up.sh`, the lab kit `--only nimbora`, `sudo ./install.sh` in `deploy/enterprise`). The API creates the `voice-audio` bucket on SeaweedFS at start-up.
   </Step>
   <Step title="Copy and verify">
     ```bash
@@ -85,12 +85,12 @@ For an install made before SeaweedFS became the default (`OBJECT_STORE=minio`). 
     `/api/v1/health` then shows `legacy_minio_files: 0`. Play a few old recordings in the console.
   </Step>
   <Step title="Retire MinIO">
-    `MINIO_RETIRED=true` in `.env` and restart: MinIO is no longer started. Keep its volume for a while, then remove it (`docker volume rm <project>_minio-data`).
+    `MINIO_RETIRED=true` in `.env` and restart: MinIO is no longer started. Keep its volume for a while, then remove it (`docker volume rm <project>_minio-data`; `nimbora-enterprise_minio_data` for the enterprise stack, whose backup includes it as long as it exists).
   </Step>
 </Steps>
 
 ## What SeaweedFS runs with
 
-One container, `chrislusf/seaweedfs` (version pinned in `docker-compose.yaml`, `SEAWEEDFS_IMAGE` to override): master, volume server, filer and S3 gateway (`server -s3`), data in the `seaweedfs-data` volume, S3 on port 8333 bound to localhost. Its admin identity comes from the bundled store's keys, which makes the bucket private; anonymous usage statistics are turned off (`-master.telemetry=false`), and the Iceberg and Lance listeners are disabled. The reverse proxy serves `/voice-audio/` from it (nginx `deploy/templates`, Traefik `deploy/lab`).
+One container, `chrislusf/seaweedfs` (version pinned in `docker-compose.yaml`, `SEAWEEDFS_IMAGE` to override): master, volume server, filer and S3 gateway (`server -s3`), data in the `seaweedfs-data` volume, S3 on port 8333 bound to localhost. Its admin identity comes from the bundled store's keys, which makes the bucket private; anonymous usage statistics are turned off (`-master.telemetry=false`), and the Iceberg and Lance listeners are disabled. The reverse proxy serves `/voice-audio/` from it (nginx `deploy/templates`, Traefik `deploy/lab`, Caddy `deploy/enterprise`). The enterprise stack runs the same image and command on its private network, with no published port and its generated keys.
 
 The `deploy/enterprise` stack and the Helm chart still bundle MinIO: they move to SeaweedFS in a later release, once it is validated on the reference lab.

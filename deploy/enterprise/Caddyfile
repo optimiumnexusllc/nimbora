@@ -21,10 +21,14 @@
 		reverse_proxy asterisk:8088
 	}
 
-	# Call recordings / audio (MinIO bucket)
+	# Call recordings, transcripts, documents: signed links to the bucket of the
+	# active store (OBJECT_STORE: seaweedfs by default, minio on installs made
+	# before and not yet migrated).
 	handle_path /voice-audio/* {
 		rewrite * /voice-audio{path}
-		reverse_proxy minio:9000
+		@minio `"{$OBJECT_STORE:seaweedfs}" == "minio"`
+		reverse_proxy @minio minio:9000
+		reverse_proxy seaweedfs:8333
 	}
 
 	# REST API, websockets (media streams, signaling)

@@ -11,22 +11,31 @@ import pytest
 DEPLOY = Path(__file__).resolve().parents[2]
 BACKUP = DEPLOY / "enterprise" / "scripts" / "backup.sh"
 RESTORE = DEPLOY / "enterprise" / "scripts" / "restore.sh"
+SEAWEEDFS = "nimbora-enterprise_seaweedfs_data"
+MINIO = "nimbora-enterprise_minio_data"
 
 DOCKER = r"""#!/usr/bin/env bash
 echo "docker $*" >> "$LOG"
+if [[ "$1" == volume && "$2" == inspect ]]; then
+  [[ " $VOLUMES " == *" $3 "* ]] && exit 0 || exit 1
+fi
 if [[ "$1" == compose && "$2" == exec ]]; then
   if [[ " $* " == *" pg_dump "* ]]; then printf 'PGDMP-fake-dump'; else cat > "$WORK_DIR/restored.dump"; fi
   exit 0
 fi
 if [[ "$1" == run ]]; then
   for arg in "$@"; do
-    case "$arg" in *:/backup|*:/backup:ro) backup="${arg%%:/backup*}" ;; esac
+    case "$arg" in
+      *:/backup|*:/backup:ro) backup="${arg%%:/backup*}" ;;
+      *:/data|*:/data:ro) volume="${arg%%:/data*}" ;;
+    esac
   done
+  [[ "$*" =~ /backup/([a-z]+\.tar\.gz) ]] && archive="${BASH_REMATCH[1]}"
   if [[ " $* " == *" czf "* ]]; then
-    mkdir -p "$WORK_DIR/minio/nimbora"; echo recording > "$WORK_DIR/minio/nimbora/call.wav"
-    tar czf "$backup/minio.tar.gz" -C "$WORK_DIR/minio" .
+    mkdir -p "$WORK_DIR/volumes/$volume"; echo "recording in $volume" > "$WORK_DIR/volumes/$volume/call.wav"
+    tar czf "$backup/$archive" -C "$WORK_DIR/volumes/$volume" .
   else
-    mkdir -p "$WORK_DIR/minio-restored"; tar xzf "$backup/minio.tar.gz" -C "$WORK_DIR/minio-restored"
+    mkdir -p "$WORK_DIR/restored/$volume"; tar xzf "$backup/$archive" -C "$WORK_DIR/restored/$volume"
   fi
 fi
 """
@@ -46,6 +55,8 @@ def env(tmp_path: Path):
         "LOG": str(tmp_path / "docker.log"),
         "WORK_DIR": str(tmp_path),
         "TEXTFILE_DIR": str(tmp_path / "textfile"),
+        # An install made before SeaweedFS, during its migration: both stores.
+        "VOLUMES": f"{SEAWEEDFS} {MINIO}",
     }
 
 
@@ -70,6 +81,7 @@ def test_backup_restore_round_trip_with_encryption(tmp_path, env):
         "config.tar.gz.enc",
         "minio.tar.gz.enc",
         "postgres.dump.enc",
+        "seaweedfs.tar.gz.enc",
     ]
     assert b"PGDMP" not in (backup / "postgres.dump.enc").read_bytes()
     metric = (tmp_path / "textfile" / "nimbora_platform_backup.prom").read_text()
@@ -81,9 +93,9 @@ def test_backup_restore_round_trip_with_encryption(tmp_path, env):
     assert "Archives readable." in checked.stdout
     run(RESTORE, str(backup), "--yes", env=env, BACKUP_PASSPHRASE_FILE=str(key))
     assert (tmp_path / "restored.dump").read_text() == "PGDMP-fake-dump"
-    assert (
-        tmp_path / "minio-restored" / "nimbora" / "call.wav"
-    ).read_text() == "recording\n"
+    for volume in (SEAWEEDFS, MINIO):
+        restored = tmp_path / "restored" / volume / "call.wav"
+        assert restored.read_text() == f"recording in {volume}\n"
     log = (tmp_path / "docker.log").read_text()
     assert (
         log.index("compose stop api ui")
@@ -101,3 +113,36 @@ def test_restore_refuses_an_altered_backup(tmp_path, env):
     result = run(RESTORE, str(backup), "--yes", env=env, check=False)
     assert result.returncode != 0 and "altered" in result.stdout
     assert "pg_restore" not in (tmp_path / "docker.log").read_text()
+
+
+def test_new_install_backs_up_seaweedfs_only(tmp_path, env):
+    dest = tmp_path / "backups"
+    run(BACKUP, str(dest), env=env, VOLUMES=SEAWEEDFS)
+    (backup,) = list(dest.iterdir())
+    assert sorted(p.name for p in backup.iterdir()) == [
+        "SHA256SUMS",
+        "config.tar.gz",
+        "postgres.dump",
+        "seaweedfs.tar.gz",
+    ]
+    assert "seaweedfs.tar.gz" in (backup / "SHA256SUMS").read_text()
+    run(RESTORE, str(backup), "--yes", env=env, VOLUMES=SEAWEEDFS)
+    log = (tmp_path / "docker.log").read_text()
+    assert "compose stop seaweedfs" in log and "minio" not in log.split("pg_restore")[1]
+
+
+def test_backup_made_before_seaweedfs_still_restores(tmp_path, env):
+    """A backup taken with MinIO only (minio.tar.gz) restores onto the new stack."""
+    dest = tmp_path / "backups"
+    run(BACKUP, str(dest), env=env, VOLUMES=MINIO)
+    (backup,) = list(dest.iterdir())
+    assert not (backup / "seaweedfs.tar.gz").exists()
+    run(RESTORE, str(backup), "--yes", env=env, VOLUMES=SEAWEEDFS)
+    assert (tmp_path / "restored" / MINIO / "call.wav").exists()
+    assert "--profile minio stop minio" in (tmp_path / "docker.log").read_text()
+
+
+def test_backup_fails_without_any_object_store_volume(tmp_path, env):
+    result = run(BACKUP, str(tmp_path / "b"), env=env, VOLUMES="", check=False)
+    assert result.returncode != 0
+    assert "object store" in result.stdout + result.stderr
