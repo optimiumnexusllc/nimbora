@@ -89,14 +89,21 @@ The reseller connects its own Stripe account from its console (**Paiement en lig
 
 The reseller follows its payments and payouts in its Stripe Express dashboard (**Tableau de bord Stripe**).
 
+<Warning>
+The reseller's account must be able to receive **transfers** from the platform. Stripe allows this only between some countries: a platform registered in the United States can pay out resellers in the United States, but not in France, Switzerland or the United Arab Emirates (Stripe shows this on the **Countries** page). Countries reachable only through cross-border payouts, such as Côte d'Ivoire, are not supported by this flow either, since it charges on behalf of the reseller. Check the countries of your resellers against your platform's country before relying on online payment.
+</Warning>
+
 **What to set up in Stripe**, once, in the platform's account (test mode first):
 
 <Steps>
   <Step title="Turn on Connect">
-    Dashboard → **Connect** → get started, as a **platform**, accounts of type **Express**. Fill in the platform profile and the branding of the onboarding pages (name, icon, colour).
+    Dashboard → **Connect** → get started. Answer the setup questions as follows: funds flow **Buyers will purchase from you**, then **Sellers will be paid out individually**; account creation **Onboarding hosted by Stripe**; account management **Express Dashboard**. Then, in Settings → Connect, set the branding of the onboarding pages (name, icon, colour) and, under **User onboarding options → Countries**, the countries your resellers are in.
+  </Step>
+  <Step title="Allow Accounts v1">
+    Settings → Developers → **API policies** → turn on **Accounts v1 support** and save. NIMBORA creates the resellers' accounts with `POST /v1/accounts`; on a new platform Stripe turns this off by default, and **Connecter mon compte Stripe** fails until it is on.
   </Step>
   <Step title="Add the webhook for connected accounts">
-    Dashboard → Developers → **Webhooks** → add an endpoint on the same URL as the platform's (`https://<your domain>/api/v1/saas/stripe/webhook`), choose **Listen to events on Connected accounts**, event `account.updated`. Copy its signing secret into `STRIPE_CONNECT_WEBHOOK_SECRET` (the server's secrets file, never a chat or a commit) and restart.
+    Dashboard → Developers → **Webhooks** → add a destination on the same URL as the platform's (`https://<your domain>/api/v1/saas/stripe/webhook`), events from **Connected accounts**, snapshot payload, event `account.updated`. Copy its signing secret into `STRIPE_CONNECT_WEBHOOK_SECRET` (the server's secrets file, never a chat or a commit) and restart.
   </Step>
   <Step title="Try it">
     Create a reseller, connect its account with Stripe's test data, create a company and pay with a test card (`4242 4242 4242 4242`). The payment appears in the reseller's Express dashboard, the commission in the platform's **Collected fees**.
