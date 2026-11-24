@@ -51,6 +51,8 @@ router = APIRouter(prefix="/user")
 class AuthUserResponse(TypedDict):
     id: int
     is_superuser: bool
+    # The reseller this user administers (SaaS), for its console.
+    reseller_id: int | None
 
 
 class DefaultConfigurationsResponse(BaseModel):
@@ -117,9 +119,15 @@ async def get_default_configurations() -> DefaultConfigurationsResponse:
 async def get_auth_user(
     user: UserModel = Depends(get_user),
 ) -> AuthUserResponse:
+    from api.constants import SAAS_MODE
+
+    reseller = (
+        await db_client.get_active_reseller_of_user(user.id) if SAAS_MODE else None
+    )
     return {
         "id": user.id,
         "is_superuser": user.is_superuser,
+        "reseller_id": reseller.id if reseller else None,
     }
 
 

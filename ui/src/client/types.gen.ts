@@ -694,6 +694,10 @@ export type AuthUserResponse = {
      * Is Superuser
      */
     is_superuser: boolean;
+    /**
+     * Reseller Id
+     */
+    reseller_id: number | null;
 };
 
 /**
@@ -2218,6 +2222,91 @@ export type CloudonixConfigurationRequest = {
      * Cloudonix Voice Application name. The application's url is updated when inbound workflows are attached to numbers on this domain. If omitted, an application is auto-created on save and its name is stored on the configuration.
      */
     application_name?: string | null;
+};
+
+/**
+ * Company
+ */
+export type Company = {
+    /**
+     * Organization Id
+     */
+    organization_id: number;
+    /**
+     * Company Name
+     */
+    company_name: string | null;
+    /**
+     * Billing Email
+     */
+    billing_email: string | null;
+    /**
+     * Plan Code
+     */
+    plan_code: string | null;
+    /**
+     * Plan Name
+     */
+    plan_name: string | null;
+    /**
+     * Status
+     */
+    status: string | null;
+    /**
+     * Trial Ends At
+     */
+    trial_ends_at: string | null;
+    /**
+     * Created At
+     */
+    created_at: string | null;
+};
+
+/**
+ * CompanyCreated
+ */
+export type CompanyCreated = {
+    company: Company;
+    /**
+     * Invitation Url
+     */
+    invitation_url: string;
+};
+
+/**
+ * CompanyRequest
+ */
+export type CompanyRequest = {
+    /**
+     * Company Name
+     */
+    company_name: string;
+    /**
+     * Owner Email
+     */
+    owner_email: string;
+    /**
+     * Owner Name
+     */
+    owner_name?: string | null;
+    /**
+     * Plan Code
+     */
+    plan_code: string;
+};
+
+/**
+ * CompanyUpdate
+ */
+export type CompanyUpdate = {
+    /**
+     * Plan Code
+     */
+    plan_code?: string | null;
+    /**
+     * Status
+     */
+    status?: 'trialing' | 'active' | 'suspended' | null;
 };
 
 /**
@@ -4918,6 +5007,74 @@ export type InteractionResponse = {
 };
 
 /**
+ * InvitationAccept
+ */
+export type InvitationAccept = {
+    /**
+     * Password
+     */
+    password: string;
+    /**
+     * Name
+     */
+    name?: string | null;
+};
+
+/**
+ * InvitationInfo
+ */
+export type InvitationInfo = {
+    /**
+     * Kind
+     */
+    kind: string;
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Name
+     */
+    name: string | null;
+    /**
+     * Target Name
+     */
+    target_name: string;
+    /**
+     * Existing Account
+     */
+    existing_account: boolean;
+    /**
+     * Expires At
+     */
+    expires_at: string;
+};
+
+/**
+ * InvitationLink
+ */
+export type InvitationLink = {
+    /**
+     * Invitation Url
+     */
+    invitation_url: string;
+};
+
+/**
+ * InvitationRequest
+ */
+export type InvitationRequest = {
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Name
+     */
+    name?: string | null;
+};
+
+/**
  * ItemKind
  */
 export type ItemKind = 'node' | 'edge' | 'workflow';
@@ -5890,6 +6047,40 @@ export type Offer = {
      * Category
      */
     category?: string;
+};
+
+/**
+ * OfferRequest
+ */
+export type OfferRequest = {
+    /**
+     * Base Plan Code
+     */
+    base_plan_code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description?: string | null;
+    /**
+     * Monthly Price Cents
+     */
+    monthly_price_cents: number;
+    /**
+     * Limits
+     */
+    limits?: {
+        [key: string]: number | null;
+    };
+    /**
+     * Features
+     */
+    features?: {
+        [key: string]: boolean;
+    };
 };
 
 /**
@@ -7980,6 +8171,213 @@ export type RedirectResponse = {
      * Url
      */
     url: string;
+};
+
+/**
+ * ResellerCreateRequest
+ */
+export type ResellerCreateRequest = {
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Contact Email
+     */
+    contact_email?: string | null;
+    /**
+     * Commission Percent
+     */
+    commission_percent: number;
+    /**
+     * Admin Email
+     */
+    admin_email: string;
+    /**
+     * Admin Name
+     */
+    admin_name?: string | null;
+};
+
+/**
+ * ResellerCreated
+ */
+export type ResellerCreated = {
+    reseller: ResellerResponse;
+    /**
+     * Invitation Url
+     */
+    invitation_url: string;
+};
+
+/**
+ * ResellerInfo
+ */
+export type ResellerInfo = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Commission Percent
+     */
+    commission_percent: number;
+    /**
+     * Stripe Ready
+     */
+    stripe_ready: boolean;
+    /**
+     * Companies
+     */
+    companies: number;
+};
+
+/**
+ * ResellerInvitation
+ */
+export type ResellerInvitation = {
+    /**
+     * Invitation Url
+     */
+    invitation_url: string;
+};
+
+/**
+ * ResellerInvitationRequest
+ */
+export type ResellerInvitationRequest = {
+    /**
+     * Email
+     */
+    email: string;
+    /**
+     * Name
+     */
+    name?: string | null;
+};
+
+/**
+ * ResellerPlan
+ */
+export type ResellerPlan = {
+    /**
+     * Code
+     */
+    code: string;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Description
+     */
+    description: string | null;
+    /**
+     * Currency
+     */
+    currency: string;
+    /**
+     * Monthly Price Cents
+     */
+    monthly_price_cents: number;
+    /**
+     * Base Plan Code
+     */
+    base_plan_code: string | null;
+    /**
+     * Included Minutes
+     */
+    included_minutes: number | null;
+    /**
+     * Included Human Minutes
+     */
+    included_human_minutes: number | null;
+    /**
+     * Max Concurrent Calls
+     */
+    max_concurrent_calls: number | null;
+    /**
+     * Max Agents
+     */
+    max_agents: number | null;
+    /**
+     * Max Human Seats
+     */
+    max_human_seats: number | null;
+    /**
+     * Max Campaigns
+     */
+    max_campaigns: number | null;
+    /**
+     * Features
+     */
+    features: {
+        [key: string]: boolean;
+    };
+    /**
+     * Is Public
+     */
+    is_public: boolean;
+};
+
+/**
+ * ResellerResponse
+ */
+export type ResellerResponse = {
+    /**
+     * Id
+     */
+    id: number;
+    /**
+     * Name
+     */
+    name: string;
+    /**
+     * Contact Email
+     */
+    contact_email: string | null;
+    /**
+     * Commission Percent
+     */
+    commission_percent: number;
+    /**
+     * Is Active
+     */
+    is_active: boolean;
+    /**
+     * Stripe Ready
+     */
+    stripe_ready: boolean;
+    /**
+     * Companies
+     */
+    companies: number;
+};
+
+/**
+ * ResellerUpdateRequest
+ */
+export type ResellerUpdateRequest = {
+    /**
+     * Name
+     */
+    name?: string | null;
+    /**
+     * Contact Email
+     */
+    contact_email?: string | null;
+    /**
+     * Commission Percent
+     */
+    commission_percent?: number | null;
+    /**
+     * Is Active
+     */
+    is_active?: boolean | null;
 };
 
 /**
@@ -21666,6 +22064,74 @@ export type SignupApiV1AuthSignupPostResponses = {
 
 export type SignupApiV1AuthSignupPostResponse = SignupApiV1AuthSignupPostResponses[keyof SignupApiV1AuthSignupPostResponses];
 
+export type ReadInvitationApiV1AuthInvitationsTokenGetData = {
+    body?: never;
+    path: {
+        /**
+         * Token
+         */
+        token: string;
+    };
+    query?: never;
+    url: '/api/v1/auth/invitations/{token}';
+};
+
+export type ReadInvitationApiV1AuthInvitationsTokenGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ReadInvitationApiV1AuthInvitationsTokenGetError = ReadInvitationApiV1AuthInvitationsTokenGetErrors[keyof ReadInvitationApiV1AuthInvitationsTokenGetErrors];
+
+export type ReadInvitationApiV1AuthInvitationsTokenGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: InvitationInfo;
+};
+
+export type ReadInvitationApiV1AuthInvitationsTokenGetResponse = ReadInvitationApiV1AuthInvitationsTokenGetResponses[keyof ReadInvitationApiV1AuthInvitationsTokenGetResponses];
+
+export type AcceptInvitationApiV1AuthInvitationsTokenAcceptPostData = {
+    body: InvitationAccept;
+    path: {
+        /**
+         * Token
+         */
+        token: string;
+    };
+    query?: never;
+    url: '/api/v1/auth/invitations/{token}/accept';
+};
+
+export type AcceptInvitationApiV1AuthInvitationsTokenAcceptPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AcceptInvitationApiV1AuthInvitationsTokenAcceptPostError = AcceptInvitationApiV1AuthInvitationsTokenAcceptPostErrors[keyof AcceptInvitationApiV1AuthInvitationsTokenAcceptPostErrors];
+
+export type AcceptInvitationApiV1AuthInvitationsTokenAcceptPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: AuthResponse;
+};
+
+export type AcceptInvitationApiV1AuthInvitationsTokenAcceptPostResponse = AcceptInvitationApiV1AuthInvitationsTokenAcceptPostResponses[keyof AcceptInvitationApiV1AuthInvitationsTokenAcceptPostResponses];
+
 export type LoginApiV1AuthLoginPostData = {
     body: ApiSchemasAuthLoginRequest;
     path?: never;
@@ -21958,6 +22424,174 @@ export type OpenBillingPortalApiV1SaasPortalPostResponses = {
 };
 
 export type OpenBillingPortalApiV1SaasPortalPostResponse = OpenBillingPortalApiV1SaasPortalPostResponses[keyof OpenBillingPortalApiV1SaasPortalPostResponses];
+
+export type AdminListResellersApiV1SaasAdminResellersGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/saas/admin/resellers';
+};
+
+export type AdminListResellersApiV1SaasAdminResellersGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminListResellersApiV1SaasAdminResellersGetError = AdminListResellersApiV1SaasAdminResellersGetErrors[keyof AdminListResellersApiV1SaasAdminResellersGetErrors];
+
+export type AdminListResellersApiV1SaasAdminResellersGetResponses = {
+    /**
+     * Response Admin List Resellers Api V1 Saas Admin Resellers Get
+     *
+     * Successful Response
+     */
+    200: Array<ResellerResponse>;
+};
+
+export type AdminListResellersApiV1SaasAdminResellersGetResponse = AdminListResellersApiV1SaasAdminResellersGetResponses[keyof AdminListResellersApiV1SaasAdminResellersGetResponses];
+
+export type AdminCreateResellerApiV1SaasAdminResellersPostData = {
+    body: ResellerCreateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/saas/admin/resellers';
+};
+
+export type AdminCreateResellerApiV1SaasAdminResellersPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminCreateResellerApiV1SaasAdminResellersPostError = AdminCreateResellerApiV1SaasAdminResellersPostErrors[keyof AdminCreateResellerApiV1SaasAdminResellersPostErrors];
+
+export type AdminCreateResellerApiV1SaasAdminResellersPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: ResellerCreated;
+};
+
+export type AdminCreateResellerApiV1SaasAdminResellersPostResponse = AdminCreateResellerApiV1SaasAdminResellersPostResponses[keyof AdminCreateResellerApiV1SaasAdminResellersPostResponses];
+
+export type AdminUpdateResellerApiV1SaasAdminResellersResellerIdPatchData = {
+    body: ResellerUpdateRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Reseller Id
+         */
+        reseller_id: number;
+    };
+    query?: never;
+    url: '/api/v1/saas/admin/resellers/{reseller_id}';
+};
+
+export type AdminUpdateResellerApiV1SaasAdminResellersResellerIdPatchErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminUpdateResellerApiV1SaasAdminResellersResellerIdPatchError = AdminUpdateResellerApiV1SaasAdminResellersResellerIdPatchErrors[keyof AdminUpdateResellerApiV1SaasAdminResellersResellerIdPatchErrors];
+
+export type AdminUpdateResellerApiV1SaasAdminResellersResellerIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: ResellerResponse;
+};
+
+export type AdminUpdateResellerApiV1SaasAdminResellersResellerIdPatchResponse = AdminUpdateResellerApiV1SaasAdminResellersResellerIdPatchResponses[keyof AdminUpdateResellerApiV1SaasAdminResellersResellerIdPatchResponses];
+
+export type AdminInviteResellerAdminApiV1SaasAdminResellersResellerIdInvitationsPostData = {
+    body: ResellerInvitationRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Reseller Id
+         */
+        reseller_id: number;
+    };
+    query?: never;
+    url: '/api/v1/saas/admin/resellers/{reseller_id}/invitations';
+};
+
+export type AdminInviteResellerAdminApiV1SaasAdminResellersResellerIdInvitationsPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type AdminInviteResellerAdminApiV1SaasAdminResellersResellerIdInvitationsPostError = AdminInviteResellerAdminApiV1SaasAdminResellersResellerIdInvitationsPostErrors[keyof AdminInviteResellerAdminApiV1SaasAdminResellersResellerIdInvitationsPostErrors];
+
+export type AdminInviteResellerAdminApiV1SaasAdminResellersResellerIdInvitationsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: ResellerInvitation;
+};
+
+export type AdminInviteResellerAdminApiV1SaasAdminResellersResellerIdInvitationsPostResponse = AdminInviteResellerAdminApiV1SaasAdminResellersResellerIdInvitationsPostResponses[keyof AdminInviteResellerAdminApiV1SaasAdminResellersResellerIdInvitationsPostResponses];
 
 export type AdminListPlansApiV1SaasAdminPlansGetData = {
     body?: never;
@@ -22323,6 +22957,378 @@ export type AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchResponses =
 };
 
 export type AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchResponse = AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchResponses[keyof AdminUpdateTenantApiV1SaasAdminTenantsOrganizationIdPatchResponses];
+
+export type GetResellerApiV1ResellerGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/reseller';
+};
+
+export type GetResellerApiV1ResellerGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetResellerApiV1ResellerGetError = GetResellerApiV1ResellerGetErrors[keyof GetResellerApiV1ResellerGetErrors];
+
+export type GetResellerApiV1ResellerGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: ResellerInfo;
+};
+
+export type GetResellerApiV1ResellerGetResponse = GetResellerApiV1ResellerGetResponses[keyof GetResellerApiV1ResellerGetResponses];
+
+export type ListBasePlansApiV1ResellerBasePlansGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/reseller/base-plans';
+};
+
+export type ListBasePlansApiV1ResellerBasePlansGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListBasePlansApiV1ResellerBasePlansGetError = ListBasePlansApiV1ResellerBasePlansGetErrors[keyof ListBasePlansApiV1ResellerBasePlansGetErrors];
+
+export type ListBasePlansApiV1ResellerBasePlansGetResponses = {
+    /**
+     * Response List Base Plans Api V1 Reseller Base Plans Get
+     *
+     * Successful Response
+     */
+    200: Array<ResellerPlan>;
+};
+
+export type ListBasePlansApiV1ResellerBasePlansGetResponse = ListBasePlansApiV1ResellerBasePlansGetResponses[keyof ListBasePlansApiV1ResellerBasePlansGetResponses];
+
+export type ListOffersApiV1ResellerPlansGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/reseller/plans';
+};
+
+export type ListOffersApiV1ResellerPlansGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListOffersApiV1ResellerPlansGetError = ListOffersApiV1ResellerPlansGetErrors[keyof ListOffersApiV1ResellerPlansGetErrors];
+
+export type ListOffersApiV1ResellerPlansGetResponses = {
+    /**
+     * Response List Offers Api V1 Reseller Plans Get
+     *
+     * Successful Response
+     */
+    200: Array<ResellerPlan>;
+};
+
+export type ListOffersApiV1ResellerPlansGetResponse = ListOffersApiV1ResellerPlansGetResponses[keyof ListOffersApiV1ResellerPlansGetResponses];
+
+export type CreateOfferApiV1ResellerPlansPostData = {
+    body: OfferRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/reseller/plans';
+};
+
+export type CreateOfferApiV1ResellerPlansPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateOfferApiV1ResellerPlansPostError = CreateOfferApiV1ResellerPlansPostErrors[keyof CreateOfferApiV1ResellerPlansPostErrors];
+
+export type CreateOfferApiV1ResellerPlansPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: ResellerPlan;
+};
+
+export type CreateOfferApiV1ResellerPlansPostResponse = CreateOfferApiV1ResellerPlansPostResponses[keyof CreateOfferApiV1ResellerPlansPostResponses];
+
+export type UpdateOfferApiV1ResellerPlansCodePutData = {
+    body: OfferRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Code
+         */
+        code: string;
+    };
+    query?: never;
+    url: '/api/v1/reseller/plans/{code}';
+};
+
+export type UpdateOfferApiV1ResellerPlansCodePutErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateOfferApiV1ResellerPlansCodePutError = UpdateOfferApiV1ResellerPlansCodePutErrors[keyof UpdateOfferApiV1ResellerPlansCodePutErrors];
+
+export type UpdateOfferApiV1ResellerPlansCodePutResponses = {
+    /**
+     * Successful Response
+     */
+    200: ResellerPlan;
+};
+
+export type UpdateOfferApiV1ResellerPlansCodePutResponse = UpdateOfferApiV1ResellerPlansCodePutResponses[keyof UpdateOfferApiV1ResellerPlansCodePutResponses];
+
+export type ListCompaniesApiV1ResellerCompaniesGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/reseller/companies';
+};
+
+export type ListCompaniesApiV1ResellerCompaniesGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListCompaniesApiV1ResellerCompaniesGetError = ListCompaniesApiV1ResellerCompaniesGetErrors[keyof ListCompaniesApiV1ResellerCompaniesGetErrors];
+
+export type ListCompaniesApiV1ResellerCompaniesGetResponses = {
+    /**
+     * Response List Companies Api V1 Reseller Companies Get
+     *
+     * Successful Response
+     */
+    200: Array<Company>;
+};
+
+export type ListCompaniesApiV1ResellerCompaniesGetResponse = ListCompaniesApiV1ResellerCompaniesGetResponses[keyof ListCompaniesApiV1ResellerCompaniesGetResponses];
+
+export type CreateCompanyApiV1ResellerCompaniesPostData = {
+    body: CompanyRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/reseller/companies';
+};
+
+export type CreateCompanyApiV1ResellerCompaniesPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type CreateCompanyApiV1ResellerCompaniesPostError = CreateCompanyApiV1ResellerCompaniesPostErrors[keyof CreateCompanyApiV1ResellerCompaniesPostErrors];
+
+export type CreateCompanyApiV1ResellerCompaniesPostResponses = {
+    /**
+     * Successful Response
+     */
+    201: CompanyCreated;
+};
+
+export type CreateCompanyApiV1ResellerCompaniesPostResponse = CreateCompanyApiV1ResellerCompaniesPostResponses[keyof CreateCompanyApiV1ResellerCompaniesPostResponses];
+
+export type UpdateCompanyApiV1ResellerCompaniesOrganizationIdPatchData = {
+    body: CompanyUpdate;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Organization Id
+         */
+        organization_id: number;
+    };
+    query?: never;
+    url: '/api/v1/reseller/companies/{organization_id}';
+};
+
+export type UpdateCompanyApiV1ResellerCompaniesOrganizationIdPatchErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type UpdateCompanyApiV1ResellerCompaniesOrganizationIdPatchError = UpdateCompanyApiV1ResellerCompaniesOrganizationIdPatchErrors[keyof UpdateCompanyApiV1ResellerCompaniesOrganizationIdPatchErrors];
+
+export type UpdateCompanyApiV1ResellerCompaniesOrganizationIdPatchResponses = {
+    /**
+     * Successful Response
+     */
+    200: Company;
+};
+
+export type UpdateCompanyApiV1ResellerCompaniesOrganizationIdPatchResponse = UpdateCompanyApiV1ResellerCompaniesOrganizationIdPatchResponses[keyof UpdateCompanyApiV1ResellerCompaniesOrganizationIdPatchResponses];
+
+export type InviteToCompanyApiV1ResellerCompaniesOrganizationIdInvitationsPostData = {
+    body: InvitationRequest;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path: {
+        /**
+         * Organization Id
+         */
+        organization_id: number;
+    };
+    query?: never;
+    url: '/api/v1/reseller/companies/{organization_id}/invitations';
+};
+
+export type InviteToCompanyApiV1ResellerCompaniesOrganizationIdInvitationsPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type InviteToCompanyApiV1ResellerCompaniesOrganizationIdInvitationsPostError = InviteToCompanyApiV1ResellerCompaniesOrganizationIdInvitationsPostErrors[keyof InviteToCompanyApiV1ResellerCompaniesOrganizationIdInvitationsPostErrors];
+
+export type InviteToCompanyApiV1ResellerCompaniesOrganizationIdInvitationsPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: InvitationLink;
+};
+
+export type InviteToCompanyApiV1ResellerCompaniesOrganizationIdInvitationsPostResponse = InviteToCompanyApiV1ResellerCompaniesOrganizationIdInvitationsPostResponses[keyof InviteToCompanyApiV1ResellerCompaniesOrganizationIdInvitationsPostResponses];
 
 export type ListLocalLanguagesApiV1LocalAiLanguagesGetData = {
     body?: never;

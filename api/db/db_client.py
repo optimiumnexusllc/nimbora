@@ -28,6 +28,7 @@ from api.db.pbx_supervision_client import PbxSupervisionClient
 from api.db.privacy_client import PrivacyClient
 from api.db.quality_client import QualityClient
 from api.db.reports_client import ReportsClient
+from api.db.reseller_client import ResellerClient
 from api.db.saas_client import SaasClient
 from api.db.softphone_client import SoftphoneClient
 from api.db.telephony_configuration_client import TelephonyConfigurationClient
@@ -76,6 +77,7 @@ class DBClient(
     TelephonyTrunkClient,
     FolderClient,
     SaasClient,
+    ResellerClient,
     ContactCenterClient,
     CustomerMemoryClient,
     CallbackClient,

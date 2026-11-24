@@ -17,7 +17,12 @@ from api.constants import SAAS_MODE, SAAS_PLATFORM_NAME, UI_APP_URL
 from api.db import db_client
 from api.db.models import SUBSCRIPTION_STATUSES, SubscriptionPlanModel, UserModel
 from api.services.auth.depends import get_superuser, get_user
-from api.services.saas import stripe_billing, subscription_service
+from api.services.saas import (
+    invitations,
+    resellers,
+    stripe_billing,
+    subscription_service,
+)
 from api.services.saas.plans import ALL_FEATURES, LIMIT_FIELDS
 
 
@@ -245,6 +250,13 @@ async def get_my_subscription(user: UserModel = Depends(get_user)):
 @router.post("/checkout", response_model=RedirectResponse)
 async def start_checkout(request: CheckoutRequest, user: UserModel = Depends(get_user)):
     organization_id = _require_org(user)
+    organization = await db_client.get_organization_by_id(organization_id)
+    if organization is not None and organization.reseller_id is not None:
+        # Its offer and its payments go through its reseller.
+        raise HTTPException(
+            status_code=409,
+            detail="Votre abonnement est géré par votre revendeur : contactez-le.",
+        )
     if not stripe_billing.is_configured():
         raise HTTPException(
             status_code=409,
@@ -309,6 +321,129 @@ async def stripe_webhook(
     event = await request.json()
     outcome = await stripe_billing.handle_event(event)
     return {"received": True, "outcome": outcome}
+
+
+# --------------------------------------------------------------- resellers
+
+
+class ResellerResponse(BaseModel):
+    id: int
+    name: str
+    contact_email: str | None
+    commission_percent: float
+    is_active: bool
+    stripe_ready: bool
+    companies: int
+
+
+class ResellerCreateRequest(BaseModel):
+    name: str = Field(min_length=1, max_length=128)
+    contact_email: EmailStr | None = None
+    commission_percent: float = Field(ge=0, le=100)
+    admin_email: EmailStr
+    admin_name: str | None = Field(default=None, max_length=255)
+
+
+class ResellerCreated(BaseModel):
+    reseller: ResellerResponse
+    invitation_url: str
+
+
+class ResellerUpdateRequest(BaseModel):
+    name: str | None = Field(default=None, min_length=1, max_length=128)
+    contact_email: EmailStr | None = None
+    commission_percent: float | None = Field(default=None, ge=0, le=100)
+    is_active: bool | None = None
+
+
+class ResellerInvitationRequest(BaseModel):
+    email: EmailStr
+    name: str | None = Field(default=None, max_length=255)
+
+
+class ResellerInvitation(BaseModel):
+    invitation_url: str
+
+
+def _reseller_response(reseller, companies: int) -> ResellerResponse:
+    return ResellerResponse(
+        id=reseller.id,
+        name=reseller.name,
+        contact_email=reseller.contact_email,
+        commission_percent=resellers.bps_to_percent(reseller.commission_bps),
+        is_active=reseller.is_active,
+        stripe_ready=bool(
+            reseller.stripe_account_id and reseller.stripe_charges_enabled
+        ),
+        companies=companies,
+    )
+
+
+@router.get("/admin/resellers", response_model=list[ResellerResponse])
+async def admin_list_resellers(_: UserModel = Depends(get_superuser)):
+    return [
+        _reseller_response(reseller, count)
+        for reseller, count in await db_client.list_resellers_with_counts()
+    ]
+
+
+@router.post("/admin/resellers", response_model=ResellerCreated, status_code=201)
+async def admin_create_reseller(
+    request: ResellerCreateRequest, user: UserModel = Depends(get_superuser)
+):
+    """The reseller, and the link (shown once) for its first administrator."""
+    reseller = await db_client.create_reseller(
+        name=request.name.strip(),
+        contact_email=request.contact_email,
+        commission_bps=resellers.percent_to_bps(request.commission_percent),
+    )
+    url = await invitations.invite(
+        kind="reseller_admin",
+        email=request.admin_email,
+        name=request.admin_name,
+        reseller_id=reseller.id,
+        created_by=user.id,
+    )
+    return ResellerCreated(reseller=_reseller_response(reseller, 0), invitation_url=url)
+
+
+@router.patch("/admin/resellers/{reseller_id}", response_model=ResellerResponse)
+async def admin_update_reseller(
+    reseller_id: int,
+    request: ResellerUpdateRequest,
+    _: UserModel = Depends(get_superuser),
+):
+    fields = request.model_dump(exclude_unset=True)
+    if "commission_percent" in fields:
+        percent = fields.pop("commission_percent")
+        if percent is not None:
+            fields["commission_bps"] = resellers.percent_to_bps(percent)
+    reseller = await db_client.update_reseller(reseller_id, fields)
+    if reseller is None:
+        raise HTTPException(status_code=404, detail="Reseller not found")
+    return _reseller_response(
+        reseller, await db_client.count_reseller_companies(reseller_id)
+    )
+
+
+@router.post(
+    "/admin/resellers/{reseller_id}/invitations", response_model=ResellerInvitation
+)
+async def admin_invite_reseller_admin(
+    reseller_id: int,
+    request: ResellerInvitationRequest,
+    user: UserModel = Depends(get_superuser),
+):
+    if await db_client.get_reseller(reseller_id) is None:
+        raise HTTPException(status_code=404, detail="Reseller not found")
+    url = await invitations.invite(
+        kind="reseller_admin",
+        email=request.email,
+        name=request.name,
+        reseller_id=reseller_id,
+        created_by=user.id,
+    )
+    return ResellerInvitation(invitation_url=url)
 
 
 # --------------------------------------------------------------- admin routes

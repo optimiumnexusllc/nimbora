@@ -35,6 +35,7 @@ from api.routes.public_embed import router as public_embed_router
 from api.routes.public_embed_chat import router as public_embed_chat_router
 from api.routes.quality import router as quality_router
 from api.routes.reports import router as reports_router
+from api.routes.reseller import router as reseller_router
 from api.routes.s3_signed_url import router as s3_router
 from api.routes.saas import router as saas_router
 from api.routes.service_keys import router as service_keys_router
@@ -90,6 +91,7 @@ router.include_router(auth_router)
 router.include_router(node_types_router)
 router.include_router(agent_stream_router)
 router.include_router(saas_router)
+router.include_router(reseller_router)
 router.include_router(local_ai_router)
 router.include_router(customers_router)
 router.include_router(catalog_router)

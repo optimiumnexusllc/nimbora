@@ -100,6 +100,11 @@ export default function SuperadminPage() {
                             Ouvrir la console opérateur <ArrowRight className="ml-2 h-4 w-4" />
                         </Link>
                     </Button>
+                    <Button asChild variant="outline" className="ml-2">
+                        <Link href="/superadmin/resellers">
+                            Revendeurs <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                    </Button>
                 </CardContent>
             </Card>
             <div className="space-y-2">
