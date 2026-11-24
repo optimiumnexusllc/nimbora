@@ -21,7 +21,7 @@ nimbora/
 - **Frontend**: Next.js 15 with React 19, TypeScript, Tailwind CSS
 - **Database**: PostgreSQL with SQLAlchemy (async)
 - **Cache/Queue**: Redis with ARQ for background tasks
-- **Storage**: MinIO (S3-compatible) for audio files
+- **Storage**: S3-compatible object storage for audio and documents: SeaweedFS by default in `docker-compose.yaml`, MinIO in `docker-compose-local.yaml` and on installations not yet migrated (see `docs/deployment/object-storage.mdx`)
 
 ## Local Development
 
