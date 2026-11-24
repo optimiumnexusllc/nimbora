@@ -1010,9 +1010,19 @@ conservés**. Vérifié ensuite sans privilèges : `GET /api/v1/health` → `obj
 « SeaweedFS 30GB 4.55 », `process-document` 200) se relit par lien signé (200, `text/plain`, même
 serveur) et reste refusé sans signature (403) ; document supprimé ensuite, 0 restant.
 
-Empreinte de l'image SeaweedFS : le compose de la branche référence `${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.55}`
-et le serveur s'annonce « SeaweedFS 30GB 4.55 » ; l'empreinte (`@sha256:…`) à épingler n'a pas été
-transmise à la session : **à compléter par l'opérateur**.
+### 20 bis — MinIO vraiment arrêté, image SeaweedFS épinglée (`8de7a2f`) (24 novembre 2026)
+
+🐛 Défaut trouvé par l'opérateur : le MinIO « retiré » (`MINIO_RETIRED=true`) **tournait encore**,
+car `compose up` n'arrête pas un service dont le profil est désactivé. Corrigé dans `8de7a2f` : le
+kit supprime le conteneur avant `up` (conteneur seulement, volume conservé). Le même commit épingle
+l'image : **`chrislusf/seaweedfs:4.55@sha256:7ca46aeae2f223b37e5d91593c17ab37738eec6df6ab69b48a0487f7643342b9`**
+(empreinte relevée par l'opérateur avec `docker image inspect … RepoDigests`).
+
+| Vérification | Résultat |
+|---|---|
+| (1) `GET /api/v1/health` | `object_store: "seaweedfs"`, `legacy_minio_files: 0` ✅ ; `build_commit` observé **`50a10f9`** et non `8de7a2f` : le commit `8de7a2f` ne touche que le kit, le compose et les scripts de démarrage (aucun fichier `api/`), l'image API n'a donc pas été reconstruite par ce passage du kit. Le code API en service est identique ; le marquage, lui, reste celui du commit précédent |
+| (2) Conteneurs | confirmé par l'opérateur (non vérifiable sans privilèges) : plus aucun conteneur `nimbora_minio`, volume `nimbora-lab_minio-data` conservé |
+| (3) Document téléversé puis relu, MinIO arrêté pour de bon | ✅ `PUT` 200 (« SeaweedFS 30GB 4.55 »), `process-document` 200, relecture par lien signé 200 `text/plain`, 403 sans signature ; document supprimé, 0 restant |
 
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
