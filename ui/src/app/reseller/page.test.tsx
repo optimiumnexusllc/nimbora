@@ -1,6 +1,8 @@
 import { fireEvent, render, screen, waitFor, within } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+import { resumedStatus } from "@/lib/resellers";
+
 import ResellerPage from "./page";
 
 const mocks = vi.hoisted(() => ({
@@ -84,6 +86,14 @@ describe("Reseller console", () => {
         const dialog = await screen.findByRole("dialog");
         expect((within(dialog).getByLabelText("Lien d'invitation") as HTMLInputElement).value).toBe("https://app.test/auth/invitation/tok");
         expect(mocks.invite.mock.calls[0][0].body).toEqual({ email: "fatou@diallo.example" });
+    });
+
+    it("gives a suspended company its trial back while the trial still runs", () => {
+        const later = new Date(Date.now() + 86_400_000).toISOString();
+        const earlier = new Date(Date.now() - 86_400_000).toISOString();
+        expect(resumedStatus({ ...company, status: "suspended", trial_ends_at: later })).toBe("trialing");
+        expect(resumedStatus({ ...company, status: "suspended", trial_ends_at: earlier })).toBe("active");
+        expect(resumedStatus({ ...company, status: "suspended", trial_ends_at: null })).toBe("active");
     });
 
     it("says so to someone who is not a reseller", async () => {

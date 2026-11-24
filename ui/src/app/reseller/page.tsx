@@ -38,6 +38,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { detailFromError } from "@/lib/apiError";
 import { useAuth } from "@/lib/auth";
 import { formatLimit, formatPrice, STATUS_LABELS } from "@/lib/enterpriseApi";
+import { resumedStatus } from "@/lib/resellers";
 
 const LIMITS = [
     { key: "included_minutes", label: "Minutes IA / mois" },
@@ -367,7 +368,7 @@ export default function ResellerPage() {
 
     const offerName = useMemo(() => new Map(offers.map((o) => [o.code, o.name])), [offers]);
 
-    async function updateCompany(organizationId: number, body: { plan_code?: string; status?: "active" | "suspended" }) {
+    async function updateCompany(organizationId: number, body: { plan_code?: string; status?: "trialing" | "active" | "suspended" }) {
         const response = await updateCompanyApiV1ResellerCompaniesOrganizationIdPatch({ path: { organization_id: organizationId }, body });
         if (response.error) {
             toast.error(detailFromError(response.error, "Modification impossible"));
@@ -474,7 +475,7 @@ export default function ResellerPage() {
                                                 <Link2 /> Lien d&apos;accès
                                             </Button>
                                             {company.status === "suspended" ? (
-                                                <Button type="button" variant="outline" size="sm" onClick={() => void updateCompany(company.organization_id, { status: "active" })}>
+                                                <Button type="button" variant="outline" size="sm" onClick={() => void updateCompany(company.organization_id, { status: resumedStatus(company) })}>
                                                     Réactiver
                                                 </Button>
                                             ) : (
