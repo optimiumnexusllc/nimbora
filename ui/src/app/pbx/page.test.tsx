@@ -33,6 +33,7 @@ const mocks = vi.hoisted(() => ({
     logs: vi.fn(),
     configs: vi.fn(),
     workflows: vi.fn(),
+    presence: vi.fn(),
     toast: { success: vi.fn(), error: vi.fn() },
 }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ loading: false, user: { id: "u" } }) }));
@@ -73,6 +74,7 @@ vi.mock("@/client/sdk.gen", () => ({
     callLogsApiV1PbxCallLogsGet: mocks.logs,
     listTelephonyConfigurationsApiV1OrganizationsTelephonyConfigsGet: mocks.configs,
     getWorkflowsSummaryApiV1WorkflowSummaryGet: mocks.workflows,
+    readPresenceApiV1PbxPresenceGet: mocks.presence,
 }));
 
 const brand = { name: "NIMBORA", pbx_name: "NIMBORA Voice", sip_user_agent: "NIMBORA-Voice" };
@@ -107,6 +109,7 @@ beforeEach(() => {
     mocks.inventory.mockResolvedValue({ data: inventory });
     mocks.configs.mockResolvedValue({ data: { configurations: [{ id: 3, name: "PBX (ARI)", provider: "ari" }, { id: 4, name: "Twilio", provider: "twilio" }] } });
     mocks.workflows.mockResolvedValue({ data: [{ id: 4, name: "Accueil" }, { id: 6, name: "Recouvrement" }] });
+    mocks.presence.mockResolvedValue({ data: { live: false, extensions: {} } });
     mocks.menus.mockResolvedValue({
         data: [
             {
