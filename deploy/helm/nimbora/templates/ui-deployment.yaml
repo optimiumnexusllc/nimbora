@@ -65,12 +65,31 @@ spec:
               value: {{ .Values.config.posthogApiKey | quote }}
             - name: POSTHOG_HOST
               value: {{ .Values.config.posthogHost | quote }}
+            {{- /* Charter, read at run time (ui/src/lib/brand.ts). */}}
+            {{- range $key, $var := dict "name" "BRAND_NAME" "pbxName" "BRAND_PBX_NAME" "logoUrl" "BRAND_LOGO_URL" "logoDarkUrl" "BRAND_LOGO_DARK_URL" "markUrl" "BRAND_MARK_URL" "faviconUrl" "BRAND_FAVICON_URL" "primaryColor" "BRAND_PRIMARY_COLOR" "gradient" "BRAND_GRADIENT" "fontFamily" "BRAND_FONT_FAMILY" "fontUrl" "BRAND_FONT_URL" }}
+            - name: {{ $var }}
+              value: {{ index $.Values.brand $key | quote }}
+            {{- end }}
+            - name: BRAND_ASSETS_DIR
+              value: /brand
+          {{- if .Values.brand.assetsConfigMap }}
+          volumeMounts:
+            - name: brand
+              mountPath: /brand
+              readOnly: true
+          {{- end }}
           livenessProbe:
             {{- toYaml .Values.ui.livenessProbe | nindent 12 }}
           readinessProbe:
             {{- toYaml .Values.ui.readinessProbe | nindent 12 }}
           resources:
             {{- toYaml .Values.ui.resources | nindent 12 }}
+      {{- if .Values.brand.assetsConfigMap }}
+      volumes:
+        - name: brand
+          configMap:
+            name: {{ .Values.brand.assetsConfigMap }}
+      {{- end }}
       {{- with .Values.ui.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

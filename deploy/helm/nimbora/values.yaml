@@ -107,6 +107,25 @@ exposure:
 # Non-sensitive runtime config — rendered into a ConfigMap and injected via
 # envFrom on every backend pod. Sensitive values live under `secrets:` below.
 # -----------------------------------------------------------------------------
+# Charter (white label): docs/deployment/white-label.mdx. Empty = NIMBORA.
+# name/pbxName/domain/sipUserAgent also reach the API (e-mails, PBX, SIP).
+# File URLs: https://… or /brand-assets/<file>, served from assetsConfigMap
+# (a ConfigMap you create, binaryData for images) mounted in the UI at /brand.
+brand:
+  name: ""
+  pbxName: ""
+  domain: ""
+  sipUserAgent: ""
+  logoUrl: ""
+  logoDarkUrl: ""
+  markUrl: ""
+  faviconUrl: ""
+  primaryColor: ""
+  gradient: ""        # three colours: "#0a7d4f,#11a36b,#7bd389"
+  fontFamily: ""
+  fontUrl: ""
+  assetsConfigMap: ""
+
 config:
   environment: production
   logLevel: INFO

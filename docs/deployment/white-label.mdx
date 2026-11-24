@@ -1,0 +1,65 @@
+---
+title: "White label"
+description: "Give the platform your name, logo, colours, favicon and font with a few variables in .env, without rebuilding the images."
+---
+
+The platform's charter comes from `BRAND_*` variables in `.env`. The API uses them for e-mails, the PBX and SIP headers; the interface reads them **at start-up**, so a change only needs a restart, not a rebuild. When nothing is set, the platform stays NIMBORA.
+
+<Frame caption="The sign-in page under a charter (« Acme Voix »: logo, colour, gradient)">
+  <img src="/images/white-label.png" alt="Sign-in page with the Acme Voix logo and green colours" />
+</Frame>
+
+## Variables
+
+| Variable | Effect |
+|---|---|
+| `BRAND_NAME` | Name everywhere: tab title, sidebar, sign-in page, e-mails, softphone (`<name> Softphone`), managed-models label |
+| `BRAND_PBX_NAME` | Name of the PBX (default `<name> Voice`) |
+| `BRAND_DOMAIN` | Domain of the e-mail addresses (API) |
+| `BRAND_SIP_USER_AGENT` | SIP `User-Agent` / `Server` header (API) |
+| `BRAND_LOGO_URL` | Logo on light backgrounds |
+| `BRAND_LOGO_DARK_URL` | Logo on dark backgrounds (default: `BRAND_LOGO_URL`) |
+| `BRAND_MARK_URL` | Square symbol (sidebar, small spaces) |
+| `BRAND_FAVICON_URL` | Browser tab icon |
+| `BRAND_PRIMARY_COLOR` | Buttons, links, focus rings, selected items |
+| `BRAND_GRADIENT` | Three colours of the brand gradient (titles, backgrounds), comma-separated **without spaces**: `#0a7d4f,#11a36b,#7bd389` |
+| `BRAND_FONT_FAMILY` / `BRAND_FONT_URL` | Display font (titles) and its `.woff2` file |
+
+Colours accept `#rgb`/`#rrggbb`, `rgb()`, `hsl()` or `oklch()`. In `.env`, a space followed by `#` starts a comment: write the gradient without spaces (`#a,#b,#c`), or quote it. A value that does not match is **ignored** (the platform's default is kept), so a typo cannot break the page or inject CSS.
+
+A renamed platform without a logo shows its name in text, with its initial on the brand gradient; the NIMBORA artwork is never shown under another name.
+
+## Logo, favicon and font files
+
+File variables take an `https://` address or a path on the platform. To host the files on the platform itself, put them in the brand folder:
+
+<Steps>
+  <Step title="Copy the files">
+    `brand/` next to `docker-compose.yaml` (`deploy/enterprise/brand/` for the enterprise stack; `BRAND_ASSETS_PATH` to use another folder). Images: `.svg`, `.png`, `.jpg`, `.webp`, `.ico`; fonts: `.woff2`, `.woff`.
+  </Step>
+  <Step title="Point the charter at them">
+    ```bash .env
+    BRAND_NAME="Acme Voix"
+    BRAND_LOGO_URL=/brand-assets/logo.svg
+    BRAND_LOGO_DARK_URL=/brand-assets/logo-dark.svg
+    BRAND_MARK_URL=/brand-assets/mark.svg
+    BRAND_FAVICON_URL=/brand-assets/favicon.png
+    BRAND_PRIMARY_COLOR=#0a7d4f
+    BRAND_GRADIENT=#0a7d4f,#11a36b,#7bd389
+    ```
+  </Step>
+  <Step title="Restart">
+    Your usual command (`./remote_up.sh`, `docker compose up -d`, the lab kit `--only nimbora`, `sudo ./install.sh` in `deploy/enterprise`). New files in the folder are picked up without a restart.
+  </Step>
+</Steps>
+
+The folder is mounted read-only; only images and fonts placed directly in it are served, each with `nosniff` and a sandboxing `Content-Security-Policy` (an SVG opened on its own cannot run scripts).
+
+## Kubernetes (Helm)
+
+The `brand` block of the chart's values sets the same variables for the API and the interface. Files: create a ConfigMap with them (`kubectl create configmap acme-brand --from-file=logo.svg --from-file=favicon.png`) and set `brand.assetsConfigMap: acme-brand`; it is mounted in the interface at `/brand`.
+
+## What does not change yet
+
+- One charter per installation. A charter per reseller or per company, chosen by domain, comes with resellers (roadmap, phase 6).
+- Help texts that named the platform now say "the platform"; the `get-service-key` page and code samples for developers refer to the hosted NIMBORA service and keep its name.

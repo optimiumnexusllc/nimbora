@@ -14,8 +14,8 @@ export default function ExternalProcessingNotice() {
       <div className="text-xs text-amber-900 dark:text-amber-200">
         <p className="font-medium">Processed by an external service</p>
         <p className="mt-1">
-          Documents are sent to NIMBORA&apos;s managed Model Proxy Service for parsing and
-          chunking when they are uploaded or edited. NIMBORA Model Proxy Service does not
+          Documents are sent to the platform&apos;s managed Model Proxy Service for parsing and
+          chunking when they are uploaded or edited. The Model Proxy Service does not
           store or read your documents - the extracted text and embeddings are returned
           and stored locally in your self-hosted database.
         </p>

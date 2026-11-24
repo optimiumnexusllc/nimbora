@@ -117,6 +117,7 @@ describe("custom overrides", () => {
         expect(summarizeConfiguration({ ...cascade, mode: "realtime", realtime: { provider_connection_uuid: "openai-a", settings: { model: "gpt-realtime", voice: "marin" } } }, connections)).toBe("gpt-realtime / marin");
         const managed: ConfigurationSpec = { version: 3, mode: "pipeline", llm: { provider_connection_uuid: "nimbora", settings: {} }, stt: { provider_connection_uuid: "nimbora", settings: {} }, tts: { provider_connection_uuid: "nimbora", settings: { voice: "af_heart" } } };
         expect(summarizeConfiguration(managed, connections)).toBe("NIMBORA / af_heart");
+        expect(summarizeConfiguration(managed, connections, "Acme")).toBe("Acme / af_heart");
         expect(summarizeConfiguration({ ...cascade, llm: { provider_connection_uuid: "openai-a", settings: {} }, tts: { provider_connection_uuid: "openai-a", settings: {} } }, connections)).toBe("OpenAI prod / default voice");
         expect(summarizeConfiguration(null, connections)).toBe("Not configured");
     });

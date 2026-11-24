@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
+import { useBrand } from "@/context/BrandContext";
 import type { WorkflowConfigurations } from "@/types/workflow-configurations";
 
 import { cleanConfiguration, emptyConfiguration } from "./configuration";
@@ -26,6 +27,7 @@ export function useWorkflowModelOverride({ workflowName, workflowConfigurations,
     onSave: (configurations: WorkflowConfigurations, workflowName: string) => Promise<void>;
 }) {
     const connections = useModelConnections();
+    const brand = useBrand();
     const { catalog, configurations, defaultUuid } = connections;
     const binding = useMemo(
         () => describeWorkflowModel(workflowConfigurations, { configurations, defaultUuid, connections: connections.connections }),
@@ -161,7 +163,7 @@ export function useWorkflowModelOverride({ workflowName, workflowConfigurations,
         dirty: pending !== null && (incomplete || error !== null),
         /** An edit is about to save or saving; what runs now would still use the previous settings. */
         pendingSave: saving || (pending !== null && !incomplete && error === null),
-        summary: summarizeConfiguration(shown, connections.connections),
+        summary: summarizeConfiguration(shown, connections.connections, brand.name),
         shared: configurations.filter(item => item.is_active),
         edit,
         retry,

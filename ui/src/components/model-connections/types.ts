@@ -77,6 +77,7 @@ export type ConfigurationSpec = Omit<ApiConfigurationSpec, ServiceRole | "llm_fa
 
 export type ConfigurationEditorMode = "nimbora" | "cascade" | "realtime";
 export const MODE_LABELS: Record<ConfigurationEditorMode, string> = {
+    // "nimbora" (managed models) shows the platform's name instead (useBrand).
     nimbora: "NIMBORA", cascade: "BYOK", realtime: "Realtime",
 };
 

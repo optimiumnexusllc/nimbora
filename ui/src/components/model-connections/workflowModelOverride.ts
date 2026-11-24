@@ -150,12 +150,12 @@ export function withOverride(workflowConfigurations: WorkflowConfigurations, ove
 }
 
 /** Chip-sized summary: the brain model and the voice the agent speaks with. */
-export function summarizeConfiguration(spec: ConfigurationSpec | null, connections: ProviderConnection[]): string {
+export function summarizeConfiguration(spec: ConfigurationSpec | null, connections: ProviderConnection[], managedName = "NIMBORA"): string {
     if (!spec) return "Not configured";
     const name = (uuid?: string) => connections.find(item => item.uuid === uuid)?.name;
     const model = (role: "llm" | "realtime") => String(spec[role]?.settings?.model || name(spec[role]?.provider_connection_uuid) || "provider default");
     const voice = (role: "tts" | "realtime") => String(spec[role]?.settings?.voice || "default voice");
     if (spec.mode === "realtime") return `${model("realtime")} / ${voice("realtime")}`;
-    if (configurationMode(spec, connections) === "nimbora") return `NIMBORA / ${voice("tts")}`;
+    if (configurationMode(spec, connections) === "nimbora") return `${managedName} / ${voice("tts")}`;
     return `${model("llm")} / ${voice("tts")}`;
 }

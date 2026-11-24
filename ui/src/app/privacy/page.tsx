@@ -206,7 +206,7 @@ export default function PrivacyPage() {
     return (
         <PageLayout
             title="Confidentialité"
-            description="RGPD et PCI DSS : ce que NIMBORA masque, conserve et efface pour votre organisation."
+            description="RGPD et PCI DSS : ce que la plateforme masque, conserve et efface pour votre organisation."
             actions={
                 <Button onClick={save} disabled={!dirty || saving}>
                     <ShieldCheck className="mr-2 h-4 w-4" />

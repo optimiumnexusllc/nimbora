@@ -6,9 +6,11 @@ import { toast } from "sonner";
 import type { SipPasswordResponse } from "@/client/types.gen";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { useBrand } from "@/context/BrandContext";
 
 /** The new SIP secret of an extension, shown once. */
 export function SipPasswordDialog({ result, name, onClose }: { result: SipPasswordResponse | null; name: string; onClose: () => void }) {
+    const brand = useBrand();
     const copy = async (text: string) => {
         try {
             await navigator.clipboard.writeText(text);
@@ -24,7 +26,7 @@ export function SipPasswordDialog({ result, name, onClose }: { result: SipPasswo
                     <DialogTitle>Nouveau mot de passe SIP · {name}</DialogTitle>
                     <DialogDescription className="flex gap-2">
                         <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-500" />
-                        Affiché une seule fois : NIMBORA ne le conserve pas. NIMBORA Softphone le reprend tout seul ; un téléphone configuré à la main (Linphone, poste de bureau) doit recevoir ces valeurs.
+                        Affiché une seule fois : la plateforme ne le conserve pas. {brand.softphoneName} le reprend tout seul ; un téléphone configuré à la main (Linphone, poste de bureau) doit recevoir ces valeurs.
                     </DialogDescription>
                 </DialogHeader>
                 <div className="space-y-3" data-testid="sip-password">

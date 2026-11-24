@@ -367,7 +367,7 @@ export default function TelephonyConfigurationDetailPage() {
                     This configuration is disabled
                   </p>
                   <p className="text-muted-foreground">
-                    NIMBORA stopped reconnecting after repeated connection
+                    The platform stopped reconnecting after repeated connection
                     failures
                     {config.inactive_reason ? `: ${config.inactive_reason}` : ""}.
                     Calls will not work until it is reconnected. Correct the
@@ -402,7 +402,7 @@ export default function TelephonyConfigurationDetailPage() {
               <p className="text-xs text-muted-foreground">
                 Add this line to your Asterisk <code>extensions.conf</code>, then run{" "}
                 <code>dialplan reload</code>. Until you do, calls reach Asterisk but never
-                arrive at NIMBORA.
+                arrive at the platform.
               </p>
               <button
                 type="button"
@@ -425,7 +425,7 @@ export default function TelephonyConfigurationDetailPage() {
               <p className="text-xs text-muted-foreground">
                 Paste both into the app&apos;s webhook settings and verify, then
                 subscribe to the <code>calls</code> field. Until you do, calls to
-                your number never reach NIMBORA.
+                your number never reach the platform.
               </p>
               {[
                 { label: "Callback URL", value: providerWebhookUrl },

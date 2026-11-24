@@ -305,7 +305,7 @@ swahili, haoussa, yoruba, lingala…
 | **Téléphonie** | Asterisk (SIP), Twilio, Vonage, Telnyx, Plivo, WhatsApp… |
 | **PBX d'entreprise (marque blanche)** | Moteur Wazo Platform rebrandé : appels en cours, agents (pause, reprise), files, postes, numéros, journal ; création de postes en une action et import CSV ; files avec débordement vers un agent IA ; horaires de l'entreprise appliqués aux numéros ; **serveurs vocaux en éditeur visuel**, messages dits par la voix de l'entreprise, touche « parler à l'agent IA » ; numéros vers IA, menu, file, poste ou messagerie ; **lignes opérateurs SIP** et routes sortantes avec relais et numéro présenté ; **appels sortants des agents IA par les lignes du PBX** ; restrictions d'appel par poste ; **groupes d'appel**, renvois, ne-pas-déranger et agent IA quand un poste ne répond pas ; **salles de conférence** avec participants en direct ; **enregistrement des appels humains** copiés, transcrits et masqués ; appels humains dans l'historique client ; kit d'installation sécurisé (secrets générés, pare-feu, compte de service à 130 ACL) |
 | **NIMBORA Softphone** | Application Windows, macOS, Linux, Android, iOS et web (Tauri 2 + WebRTC) : appels, attente, **transfert avec consultation, conférence à trois**, DTMF, messagerie, récents, **annuaire unifié avec présence des collègues et clients**, ne pas déranger, renvoi ; jumelage par QR code, jeton d'appareil révocable, secret SIP jamais stocké |
-| **Marque blanche** | Nom de la plateforme et du PBX centralisés (`BRAND_*`), e-mails et page de réinitialisation à la marque, en-têtes SIP |
+| **Marque blanche** | Nom de la plateforme et du PBX centralisés (`BRAND_*`), e-mails et page de réinitialisation à la marque, en-têtes SIP ; **charte de l'interface** (nom, logo clair et sombre, symbole, favicon, couleur principale, dégradé, police) lue au démarrage, sans reconstruire les images ([doc](docs/deployment/white-label.mdx)) |
 | **Sécurité** | Isolation stricte entre entreprises, protection SSRF, secrets générés à l'installation, télémétrie désactivée |
 
 ## Architecture
@@ -396,6 +396,7 @@ Principaux réglages de la plateforme :
 | `ASTERISK_ARI_URL` / `ASTERISK_ARI_USER` / `ASTERISK_ARI_PASSWORD` | Accès à Asterisk |
 | `PRIVACY_REDACT_LOGS` | Masquage des données personnelles dans les journaux (activé par défaut) |
 | `BRAND_NAME` / `BRAND_PBX_NAME` / `BRAND_DOMAIN` / `BRAND_SIP_USER_AGENT` | Marque blanche : nom de la plateforme, du PBX, domaine des e-mails, en-tête SIP |
+| `BRAND_LOGO_URL` / `BRAND_LOGO_DARK_URL` / `BRAND_MARK_URL` / `BRAND_FAVICON_URL` / `BRAND_PRIMARY_COLOR` / `BRAND_GRADIENT` / `BRAND_FONT_FAMILY` / `BRAND_FONT_URL` | Charte de l'interface ; les fichiers vont dans `brand/` et s'écrivent `/brand-assets/<fichier>` ([doc](docs/deployment/white-label.mdx)) |
 | `PBX_ALLOWED_HOSTS` | PBX de l'opérateur sur réseau privé autorisés en mode SaaS (protection SSRF) |
 | `PBX_PROVISIONING_URL` / `PBX_PROVISIONING_USERNAME` / `PBX_PROVISIONING_PASSWORD` | PBX partagé de l'opérateur : compte d'approvisionnement qui crée le tenant de chaque entreprise |
 | `S3_PUBLIC_ENDPOINT_URL` | Adresse publique du stockage objet pour les liens signés (bucket privé) |
@@ -569,7 +570,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | Statut | Fonctionnalité |
 |---|---|
 | ✅ | Nom de la plateforme, du PBX, domaine des e-mails et en-tête SIP centralisés (`BRAND_*`) |
-| 🔜 | Charte de l'interface configurable : logo, couleurs, favicon, police, nom affiché (aujourd'hui « NIMBORA » figure en dur dans une cinquantaine de fichiers de l'interface) |
+| ✅ | **Charte de l'interface configurable** : nom affiché, logo clair et sombre, symbole, favicon, couleur principale, dégradé, police, lus au démarrage depuis `BRAND_*` (fichiers dans `brand/`, ConfigMap pour Helm) ; valeurs validées (aucune injection de CSS) ; le nom remplace « NIMBORA » partout où l'utilisateur le voit, les textes d'aide disent « la plateforme ». Rendu vérifié en local (charte complète, nom seul, NIMBORA par défaut) et au laboratoire (étape 21 : charte d'essai en service, fichiers servis avec leurs protections, aucune mention NIMBORA à l'écran). Une charte par revendeur viendra avec les revendeurs |
 | 🔜 | Domaines personnalisés par revendeur et par entreprise, HTTPS automatique, e-mails transactionnels à leur nom |
 | 🔜 | Revendeurs : console, entreprises clientes, offres et prix propres, commissions, facturation Stripe Connect |
 | 🔜 | Documentation, widget web et pages publiques à la marque du revendeur |

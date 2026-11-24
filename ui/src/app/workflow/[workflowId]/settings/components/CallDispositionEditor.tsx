@@ -177,8 +177,8 @@ export function CallDispositionEditor({
                     </Label>
                     <p className="text-xs text-muted-foreground">
                         {enabled
-                            ? `${rows.length} outcome${rows.length === 1 ? "" : "s"} configured. NIMBORA will classify the completed conversation into one of them.`
-                            : "Disabled. NIMBORA will keep the disposition recorded by the call-ending event."}
+                            ? `${rows.length} outcome${rows.length === 1 ? "" : "s"} configured. The platform will classify the completed conversation into one of them.`
+                            : "Disabled. The platform will keep the disposition recorded by the call-ending event."}
                     </p>
                 </div>
                 <div className="flex shrink-0 items-center gap-3">

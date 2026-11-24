@@ -15,6 +15,7 @@ import {
     DialogHeader,
     DialogTitle,
 } from "@/components/ui/dialog";
+import { useBrand } from "@/context/BrandContext";
 import { detailFromError } from "@/lib/apiError";
 
 import type { PbxUser } from "./types";
@@ -32,6 +33,7 @@ export const SOFTPHONE_DOWNLOADS = [
 type Activation = { code: string; expires_at: string; server: string; link: string; display_name: string; extension: string | null };
 
 export function SoftphoneDialog({ user, onClose }: { user: PbxUser | null; onClose: () => void }) {
+    const brand = useBrand();
     const [activation, setActivation] = useState<Activation | null>(null);
     const [qr, setQr] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
@@ -75,7 +77,7 @@ export function SoftphoneDialog({ user, onClose }: { user: PbxUser | null; onClo
         <Dialog open={user !== null} onOpenChange={(open) => !open && onClose()}>
             <DialogContent className="sm:max-w-2xl">
                 <DialogHeader>
-                    <DialogTitle>NIMBORA Softphone · {user?.name}</DialogTitle>
+                    <DialogTitle>{brand.softphoneName} · {user?.name}</DialogTitle>
                     <DialogDescription>
                         Installez l&apos;application, puis scannez le QR code ou saisissez le code : l&apos;appareil devient le poste{" "}
                         {user?.extension ?? ""}, avec ses appels, ses collègues et sa messagerie.

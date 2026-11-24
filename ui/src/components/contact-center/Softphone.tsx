@@ -264,7 +264,7 @@ export function Softphone({ seat, realm = "nimbora" }: { seat: Agent; realm?: st
                 <audio ref={audioRef} autoPlay />
                 {callbackCall && (incoming || active) && (
                     <div className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-4 py-3 text-sm">
-                        <span className="font-medium">Rappel client</span> — décrochez : NIMBORA compose ensuite le
+                        <span className="font-medium">Rappel client</span> — décrochez : la plateforme compose ensuite le
                         numéro de {peer}. Indiquez le résultat dans la liste des rappels une fois l&apos;appel
                         terminé.
                     </div>

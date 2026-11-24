@@ -143,7 +143,7 @@ export function BookAppointmentToolConfig({
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="nimbora">NIMBORA agenda (built in)</SelectItem>
+                            <SelectItem value="nimbora">Built-in agenda</SelectItem>
                             <SelectItem value="caldav">CalDAV — Nextcloud, iCloud, Zimbra, SOGo…</SelectItem>
                             <SelectItem value="google">Google Calendar</SelectItem>
                         </SelectContent>
@@ -347,7 +347,7 @@ export function SendMessageToolConfig({
                         channel === "whatsapp"
                             ? "Your WhatsApp Business number, e.g. +14155238886. Outside the 24-hour window WhatsApp only delivers approved templates."
                             : channel === "sms"
-                              ? "Your sending number or an alphanumeric sender ID (e.g. NIMBORA)."
+                              ? "Your sending number or an alphanumeric sender ID (e.g. ACME)."
                               : undefined
                     }
                 >
@@ -360,7 +360,7 @@ export function SendMessageToolConfig({
                 {provider === "http" && channel !== "email" && (
                     <Field
                         label="Gateway URL"
-                        hint="NIMBORA POSTs JSON {to, from, message, channel} with the credential below."
+                        hint="The platform POSTs JSON {to, from, message, channel} with the credential below."
                     >
                         <Input
                             placeholder="https://sms.example.com/api/send"
@@ -491,7 +491,7 @@ export function CreateTicketToolConfig({
                             <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                            <SelectItem value="nimbora">NIMBORA tickets (built in)</SelectItem>
+                            <SelectItem value="nimbora">Built-in tickets</SelectItem>
                             <SelectItem value="zendesk">Zendesk</SelectItem>
                             <SelectItem value="freshdesk">Freshdesk</SelectItem>
                         </SelectContent>
