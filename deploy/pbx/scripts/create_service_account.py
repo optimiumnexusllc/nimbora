@@ -76,7 +76,13 @@ def build_policy(args) -> dict:
     return {
         "name": extra["name"],
         "description": extra["description"],
-        "acl": sorted(set(integration["acl"]) | set(extra["acl"])),
+        # retired_acl: rights a former version granted to companies; the
+        # operator needs them to update (and so clean) those companies' policies.
+        "acl": sorted(
+            set(integration["acl"])
+            | set(extra["acl"])
+            | set(extra.get("retired_acl", []))
+        ),
     }
 
 
