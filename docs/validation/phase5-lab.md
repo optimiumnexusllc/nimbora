@@ -1072,6 +1072,31 @@ avant cela `GET /pbx/hold-music` répondait 502 « accès refusé `confd.moh.rea
 | (8) Musique laissée en service | ✅ non retirée : à écouter en appelant la file « Support test » (3000) ou en parquant un appel sur 700 |
 | (4 bis) 504 passagers de la page Files (`voicemails`, `conferences`, `groups`) vus lors de la première capture | ✅ non reproduits : 30 lectures des trois routes → toutes 200 ; aucune 5xx pendant les deux captures suivantes |
 
+## Rapport d'étape 23 — PR #35 « revendeurs » (24 novembre 2026)
+
+Préalable : la plateforme tourne en mode SaaS (`GET /api/v1/saas/plans` → 200, Starter 99 €/1 000 min,
+Business, Enterprise). Déployé par l'opérateur : `feat/resellers` (`9beba7e`). Session sans `sudo` ni
+`docker` : API avec des comptes de test (adresses `example.com`, mots de passe conservés hors dépôt),
+console pilotée en Chromium, sessions privées pour les invitations. Sans fusion. Aucun lien
+d'invitation ni jeton n'est reproduit ici.
+
+| Étape | Résultat |
+|---|---|
+| (1) `GET /api/v1/health` | ✅ `build_commit: "9beba7e"` (pointe de `feat/resellers`) |
+| (2) Super-admin → Revendeurs → « Nouveau revendeur » : « Revendeur Test », commission 20 %, administrateur = adresse de test | ✅ « Créer et obtenir le lien » affiche le lien **une seule fois** (mention présente) ; tableau : Revendeur Test · 0 entreprise · 20 % · paiement « À connecter » · actif |
+| (3) Lien ouvert dans une session privée : « Rejoindre Revendeur Test », adresse préremplie, « Créer mon compte » | ✅ arrivée sur **« Console revendeur · Revendeur Test »** (capture `reseller-console.png`) ; `GET /reseller` avec ce compte : id 1, commission 20 %, `stripe_ready: false`, 0 entreprise |
+| 🐛 n° 30 — base des liens d'invitation | ❌ les liens affichés commencent par **`http://localhost:3010`** : `UI_APP_URL` (défaut `http://localhost:3010`, `api/constants.py`) n'est renseigné que dans `deploy/enterprise/docker-compose.yml` (`${PUBLIC_BASE_URL}`), pas dans `docker-compose.yaml` ni dans le kit lab. Contournement pour l'essai : hôte du lien remplacé par `https://app.optimiumnexus.com`, le jeton restant valide. À corriger : passer `UI_APP_URL` (ou dériver du domaine public déjà connu) dans le compose OSS et le kit |
+| (4) Offre sur Starter à 89 €/mois | ✅ refusée : 422 « Prix trop bas : au moins 99.00 EUR par mois (offre « Starter ») » |
+| (4) Offre valide : « Starter Revendeur », 129 €/mois, 800 minutes IA | ✅ 201, code `r1-starter-revendeur-…`, `base_plan_code: starter`, `is_public: false` ; listée dans `GET /reseller/plans` |
+| (5) Entreprise cliente « Client Test SARL » sur cette offre | ✅ 201, statut **`trialing`** (« Essai gratuit » dans la console), fin d'essai à +14 jours, lien affiché une fois ; accepté en session privée avec le second compte de test (« Rejoindre Client Test SARL ») → l'entreprise s'ouvre (`/workflow/create`) ; `GET /saas/subscription` : organisation 5, offre « Starter Revendeur », `trialing` |
+| (6) Avec le compte de l'entreprise : `POST /saas/checkout` | ✅ **409** « Votre abonnement est géré par votre revendeur : contactez-le. » |
+| (7) Console revendeur : « Suspendre » puis « Réactiver » | ✅ « Essai gratuit » → **« Suspendu »** → « **Actif** » (toasts « Entreprise mise à jour ») ; API : `suspended` puis `active`, vu aussi par l'entreprise. ⚠️ la réactivation remet `active`, pas `trialing` : la période d'essai est perdue par un aller-retour suspension/réactivation — à confirmer comme voulu |
+| (8) Isolation | ✅ `GET /api/v1/reseller` → **403** « Réservé aux revendeurs » pour l'administrateur du labo, pour entreprise-a (org2) et pour l'utilisateur de l'entreprise cliente |
+
+Objets d'essai laissés en place (pas de route de suppression) : revendeur « Revendeur Test » (désactivable
+par l'interrupteur « actif » du super-admin), son offre, l'entreprise « Client Test SARL » (organisation 5)
+et ses deux comptes de test.
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
