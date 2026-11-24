@@ -197,6 +197,24 @@ EOF
   chmod 644 /etc/cron.d/nimbora-pbx-backup
 }
 
+# Residual mentions of the engine (pages, SIP headers, e-mails, its web UI):
+# checked a few minutes after every package update (an engine upgrade can bring
+# its name back) and weekly; result in the node exporter's textfile collector.
+apply_whitelabel_check() {
+  local check="${KIT_DIR}/scripts/check_whitelabel.py"
+  local run="${check} >> /var/log/nimbora-pbx-whitelabel.log 2>&1"
+  cat > /etc/apt/apt.conf.d/99nimbora-whitelabel-check <<EOF
+// NIMBORA PBX kit: look for residual mentions of the engine after each update
+// (delayed: services restart once the packages are installed).
+DPkg::Post-Invoke { "if [ -x ${check} ] && command -v systemd-run >/dev/null; then systemd-run --quiet --collect --on-active=5min /bin/sh -c '${run}' || true; fi"; };
+EOF
+  cat > /etc/cron.d/nimbora-pbx-whitelabel-check <<EOF
+# NIMBORA PBX kit: weekly check of residual mentions of the engine.
+15 3 * * 1 root ${run}
+EOF
+  chmod 644 /etc/apt/apt.conf.d/99nimbora-whitelabel-check /etc/cron.d/nimbora-pbx-whitelabel-check
+}
+
 if [[ "$FIREWALL_ONLY" == 1 ]]; then
   command -v nft >/dev/null || { apt-get update -q; DEBIAN_FRONTEND=noninteractive apt-get install -yq nftables; }
   apply_firewall
@@ -334,6 +352,9 @@ apply_firewall
 apply_fail2ban
 apply_monitoring
 apply_backup
+apply_whitelabel_check
+echo "==> Contrôle des mentions du moteur (pages, SIP, e-mails)"
+python3 "$KIT_DIR/scripts/check_whitelabel.py" || echo "  ⚠  voir ci-dessus ; le contrôle repassera après chaque mise à jour et chaque semaine"
 
 echo "==> Compte de service de la plateforme (droits minimaux)"
 python3 "$KIT_DIR/scripts/create_service_account.py" --url https://localhost --insecure \

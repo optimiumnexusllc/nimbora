@@ -31,5 +31,6 @@ dashboards (runtime and operations).
 PBX unreachable (5 min), PBX not checked (30 min), call events disconnected
 (1 h), human minutes not read for 3 h (invoices would miss calls), supervision
 alert open 30 min, no backup for 26 h or last backup failed (PBX and
-platform), business metrics stale, disk under 10 %. Route them with
+platform), business metrics stale, disk under 10 %, residual mentions of the
+PBX engine after an update (or the white-label check failing or stale). Route them with
 Alertmanager to e-mail, Slack, Teams…

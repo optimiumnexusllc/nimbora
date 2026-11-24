@@ -153,6 +153,18 @@ ansible-playbook -i /opt/nimbora-pbx/inventory.ini whitelabel.yml \
 Après chaque mise à jour du moteur, relancez `whitelabel.yml` : un paquet peut réinstaller
 ses gabarits ou sa page d'accueil.
 
+**Contrôle automatique des mentions du moteur.** `scripts/check_whitelabel.py` regarde la
+page d'accueil et ses en-têtes, les en-têtes SIP `User-Agent` / `Server` (requête `OPTIONS`
+réelle), les expéditeurs et gabarits des e-mails tels que le dernier fichier de
+`/etc/wazo-auth/conf.d` les définit, et l'absence de l'interface web du moteur. Le kit le
+lance cinq minutes après **chaque mise à jour de paquets** (crochet APT) et chaque lundi ;
+le résultat va dans `/var/log/nimbora-pbx-whitelabel.log` et dans Prometheus (alerte
+`PbxWhitelabelResidualMentions`). À la main :
+
+```bash
+sudo ./scripts/check_whitelabel.py   # 0 : rien, 1 : mentions, 2 : contrôle impossible
+```
+
 Pare-feu : `nft list table inet nimbora_pbx` montre ce qui est ouvert. Pour restreindre SIP à
 vos opérateurs ou ouvrir le provisioning à votre réseau de téléphones :
 

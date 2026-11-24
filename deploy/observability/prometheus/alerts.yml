@@ -49,6 +49,21 @@ groups:
         labels: {severity: critical}
         annotations:
           summary: "Last PBX backup failed on {{ $labels.instance }} (see /var/log/nimbora-pbx-backup.log)"
+      - alert: PbxWhitelabelResidualMentions
+        expr: nimbora_pbx_whitelabel_residual_mentions > 0
+        labels: {severity: warning}
+        annotations:
+          summary: "{{ $value }} mention(s) of the PBX engine visible on {{ $labels.instance }} after an update: re-run the kit's whitelabel.yml (/var/log/nimbora-pbx-whitelabel.log)"
+      - alert: PbxWhitelabelCheckFailed
+        expr: nimbora_pbx_whitelabel_check_errors > 0
+        labels: {severity: warning}
+        annotations:
+          summary: "White-label check could not run on {{ $labels.instance }} (PBX page or SIP silent, see /var/log/nimbora-pbx-whitelabel.log)"
+      - alert: PbxWhitelabelCheckStale
+        expr: time() - nimbora_pbx_whitelabel_last_check_timestamp_seconds > 8 * 86400
+        labels: {severity: warning}
+        annotations:
+          summary: "No white-label check for more than 8 days on {{ $labels.instance }}"
       - alert: PlatformBackupTooOld
         expr: time() - nimbora_platform_backup_last_success_timestamp_seconds > 26 * 3600
         labels: {severity: critical}
