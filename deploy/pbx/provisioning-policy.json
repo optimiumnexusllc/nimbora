@@ -1,6 +1,6 @@
 {
   "name": "nimbora-provisioning",
-  "description": "Operator account of the shared PBX: creates each company's tenant, contexts and service account. Granted together with every ACL of integration-policy.json (an account can only hand out what it holds).",
+  "description": "Operator account of the shared PBX: creates each company's tenant, contexts and service account. Granted together with every ACL of integration-policy.json (an account can only hand out what it holds). Also keeps the ACLs a former NIMBORA granted to companies (retired_acl): wazo-auth lets an account update a policy or give it to a user only if it holds every ACL in it, so provisioning can remove them from older companies.",
   "acl": [
     "auth.policies.*.update",
     "auth.policies.create",
@@ -15,5 +15,8 @@
     "confd.contexts.*.contexts.update",
     "confd.contexts.*.update",
     "confd.contexts.create"
+  ],
+  "retired_acl": [
+    "amid.action.ParkedCalls.create"
   ]
 }

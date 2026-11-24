@@ -103,9 +103,38 @@ def test_kit_builds_the_provisioner_policy_as_a_superset(tmp_path):
     integration = json.loads((KIT / "integration-policy.json").read_text())["acl"]
     extra = json.loads((KIT / "provisioning-policy.json").read_text())["acl"]
     assert policy["name"] == "nimbora-provisioning"
-    assert set(policy["acl"]) == set(integration) | set(extra)
+    retired = json.loads((KIT / "provisioning-policy.json").read_text())["retired_acl"]
+    assert set(policy["acl"]) == set(integration) | set(extra) | set(retired)
     args.provisioner = False
     assert module.build_policy(args)["name"] == "nimbora-integration"
+
+
+def test_operator_keeps_the_rights_a_former_version_granted():
+    """Bug n°29 (lab, step 22): a company's policy still held an ACL that a
+    former NIMBORA granted (amid.action.ParkedCalls.create, retired after step
+    15). wazo-auth lets an account update a policy, or give it to a user, only
+    if it holds every ACL in it: the operator, refreshed without that ACL,
+    could no longer provision the company (502 required_access). The operator
+    keeps the retired ACLs, so provisioning removes them from the companies."""
+    import importlib.util
+
+    kit_policy = json.loads((KIT / "provisioning-policy.json").read_text())
+    integration = json.loads((KIT / "integration-policy.json").read_text())["acl"]
+    retired = kit_policy["retired_acl"]
+    assert "amid.action.ParkedCalls.create" in retired
+    assert not set(retired) & set(integration)  # never granted to companies again
+
+    spec = importlib.util.spec_from_file_location(
+        "create_service_account", KIT / "scripts/create_service_account.py"
+    )
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    args = SimpleNamespace(
+        provisioner=True,
+        policy_file=str(KIT / "integration-policy.json"),
+        provisioning_policy_file=str(KIT / "provisioning-policy.json"),
+    )
+    assert set(retired) <= set(module.build_policy(args)["acl"])
 
 
 def test_install_kit_knows_the_operator_option():
