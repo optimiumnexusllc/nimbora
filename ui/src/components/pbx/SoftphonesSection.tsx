@@ -16,6 +16,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { useBrand } from "@/context/BrandContext";
 import { detailFromError } from "@/lib/apiError";
 
 export type SoftphoneDevice = {
@@ -41,6 +42,7 @@ const PLATFORMS: Record<string, { label: string; icon: typeof Monitor }> = {
 const fmt = (iso: string | null) => (iso ? new Date(iso).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" }) : "—");
 
 export function SoftphonesSection() {
+    const brand = useBrand();
     const [devices, setDevices] = useState<SoftphoneDevice[] | null>(null);
     const [settings, setSettings] = useState<{ wss_url: string; sip_domain: string; overrides: Record<string, string> } | null>(null);
     const [form, setForm] = useState({ wss_url: "", sip_domain: "" });
@@ -62,7 +64,7 @@ export function SoftphonesSection() {
     return (
         <PageSection
             title="Softphones"
-            description="Les appareils jumelés avec NIMBORA Softphone (Windows, macOS, Linux, Android, iPhone, navigateur). Révoquez-en un et il ne peut plus appeler."
+            description={`Les appareils jumelés avec ${brand.softphoneName} (Windows, macOS, Linux, Android, iPhone, navigateur). Révoquez-en un et il ne peut plus appeler.`}
         >
             {devices === null ? null : devices.length === 0 ? (
                 <p className="py-6 text-center text-sm text-muted-foreground">Aucun appareil : bouton « Softphone » sur un poste pour en jumeler un.</p>
@@ -153,7 +155,7 @@ export function SoftphonesSection() {
                     </div>
                     <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-border/60 pt-3">
                         <p className="max-w-xl text-sm text-muted-foreground">
-                            Un poste navigateur qui ne sonne jamais (le PBX répond « congestion ») a été créé avant un correctif : NIMBORA le répare quand son
+                            Un poste navigateur qui ne sonne jamais (le PBX répond « congestion ») a été créé avant un correctif : la plateforme le répare quand son
                             Softphone démarre, ou ici pour toutes les lignes d&apos;un coup.
                         </p>
                         <Button

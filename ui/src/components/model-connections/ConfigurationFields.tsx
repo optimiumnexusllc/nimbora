@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { Label } from "@/components/ui/label";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useBrand } from "@/context/BrandContext";
 import { cn } from "@/lib/utils";
 
 import { compatibleConnections, configurationForMode, configurationMode, nimboraConfiguration, resetDependentFields, selectionForConnection } from "./configuration";
@@ -21,7 +22,7 @@ export type ConfigurationFieldsDensity = "full" | "compact";
 const NIMBORA_FIELDS: [ServiceRole, string[]][] = [["tts", ["voice", "speed"]], ["stt", ["language", "language_hints"]], ["llm", ["model", "temperature"]]];
 const MODES: { value: ConfigurationEditorMode; description: string }[] = [
     { value: "realtime", description: "One speech-to-speech model listens and replies." },
-    { value: "nimbora", description: "NIMBORA runs the transcriber, LLM and voice for you." },
+    { value: "nimbora", description: "The platform runs the transcriber, LLM and voice for you." },
     { value: "cascade", description: "Pick your own LLM, STT and TTS providers." },
 ];
 const SERVICE_TAB = "-mb-px h-auto min-w-0 flex-1 flex-col items-start gap-0.5 rounded-none border-0 border-b-2 border-transparent px-3 py-2.5 text-left sm:px-4 text-muted-foreground data-[state=active]:border-primary data-[state=active]:bg-transparent data-[state=active]:text-foreground data-[state=active]:shadow-none dark:data-[state=active]:border-primary dark:data-[state=active]:bg-transparent";
@@ -47,6 +48,7 @@ function listNames(names: string[]): string | undefined {
 
 function ModeChoice({ value, onChange }: { value: ConfigurationEditorMode; onChange: (value: string) => void }) {
     const id = useId();
+    const brand = useBrand();
     return <RadioGroupPrimitive.Root aria-label="Mode" value={value} onValueChange={onChange} className="grid grid-cols-1 gap-2 sm:grid-cols-3">
         {MODES.map(option => <RadioGroupPrimitive.Item key={option.value} value={option.value} aria-labelledby={`${id}-${option.value}`} aria-describedby={`${id}-${option.value}-description`}
             className="group flex items-start gap-3 rounded-lg border bg-card p-3 text-left outline-none transition-[color,border-color,box-shadow] hover:border-foreground/25 focus-visible:ring-[3px] focus-visible:ring-ring/50 data-[state=checked]:border-primary data-[state=checked]:ring-1 data-[state=checked]:ring-primary">
@@ -54,7 +56,7 @@ function ModeChoice({ value, onChange }: { value: ConfigurationEditorMode; onCha
                 <RadioGroupPrimitive.Indicator className="size-2 rounded-full bg-primary" />
             </span>
             <span className="min-w-0 space-y-0.5">
-                <span id={`${id}-${option.value}`} className="block text-sm font-medium">{MODE_LABELS[option.value]}</span>
+                <span id={`${id}-${option.value}`} className="block text-sm font-medium">{option.value === "nimbora" ? brand.name : MODE_LABELS[option.value]}</span>
                 <span id={`${id}-${option.value}-description`} className="block text-xs leading-snug text-muted-foreground">{option.description}</span>
             </span>
         </RadioGroupPrimitive.Item>)}
@@ -87,6 +89,7 @@ export function ConfigurationFields({ configuration, catalog, connections, onCha
     /** Setting names to show for each service; everything else stays as it is. */
     fields?: string[];
 }) {
+    const brand = useBrand();
     const compact = density === "compact";
     const [unconfiguredMode, setUnconfiguredMode] = useState<ConfigurationEditorMode>("cascade");
     // The tab the user opened; until then, the mode's first service.
@@ -187,10 +190,10 @@ export function ConfigurationFields({ configuration, catalog, connections, onCha
         })}
         <div className="space-y-1.5">
             <div className="flex min-h-6 items-center justify-between gap-2">
-                <Label htmlFor="nimbora-provider-connection">NIMBORA account</Label>
+                <Label htmlFor="nimbora-provider-connection">{brand.name} account</Label>
             </div>
             <ProviderSelect id="nimbora-provider-connection" required value={nimboraValue} onValueChange={changeNimboraConnection}
-                placeholder="Choose an account" addLabel="Add a NIMBORA account" onAdd={() => setAdding("nimbora")}
+                placeholder="Choose an account" addLabel={`Add a ${brand.name} account`} onAdd={() => setAdding("nimbora")}
                 options={nimboraConnections.map(connection => ({ value: connection.uuid, label: connection.name }))} />
         </div>
     </div>;
@@ -255,7 +258,7 @@ export function ConfigurationFields({ configuration, catalog, connections, onCha
             </TabsContent>)}
         </Tabs>}
         {adding && <AddProviderDialog open onOpenChange={open => { if (!open) setAdding(null); }} catalog={catalog}
-            title={adding === "nimbora" ? "Add a NIMBORA account" : `Add ${ROLE_ARTICLES[adding]} ${ROLE_LABELS[adding]} provider`}
+            title={adding === "nimbora" ? `Add a ${brand.name} account` : `Add ${ROLE_ARTICLES[adding]} ${ROLE_LABELS[adding]} provider`}
             providerKeys={addProviderKeys(adding)} role={adding === "nimbora" ? undefined : adding} onSaved={connectionAdded} />}
     </div>;
 }

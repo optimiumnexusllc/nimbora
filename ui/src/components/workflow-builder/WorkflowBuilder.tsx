@@ -15,6 +15,7 @@ import { QuestionCards } from '@/components/workflow-builder/QuestionCards';
 import { ToolApprovalCard } from '@/components/workflow-builder/ToolApprovalCard';
 import { useBuilderExecution } from '@/components/workflow-builder/useBuilderExecution';
 import { PostHogEvent } from '@/constants/posthog-events';
+import { useBrand } from '@/context/BrandContext';
 import { detailFromError } from '@/lib/apiError';
 import { useAuth } from '@/lib/auth';
 
@@ -26,6 +27,7 @@ type WorkflowBuilderProps = {
 };
 
 export function WorkflowBuilder({ workflowId, disabled = false, onSaved, onBusyChange }: WorkflowBuilderProps) {
+    const brand = useBrand();
     const router = useRouter();
     const { user, loading: authLoading, getAccessToken } = useAuth();
     const organization = user && ('selectedTeam' in user ? user.selectedTeam?.id : 'organizationId' in user ? user.organizationId : '');
@@ -196,7 +198,7 @@ export function WorkflowBuilder({ workflowId, disabled = false, onSaved, onBusyC
                         <h2 className="text-2xl font-medium tracking-tight">{workflowId ? 'What would you like to change?' : 'What should your agent do?'}</h2>
                         <p className="mt-3 text-sm leading-6 text-muted-foreground">{workflowId ? 'Start a conversation to refine this agent. The builder will use your current saved workflow.' : 'Describe who it should speak with and what it needs to do.'}</p>
                     </div>}
-                    {messages?.map(message => <div key={message.id} className={message.role === 'user' ? 'ml-8 rounded-2xl bg-muted px-4 py-3' : 'pr-5'}><div className="mb-1.5 text-xs font-medium text-muted-foreground">{message.role === 'user' ? 'You' : 'NIMBORA'}</div><div className="whitespace-pre-wrap text-sm leading-6">{message.content}</div></div>)}
+                    {messages?.map(message => <div key={message.id} className={message.role === 'user' ? 'ml-8 rounded-2xl bg-muted px-4 py-3' : 'pr-5'}><div className="mb-1.5 text-xs font-medium text-muted-foreground">{message.role === 'user' ? 'You' : brand.name}</div><div className="whitespace-pre-wrap text-sm leading-6">{message.content}</div></div>)}
                     {optimisticMessage && <div className="ml-8 rounded-2xl bg-muted px-4 py-3 text-sm">{optimisticMessage}</div>}
                     {!!pendingQuestions.length && <QuestionCards key={pendingQuestions.map(item => item.id).join(':')} pending={pendingQuestions} disabled={busy || saving || disabled} onSubmit={answers => void send({ answers })} />}
                     {pendingApproval?.brief && pendingApproval.brief_revision != null && <PlanApprovalCard key={pendingApproval.id} interruptId={pendingApproval.id} revision={pendingApproval.brief_revision} brief={pendingApproval.brief} disabled={busy || saving || restoring || disabled} onSubmit={approval => void send({ approval })} />}

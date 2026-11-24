@@ -37,3 +37,8 @@ deploy/enterprise/.env
 deploy/enterprise/generated/
 deploy/enterprise/asterisk/pjsip_trunks.conf
 dump.rdb
+
+# White-label assets of an installation (brand/README.md explains)
+brand/*
+!brand/README.md
+deploy/enterprise/brand/

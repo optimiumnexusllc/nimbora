@@ -13,6 +13,7 @@ import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useBrand } from "@/context/BrandContext";
 import { useOrgConfig } from "@/context/OrgConfigContext";
 import { detailFromError } from "@/lib/apiError";
 
@@ -23,12 +24,14 @@ import { useModelConnections } from "./useModelConnections";
 
 function ConfigurationSummary({ configuration, connections }: { configuration: NamedModelConfiguration; connections: ProviderConnection[] }) {
     const mode = configurationMode(configuration.configuration, connections);
-    return <p className="text-sm text-muted-foreground">{MODE_LABELS[mode]} · {mode === "nimbora"
+    const brand = useBrand();
+    return <p className="text-sm text-muted-foreground">{mode === "nimbora" ? brand.name : MODE_LABELS[mode]} · {mode === "nimbora"
         ? connections.find(item => item.uuid === configuration.configuration.llm.provider_connection_uuid)?.name || "Unavailable connection"
         : ROLES.filter(role => configuration.configuration[role]).map(role => `${ROLE_LABELS[role]}: ${configuration.configuration[role]?.settings.model || connections.find(item => item.uuid === configuration.configuration[role]?.provider_connection_uuid)?.name || "provider default"}`).join(" · ")}</p>;
 }
 
 export default function ModelConfigurationsManager({ docsUrl }: { docsUrl?: string }) {
+    const brand = useBrand();
     const { catalog, connections, configurations, defaultUuid, loading, error, reload } = useModelConnections({ includeArchived: true });
     const { refreshConfig } = useOrgConfig();
     const [archive, setArchive] = useState<{ uuid: string; name: string } | null>(null);
@@ -53,7 +56,7 @@ export default function ModelConfigurationsManager({ docsUrl }: { docsUrl?: stri
     };
 
     return <PageLayout title="Models"
-        description={<>Create named model configurations using your <Link href="/provider-connections" className="underline">provider connections</Link> in Realtime, NIMBORA, or BYOK mode.
+        description={<>Create named model configurations using your <Link href="/provider-connections" className="underline">provider connections</Link> in Realtime, {brand.name}, or BYOK mode.
             {docsUrl && <> <a href={docsUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 underline">Learn more<ExternalLink className="h-3 w-3" /></a></>}</>}
     >
         <PageSection title="Named Model Configurations" description="Choose a setup for each workflow or make one your org default. Workflows inherit the default unless overridden."

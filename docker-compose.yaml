@@ -411,6 +411,22 @@ services:
       # Posthog
       POSTHOG_KEY: "phc_ItizB1dP6yv7ZYobbcqrpxTdbomDA8hJFSEmAMdYvIr"
       POSTHOG_HOST: "https://us.posthog.com"
+
+      # Charter (white label), read at run time: docs/deployment/white-label.mdx.
+      # Files go in the brand folder, referred to as /brand-assets/<file>.
+      BRAND_NAME: "${BRAND_NAME:-}"
+      BRAND_PBX_NAME: "${BRAND_PBX_NAME:-}"
+      BRAND_LOGO_URL: "${BRAND_LOGO_URL:-}"
+      BRAND_LOGO_DARK_URL: "${BRAND_LOGO_DARK_URL:-}"
+      BRAND_MARK_URL: "${BRAND_MARK_URL:-}"
+      BRAND_FAVICON_URL: "${BRAND_FAVICON_URL:-}"
+      BRAND_PRIMARY_COLOR: "${BRAND_PRIMARY_COLOR:-}"
+      BRAND_GRADIENT: "${BRAND_GRADIENT:-}"
+      BRAND_FONT_FAMILY: "${BRAND_FONT_FAMILY:-}"
+      BRAND_FONT_URL: "${BRAND_FONT_URL:-}"
+      BRAND_ASSETS_DIR: /brand
+    volumes:
+      - ${BRAND_ASSETS_PATH:-./brand}:/brand:ro
     ports:
       - "3010:3010"
     depends_on:

@@ -8,6 +8,7 @@
 
 import type { ReactNode } from "react";
 
+import { BrandHeroArt } from "@/components/auth/BrandHeroArt";
 import { BrandLogo } from "@/components/BrandLogo";
 
 const HIGHLIGHTS = [
@@ -47,7 +48,7 @@ export function AuthShell({
           className="pointer-events-none absolute inset-0"
           style={{
             background:
-              "radial-gradient(55% 45% at 85% 15%, rgb(124 92 255 / 0.45), transparent 70%), radial-gradient(45% 40% at 0% 100%, rgb(34 229 255 / 0.22), transparent 70%)",
+              "radial-gradient(55% 45% at 85% 15%, color-mix(in oklab, var(--brand-violet) 45%, transparent), transparent 70%), radial-gradient(45% 40% at 0% 100%, color-mix(in oklab, var(--brand-cyan) 22%, transparent), transparent 70%)",
           }}
         />
         <div
@@ -59,16 +60,10 @@ export function AuthShell({
           <BrandLogo inverse className="h-10" />
         </div>
 
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src="/brand/auth-hero.svg"
-          alt=""
-          aria-hidden
-          className="float-slow pointer-events-none absolute right-[-12%] top-1/2 w-[78%] max-w-[620px] -translate-y-1/2 opacity-90"
-        />
+        <BrandHeroArt />
 
         <div className="relative max-w-md space-y-5">
-          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan-300/80">
+          <p className="text-xs font-semibold uppercase tracking-[0.3em] text-brand-cyan/80">
             Centre d&apos;appels nouvelle génération
           </p>
           <h1 className="font-display text-4xl font-bold leading-[1.1] tracking-tight xl:text-5xl">

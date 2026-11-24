@@ -8,11 +8,13 @@ import React, { ReactNode } from "react";
 import { Button } from "@/components/ui/button";
 import { SidebarInset, SidebarProvider, useSidebar } from "@/components/ui/sidebar";
 import { useAppConfig } from "@/context/AppConfigContext";
+import { useBrand } from "@/context/BrandContext";
 import { LeadFormsProvider } from "@/context/LeadFormsContext";
 
 import { AppSidebar } from "./AppSidebar";
 
 function AppHeader() {
+  const brand = useBrand();
   const { toggleSidebar } = useSidebar();
 
   return (
@@ -21,7 +23,7 @@ function AppHeader() {
         <Button variant="ghost" size="icon" onClick={toggleSidebar} aria-label="Open menu" className="md:hidden">
           <Menu className="h-5 w-5" />
         </Button>
-        <Link href="/" className="font-display text-lg font-bold tracking-[0.2em] md:hidden">NIMBORA</Link>
+        <Link href="/" className="font-display text-lg font-bold tracking-[0.2em] md:hidden">{brand.name}</Link>
       </div>
       <div className="flex items-center gap-3">
         <span className="flex items-center gap-2 rounded-full border border-border/60 bg-card/50 px-3 py-1 text-xs text-muted-foreground backdrop-blur">

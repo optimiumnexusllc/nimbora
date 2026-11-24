@@ -729,7 +729,7 @@ export const useWebSocketRTC = ({ workflowId, workflowRunId, accessToken, initia
                 const message = detailFromError(
                     response.error,
                     isServiceUnavailable
-                        ? 'NIMBORA is temporarily unavailable. Please try again later.'
+                        ? 'The service is temporarily unavailable. Please try again later.'
                         : 'API Key Error',
                 );
 

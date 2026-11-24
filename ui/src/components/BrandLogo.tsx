@@ -1,8 +1,16 @@
+"use client";
+
 import { useId } from "react";
 
+import { useBrand } from "@/context/BrandContext";
+import { DEFAULT_NAME } from "@/lib/brand";
 import { cn } from "@/lib/utils";
 
 /**
+ * The platform's logo: the operator's files when the charter sets them
+ * (BRAND_LOGO_URL, BRAND_LOGO_DARK_URL, BRAND_MARK_URL), the brand name as text
+ * for a renamed platform without a logo, and otherwise the NIMBORA logo.
+ *
  * NIMBORA logo. The mark — an open orbit (the "nimbus") around a voice
  * waveform, with a satellite dot for the AI agent — is inline SVG so its bars
  * can breathe (`animated`, on by default; respects prefers-reduced-motion).
@@ -30,6 +38,26 @@ export function BrandMark({
   animated?: boolean;
 }) {
   const id = useId().replace(/:/g, "");
+  const brand = useBrand();
+  if (brand.markUrl) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={brand.markUrl} alt={brand.name} className={cn("shrink-0 object-contain", className)} />;
+  }
+  if (brand.name !== DEFAULT_NAME) {
+    // A renamed platform without a mark: its initial on the brand gradient.
+    return (
+      <span
+        role="img"
+        aria-label={brand.name}
+        className={cn(
+          "inline-flex aspect-square shrink-0 items-center justify-center rounded-[28%] bg-[image:var(--brand-gradient)] font-display font-bold text-white [container-type:size]",
+          className,
+        )}
+      >
+        <span className="text-[60cqh] leading-none">{brand.name.charAt(0).toUpperCase()}</span>
+      </span>
+    );
+  }
   return (
     <svg
       viewBox="0 0 64 64"
@@ -93,8 +121,37 @@ export function BrandLogo({
   mark?: boolean;
   animated?: boolean;
 }) {
+  const brand = useBrand();
   if (mark) {
     return <BrandMark className={cn("w-auto select-none", className)} animated={animated} />;
+  }
+  /* eslint-disable @next/next/no-img-element */
+  if (brand.logoUrl) {
+    const dark = brand.logoDarkUrl ?? brand.logoUrl;
+    if (inverse || dark === brand.logoUrl) {
+      return <img src={inverse ? dark : brand.logoUrl} alt={brand.name} className={cn("w-auto select-none", className)} />;
+    }
+    return (
+      <>
+        <img src={brand.logoUrl} alt={brand.name} className={cn("block w-auto select-none dark:hidden", className)} />
+        <img src={dark} alt={brand.name} className={cn("hidden w-auto select-none dark:block", className)} />
+      </>
+    );
+  }
+  /* eslint-enable @next/next/no-img-element */
+  if (brand.name !== DEFAULT_NAME) {
+    return (
+      <span
+        className={cn(
+          "inline-flex items-center gap-2 font-display font-bold tracking-tight select-none",
+          inverse ? "text-white" : "text-foreground",
+          className,
+        )}
+      >
+        <BrandMark className="h-full" animated={false} />
+        <span className="text-xl leading-none whitespace-nowrap">{brand.name}</span>
+      </span>
+    );
   }
   // Full lockup: the wordmark is outlined Space Grotesk (static SVG, renders
   // identically everywhere); the theme picks ink-on-light or white-on-dark.

@@ -648,7 +648,7 @@ export default function UsagePage() {
                             <div className="mt-4 p-3 bg-muted rounded-md">
                                 <p className="text-sm text-muted-foreground">
                                     Total for filtered period: <span className="font-semibold text-foreground">
-                                        {usageHistory.total_nimbora_tokens.toLocaleString()} NIMBORA Tokens
+                                        {usageHistory.total_nimbora_tokens.toLocaleString()} tokens
                                     </span>
                                     {' • '}
                                     <span className="font-semibold text-foreground">

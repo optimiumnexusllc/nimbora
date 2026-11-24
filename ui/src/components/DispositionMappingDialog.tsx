@@ -138,7 +138,7 @@ export function DispositionMappingDialog({
         <DialogHeader>
           <DialogTitle>Configure disposition mapping</DialogTitle>
           <DialogDescription>
-            Each NIMBORA disposition is sent as your own code wherever a call
+            Each built-in disposition is sent as your own code wherever a call
             outcome is reported &mdash; webhooks, run filters, reports, and
             external PBX write-backs. Leave a row unchanged to send the
             disposition as-is. Saving here applies the mapping immediately.
@@ -152,7 +152,7 @@ export function DispositionMappingDialog({
         ) : (
           <>
             <div className="grid grid-cols-[1fr_1fr_auto] items-center gap-x-3 gap-y-1 px-1 text-xs font-medium text-muted-foreground">
-              <span>NIMBORA disposition</span>
+              <span>Built-in disposition</span>
               <span>Your code</span>
               <span className="w-8" />
             </div>
@@ -177,7 +177,7 @@ export function DispositionMappingDialog({
                       </Label>
                     ) : (
                       <Input
-                        aria-label="NIMBORA disposition"
+                        aria-label="Built-in disposition"
                         value={row.source}
                         disabled={isSaving}
                         onChange={(event) =>
@@ -208,7 +208,7 @@ export function DispositionMappingDialog({
                         // reflow as rows are edited.
                         disabled={isSaving || !changed}
                         onClick={() => updateRow(index, { target: row.source })}
-                        title="Reset to the NIMBORA disposition"
+                        title="Reset to the built-in disposition"
                       >
                         <RotateCcw className="h-3.5 w-3.5" />
                         <span className="sr-only">

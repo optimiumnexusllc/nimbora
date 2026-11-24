@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 
 import { transferTargetsApiV1PbxTransferTargetsGet } from "@/client/sdk.gen";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectLabel, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { useBrand } from "@/context/BrandContext";
 import { useAuth } from "@/lib/auth";
 import { enterpriseApi } from "@/lib/enterpriseApi";
 
@@ -33,6 +34,7 @@ export function TransferTargetPicker({
     value: string;
     onPick: (destination: string) => void;
 }) {
+    const brand = useBrand();
     const { user, loading } = useAuth();
     const [targets, setTargets] = useState<TransferTarget[]>([]);
     const fetched = useRef(false);
@@ -88,7 +90,7 @@ export function TransferTargetPicker({
             </Select>
             <p className="text-xs text-muted-foreground">
                 Le conseiller qui décroche voit le numéro du client et la fiche de l&apos;agent IA (motif, résumé,
-                humeur, informations recueillies) — dans NIMBORA Softphone et dans la supervision.
+                humeur, informations recueillies) — dans {brand.softphoneName} et dans la supervision.
             </p>
         </div>
     );

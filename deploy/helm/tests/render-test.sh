@@ -72,4 +72,19 @@ lacks "$out" Secret/nimbora-minio s3
 lacks "$out" Deployment/nimbora-seaweedfs s3
 lacks "$out" Deployment/nimbora-minio s3
 
+# Charter (white label): API and UI get the same name; assets mounted in the UI.
+out="$(render --set brand.name="Acme Voix" --set brand.primaryColor="#0a7d4f" \
+  --set brand.logoUrl=/brand-assets/logo.svg --set brand.assetsConfigMap=acme-brand)"
+[[ "$(get "$out" ConfigMap nimbora-config '.data.BRAND_NAME')" == "Acme Voix" ]] || fail "brand: API BRAND_NAME"
+ui_env() { get "$out" Deployment nimbora-ui ".spec.template.spec.containers[0].env[] | select(.name == \"$1\") | .value"; }
+[[ "$(ui_env BRAND_NAME)" == "Acme Voix" ]] || fail "brand: UI BRAND_NAME"
+[[ "$(ui_env BRAND_PRIMARY_COLOR)" == "#0a7d4f" ]] || fail "brand: UI colour"
+[[ "$(ui_env BRAND_LOGO_URL)" == /brand-assets/logo.svg ]] || fail "brand: UI logo"
+[[ "$(get "$out" Deployment nimbora-ui '.spec.template.spec.volumes[0].configMap.name')" == acme-brand ]] \
+  || fail "brand: assets ConfigMap"
+[[ "$(get "$out" Deployment nimbora-ui '.spec.template.spec.containers[0].volumeMounts[0].mountPath')" == /brand ]] \
+  || fail "brand: assets mount"
+out="$(render)"
+[[ "$(get "$out" Deployment nimbora-ui '.spec.template.spec.volumes')" == null ]] || fail "brand: volume without ConfigMap"
+
 echo "Helm chart checks passed."

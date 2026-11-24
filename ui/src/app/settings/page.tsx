@@ -36,7 +36,7 @@ export default function SettingsPage() {
         <CardHeader>
           <CardTitle>MCP Server</CardTitle>
           <CardDescription>
-            Let AI agents access your NIMBORA workspace and documentation via
+            Let AI agents access your workspace and documentation via
             the Model Context Protocol.{" "}
             <a
               href="https://github.com/optimiumnexusllc/nimbora/blob/main/docs/integrations/mcp.mdx"

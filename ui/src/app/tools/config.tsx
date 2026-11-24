@@ -161,7 +161,7 @@ export const TOOL_CATEGORIES: ToolCategoryConfig[] = [
     {
         value: "transfer_agent",
         label: "Transfer To Agent",
-        description: "Hand the live call to another NIMBORA agent, without dropping the caller",
+        description: "Hand the live call to another agent, without dropping the caller",
         icon: ArrowLeftRight,
         iconName: "arrow-left-right",
         iconColor: "#0EA5E9",
@@ -198,7 +198,7 @@ export const TOOL_CATEGORIES: ToolCategoryConfig[] = [
     {
         value: "book_appointment",
         label: "Book Appointment",
-        description: "Offer free slots from a calendar (NIMBORA, CalDAV, Google), book, list and cancel appointments",
+        description: "Offer free slots from a calendar (built-in, CalDAV, Google), book, list and cancel appointments",
         icon: CalendarCheck,
         iconName: "calendar-check",
         iconColor: "#22C55E",
@@ -224,7 +224,7 @@ export const TOOL_CATEGORIES: ToolCategoryConfig[] = [
     {
         value: "create_ticket",
         label: "Create Ticket",
-        description: "Open a support ticket (NIMBORA, Zendesk, Freshdesk) and tell callers where their tickets stand",
+        description: "Open a support ticket (built-in, Zendesk, Freshdesk) and tell callers where their tickets stand",
         icon: TicketIcon,
         iconName: "ticket",
         iconColor: "#F97316",

@@ -68,6 +68,7 @@ import {
 } from "@/components/ui/sidebar";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useAppConfig } from "@/context/AppConfigContext";
+import { useBrand } from "@/context/BrandContext";
 import { useTelephonyConfigWarnings } from "@/context/TelephonyConfigWarningsContext";
 import { useLatestReleaseVersion } from "@/hooks/useLatestReleaseVersion";
 import type { LocalUser } from "@/lib/auth";
@@ -242,6 +243,7 @@ const NAV_SECTIONS: SidebarNavSection[] = [
 ];
 
 export function AppSidebar() {
+  const brand = useBrand();
   const pathname = usePathname();
   const router = useRouter();
   const { state, isMobile, setOpenMobile } = useSidebar();
@@ -411,7 +413,7 @@ export function AppSidebar() {
               translate="no"
             >
               <BrandLogo mark className="h-7" />
-              <span className="notranslate font-display text-sm font-bold tracking-[0.2em] text-foreground">NIMBORA</span>
+              <span className="notranslate font-display text-sm font-bold tracking-[0.2em] text-foreground">{brand.name}</span>
               {versionInfo && (
                 <span
                   className="notranslate text-xs font-normal text-muted-foreground"

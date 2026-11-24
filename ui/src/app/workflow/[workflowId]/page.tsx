@@ -66,7 +66,7 @@ export default function WorkflowDetailPage() {
 
                 if (response.error) {
                     const fallback = response.response?.status === 503
-                        ? 'NIMBORA is temporarily unavailable. Please try again later.'
+                        ? 'The service is temporarily unavailable. Please try again later.'
                         : 'Failed to fetch workflow';
                     setError(detailFromError(response.error, fallback));
                     return;

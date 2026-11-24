@@ -203,6 +203,7 @@
               "deployment/saas",
               "deployment/backup-monitoring",
               "deployment/object-storage",
+              "deployment/white-label",
               "deployment/update",
               "deployment/heroku"
             ]
