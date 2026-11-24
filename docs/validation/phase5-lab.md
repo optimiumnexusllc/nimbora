@@ -1020,8 +1020,8 @@ l'image : **`chrislusf/seaweedfs:4.55@sha256:7ca46aeae2f223b37e5d91593c17ab37738
 
 | Vérification | Résultat |
 |---|---|
-| (1) `GET /api/v1/health` | `object_store: "seaweedfs"`, `legacy_minio_files: 0` ✅ ; `build_commit` observé **`50a10f9`** et non `8de7a2f` : le commit `8de7a2f` ne touche que le kit, le compose et les scripts de démarrage (aucun fichier `api/`), l'image API n'a donc pas été reconstruite par ce passage du kit. Le code API en service est identique ; le marquage, lui, reste celui du commit précédent |
-| (2) Conteneurs | confirmé par l'opérateur (non vérifiable sans privilèges) : plus aucun conteneur `nimbora_minio`, volume `nimbora-lab_minio-data` conservé |
+| (1) `GET /api/v1/health` | `object_store: "seaweedfs"`, `legacy_minio_files: 0` ✅ ; `build_commit` ✅ **`8de7a2f`** d'après la sortie du kit relancé par l'opérateur (« image nimbora/nimbora-api:latest (8de7a2f) », puis « API en service construite depuis 8de7a2f », valeur que le kit lit sur cette même route). Une lecture antérieure à cette relance affichait encore `50a10f9`. Le kit reconstruit les images à chaque passage (sauf `--no-build`), même quand le commit ne touche pas `api/` |
+| (2) Conteneurs | ✅ sortie du kit de l'opérateur : `docker ps -a … \| grep -c nimbora_minio` → `0`, volume `nimbora-lab_minio-data` toujours listé ; `nimbora_seaweedfs` healthy |
 | (3) Document téléversé puis relu, MinIO arrêté pour de bon | ✅ `PUT` 200 (« SeaweedFS 30GB 4.55 »), `process-document` 200, relecture par lien signé 200 `text/plain`, 403 sans signature ; document supprimé, 0 restant |
 
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
