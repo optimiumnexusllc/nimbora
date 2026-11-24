@@ -38,8 +38,9 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import React from "react";
+import React, { useEffect, useState } from "react";
 
+import { getAuthUserApiV1UserAuthUserGet } from "@/client/sdk.gen";
 import { BrandLogo } from "@/components/BrandLogo";
 import { SidebarTeamSwitcher } from "@/components/layout/SidebarTeamSwitcher";
 import ThemeToggle from "@/components/ThemeSwitcher";
@@ -269,6 +270,20 @@ export function AppSidebar() {
 
   const isActive = (path: string) => pathname.startsWith(path);
 
+  // The reseller's console, for those who administer one (SaaS).
+  const [resellerId, setResellerId] = useState<number | null>(null);
+  useEffect(() => {
+    if (!user) return;
+    void getAuthUserApiV1UserAuthUserGet().then((response) => setResellerId(response.data?.reseller_id ?? null));
+  }, [user]);
+  const navSections = resellerId
+    ? NAV_SECTIONS.map((section, index) =>
+        index === NAV_SECTIONS.length - 1
+          ? { ...section, items: [...section.items, { title: "Console revendeur", url: "/reseller", icon: Store }] }
+          : section,
+      )
+    : NAV_SECTIONS;
+
   const handleMobileNavClick = () => {
     if (isMobile) {
       setOpenMobile(false);
@@ -472,7 +487,7 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent className={cn("notranslate", isCollapsed && "px-0")} translate="no">
-        {NAV_SECTIONS.map((section, index) => (
+        {navSections.map((section, index) => (
           <SidebarGroup
             key={section.label ?? "overview"}
             className={index === 0 ? "mt-2" : "mt-6"}

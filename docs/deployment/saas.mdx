@@ -60,3 +60,20 @@ Companies see their human minutes on their **Abonnement** page, next to their AI
 </Frame>
 
 The same data is available from the API: `GET /api/v1/saas/admin/usage?month=2026-11` (`&format=csv` for the file).
+
+## Resellers
+
+A reseller sells the platform to its own client companies, under its own offers and prices. There is one level only: the platform, its resellers, their companies.
+
+**The platform** creates a reseller in the super-admin console (**Revendeurs**): its name, a contact e-mail, its **commission** (the percentage of each payment of its clients that the platform keeps), and the e-mail of its first administrator. The console shows an **invitation link** once: send it to that person. It works once and expires after 7 days; only its fingerprint is stored. A reseller can be deactivated: its administrators lose the console, its companies keep working.
+
+**The reseller** works from **Console revendeur** (in the sidebar of its administrators):
+
+- **Offres**: each offer is built on a plan of the platform. It has its own name, description and monthly price; its limits (minutes, concurrent calls, agents, human seats, campaigns) and features can be lowered, never raised above the base plan's, and its price never goes below the base plan's. Offers are never in the public price list.
+- **Entreprises**: a new company starts its trial on one of the reseller's offers, and its owner receives an invitation link to create an account (or join with an existing one, by typing its password). The reseller moves a company to another of its offers, suspends or reactivates it, and creates a new access link when needed. A company can only be on its reseller's offers.
+
+A reseller never sees another reseller's companies or offers. The companies of a reseller cannot subscribe directly to the platform: their payments go through their reseller (**Stripe Connect**, see below).
+
+<Note>
+Until the reseller's Stripe account is connected, online payment is refused for its companies: the reseller confirms their status itself (trial, active, suspended).
+</Note>

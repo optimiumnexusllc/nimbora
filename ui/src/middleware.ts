@@ -9,7 +9,8 @@ import { OSS_TOKEN_COOKIE } from '@/lib/auth/cookies';
 // which must be fetchable without a session cookie so third-party sites can
 // embed it — otherwise the middleware 307-redirects the asset to /auth/login.
 // `/pbx-password` is the white-label page behind the PBX's password-reset e-mail.
-const PUBLIC_PATHS = ['/auth/login', '/auth/signup', '/embed', '/get-service-key', '/pbx-password'];
+// `/auth/invitation` is where someone invited by a reseller creates their account.
+const PUBLIC_PATHS = ['/auth/login', '/auth/signup', '/auth/invitation', '/embed', '/get-service-key', '/pbx-password'];
 
 let cachedAuthProvider: string | null = null;
 

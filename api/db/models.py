@@ -265,6 +265,15 @@ class OrganizationModel(Base):
 
     price_per_second_usd = Column(Float, nullable=True)
 
+    # Client company of a reseller (SaaS): billed through it, managed from its
+    # console. None: a direct customer of the platform.
+    reseller_id = Column(
+        Integer,
+        ForeignKey("resellers.id", ondelete="SET NULL"),
+        nullable=True,
+        index=True,
+    )
+
     # Relationships
     users = relationship(
         "UserModel",
@@ -1754,6 +1763,16 @@ class SubscriptionPlanModel(Base):
         JSON, nullable=False, default=dict, server_default=text("'{}'::json")
     )
     stripe_price_id = Column(String(128), nullable=True)
+    # A reseller's own offer: built on a platform plan (``base_plan_id``),
+    # with its own name and price and limits no higher than the base. Never
+    # public; only that reseller's companies can be put on it.
+    reseller_id = Column(
+        Integer,
+        ForeignKey("resellers.id", ondelete="CASCADE"),
+        nullable=True,
+        index=True,
+    )
+    base_plan_id = Column(Integer, ForeignKey("subscription_plans.id"), nullable=True)
     is_public = Column(
         Boolean, nullable=False, default=True, server_default=text("true")
     )
@@ -1795,6 +1814,76 @@ class HumanCallUsageModel(Base):
     started_at = Column(DateTime(timezone=True), nullable=False)
     billable_seconds = Column(Integer, nullable=False)
     agent_name = Column(String(255), nullable=True)
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
+class ResellerModel(Base):
+    """A reseller (one level: platform → resellers → companies).
+
+    Its companies pay through the platform; the platform keeps
+    ``commission_bps`` (basis points: 2000 = 20 %) of each payment.
+    """
+
+    __tablename__ = "resellers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(128), nullable=False)
+    contact_email = Column(String(255), nullable=True)
+    commission_bps = Column(
+        Integer, nullable=False, default=2000, server_default=text("2000")
+    )
+    is_active = Column(
+        Boolean, nullable=False, default=True, server_default=text("true")
+    )
+    # Stripe Connect (Express) account receiving its companies' payments.
+    stripe_account_id = Column(String(64), nullable=True, unique=True)
+    stripe_charges_enabled = Column(
+        Boolean, nullable=False, default=False, server_default=text("false")
+    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
+class ResellerMemberModel(Base):
+    """A user who administers a reseller from its console."""
+
+    __tablename__ = "reseller_members"
+    __table_args__ = (
+        UniqueConstraint("reseller_id", "user_id", name="uq_reseller_member"),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    reseller_id = Column(
+        Integer, ForeignKey("resellers.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
+
+
+INVITATION_KINDS = ("company_owner", "reseller_admin")
+
+
+class InvitationModel(Base):
+    """A one-time link to create one's account and join a company or a
+    reseller. Only the SHA-256 of the token is stored."""
+
+    __tablename__ = "invitations"
+
+    id = Column(Integer, primary_key=True, index=True)
+    kind = Column(String(32), nullable=False)
+    token_hash = Column(String(64), nullable=False, unique=True, index=True)
+    email = Column(String(255), nullable=False)
+    name = Column(String(255), nullable=True)
+    organization_id = Column(
+        Integer, ForeignKey("organizations.id", ondelete="CASCADE"), nullable=True
+    )
+    reseller_id = Column(
+        Integer, ForeignKey("resellers.id", ondelete="CASCADE"), nullable=True
+    )
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    expires_at = Column(DateTime(timezone=True), nullable=False)
+    accepted_at = Column(DateTime(timezone=True), nullable=True)
     created_at = Column(DateTime(timezone=True), default=lambda: datetime.now(UTC))
 
 
