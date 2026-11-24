@@ -577,11 +577,15 @@ async def create_queue(organization_id: int, spec: NewQueue, **client_kwargs) ->
         context = await _internal_context(client)
         if await client.extensions(exten=spec.extension, context=context):
             raise PbxRouteError(f"Le numéro {spec.extension} est déjà utilisé", 409)
+        from api.services.pbx import hold_music
+
         name = f"{_slug(spec.label)}{secrets.token_hex(2)}"
         queue = await client.create_queue(
             {
                 "name": name,
                 "label": spec.label.strip()[:128],
+                # The company's music on hold when it has one.
+                "music_on_hold": await hold_music.class_name(client),
                 "options": [
                     ["strategy", spec.strategy],
                     ["timeout", str(max(5, min(spec.ring_seconds, 120)))],

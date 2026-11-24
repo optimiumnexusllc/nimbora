@@ -914,6 +914,28 @@ export type BodyImportItemsApiV1CatalogImportPost = {
 };
 
 /**
+ * Body_publish_hold_music_api_v1_pbx_hold_music_post
+ */
+export type BodyPublishHoldMusicApiV1PbxHoldMusicPost = {
+    /**
+     * Music
+     */
+    music?: 'generated' | 'custom' | 'none';
+    /**
+     * Announcement
+     */
+    announcement?: string;
+    /**
+     * Voice Workflow Id
+     */
+    voice_workflow_id?: number | null;
+    /**
+     * Music File
+     */
+    music_file?: Blob | File | null;
+};
+
+/**
  * Body_transcribe_audio_api_v1_workflow_recordings_transcribe_post
  */
 export type BodyTranscribeAudioApiV1WorkflowRecordingsTranscribePost = {
@@ -4494,6 +4516,36 @@ export type HealthResponse = {
      * Stack Publishable Client Key
      */
     stack_publishable_client_key?: string | null;
+};
+
+/**
+ * HoldMusicState
+ */
+export type HoldMusicState = {
+    /**
+     * Active
+     */
+    active: boolean;
+    /**
+     * Music
+     */
+    music: boolean;
+    /**
+     * Announcement
+     */
+    announcement: boolean;
+    /**
+     * Queues
+     */
+    queues: number;
+    /**
+     * Parking Lots
+     */
+    parking_lots: number;
+    /**
+     * Suggested Announcement
+     */
+    suggested_announcement: string;
 };
 
 /**
@@ -27087,6 +27139,162 @@ export type PreviewPromptApiV1PbxPromptsPreviewPostResponses = {
 };
 
 export type PreviewPromptApiV1PbxPromptsPreviewPostResponse = PreviewPromptApiV1PbxPromptsPreviewPostResponses[keyof PreviewPromptApiV1PbxPromptsPreviewPostResponses];
+
+export type RemoveHoldMusicApiV1PbxHoldMusicDeleteData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/hold-music';
+};
+
+export type RemoveHoldMusicApiV1PbxHoldMusicDeleteErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type RemoveHoldMusicApiV1PbxHoldMusicDeleteError = RemoveHoldMusicApiV1PbxHoldMusicDeleteErrors[keyof RemoveHoldMusicApiV1PbxHoldMusicDeleteErrors];
+
+export type RemoveHoldMusicApiV1PbxHoldMusicDeleteResponses = {
+    /**
+     * Successful Response
+     */
+    204: void;
+};
+
+export type RemoveHoldMusicApiV1PbxHoldMusicDeleteResponse = RemoveHoldMusicApiV1PbxHoldMusicDeleteResponses[keyof RemoveHoldMusicApiV1PbxHoldMusicDeleteResponses];
+
+export type GetHoldMusicApiV1PbxHoldMusicGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/hold-music';
+};
+
+export type GetHoldMusicApiV1PbxHoldMusicGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetHoldMusicApiV1PbxHoldMusicGetError = GetHoldMusicApiV1PbxHoldMusicGetErrors[keyof GetHoldMusicApiV1PbxHoldMusicGetErrors];
+
+export type GetHoldMusicApiV1PbxHoldMusicGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: HoldMusicState;
+};
+
+export type GetHoldMusicApiV1PbxHoldMusicGetResponse = GetHoldMusicApiV1PbxHoldMusicGetResponses[keyof GetHoldMusicApiV1PbxHoldMusicGetResponses];
+
+export type PublishHoldMusicApiV1PbxHoldMusicPostData = {
+    body?: BodyPublishHoldMusicApiV1PbxHoldMusicPost;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/hold-music';
+};
+
+export type PublishHoldMusicApiV1PbxHoldMusicPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type PublishHoldMusicApiV1PbxHoldMusicPostError = PublishHoldMusicApiV1PbxHoldMusicPostErrors[keyof PublishHoldMusicApiV1PbxHoldMusicPostErrors];
+
+export type PublishHoldMusicApiV1PbxHoldMusicPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: HoldMusicState;
+};
+
+export type PublishHoldMusicApiV1PbxHoldMusicPostResponse = PublishHoldMusicApiV1PbxHoldMusicPostResponses[keyof PublishHoldMusicApiV1PbxHoldMusicPostResponses];
+
+export type HoldMusicSampleApiV1PbxHoldMusicSampleGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/pbx/hold-music/sample';
+};
+
+export type HoldMusicSampleApiV1PbxHoldMusicSampleGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type HoldMusicSampleApiV1PbxHoldMusicSampleGetError = HoldMusicSampleApiV1PbxHoldMusicSampleGetErrors[keyof HoldMusicSampleApiV1PbxHoldMusicSampleGetErrors];
+
+export type HoldMusicSampleApiV1PbxHoldMusicSampleGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: Blob | File;
+};
+
+export type HoldMusicSampleApiV1PbxHoldMusicSampleGetResponse = HoldMusicSampleApiV1PbxHoldMusicSampleGetResponses[keyof HoldMusicSampleApiV1PbxHoldMusicSampleGetResponses];
 
 export type SetNumberDestinationApiV1PbxNumbersPutData = {
     body: NumberRequest;

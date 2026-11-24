@@ -57,6 +57,7 @@ import { ConnectionDialog, type ConnectionForm } from "@/components/pbx/Connecti
 import type { Destination, DestinationSources, PbxVoicemail } from "@/components/pbx/DestinationPicker";
 import { ExtensionsTab } from "@/components/pbx/ExtensionsTab";
 import { GroupsTab, type PbxGroup } from "@/components/pbx/GroupsTab";
+import { HoldMusicCard } from "@/components/pbx/HoldMusicCard";
 import { MenusTab } from "@/components/pbx/MenusTab";
 import { MissedCallsCard } from "@/components/pbx/MissedCallsCard";
 import { NumberDialog, type NumberEdit } from "@/components/pbx/NumberDialog";
@@ -607,6 +608,7 @@ export default function PbxPage() {
                             error={errors.queues}
                             onChanged={() => void loadInventory()}
                         />
+                        <HoldMusicCard workflows={workflows} />
                     </TabsContent>
 
                     <TabsContent value="users">

@@ -513,6 +513,30 @@ class PbxClient:
     async def delete_sound(self, category: str, filename: str) -> None:
         await self.request("confd", "DELETE", f"/sounds/{category}/files/{filename}")
 
+    # music on hold classes (files played in a loop, per tenant)
+
+    async def mohs(self) -> list[dict]:
+        return await self._items("confd", "/moh", limit=500)
+
+    async def create_moh(self, body: dict) -> dict:
+        return await self.request("confd", "POST", "/moh", json=body)
+
+    async def delete_moh(self, moh_uuid: str) -> None:
+        await self.request("confd", "DELETE", f"/moh/{moh_uuid}")
+
+    async def upload_moh_file(self, moh_uuid: str, filename: str, audio: bytes) -> None:
+        """WAV, mono, 8 or 16 kHz, 16-bit at most (the engine checks)."""
+        await self.request(
+            "confd",
+            "PUT",
+            f"/moh/{moh_uuid}/files/{filename}",
+            content=audio,
+            content_type="application/octet-stream",
+        )
+
+    async def delete_moh_file(self, moh_uuid: str, filename: str) -> None:
+        await self.request("confd", "DELETE", f"/moh/{moh_uuid}/files/{filename}")
+
     # ------------------------------------------ operator lines (trunks)
 
     async def tenant(self, tenant_uuid: str) -> dict:
@@ -575,6 +599,9 @@ class PbxClient:
 
     async def create_parkinglot(self, body: dict) -> dict:
         return await self.request("confd", "POST", "/parkinglots", json=body)
+
+    async def update_parkinglot(self, parkinglot_id: int, body: dict) -> None:
+        await self.request("confd", "PUT", f"/parkinglots/{parkinglot_id}", json=body)
 
     async def delete_parkinglot(self, parkinglot_id: int) -> None:
         await self.request("confd", "DELETE", f"/parkinglots/{parkinglot_id}")
@@ -1083,6 +1110,12 @@ REQUIRED_ACL: dict[str, str] = {
     "set_callpickup_users_targets": "confd.callpickups.{callpickup_id}.targets.users.update",
     "parkinglots": "confd.parkinglots.read",
     "create_parkinglot": "confd.parkinglots.create",
+    "update_parkinglot": "confd.parkinglots.{parkinglot_id}.update",
+    "mohs": "confd.moh.read",
+    "create_moh": "confd.moh.create",
+    "delete_moh": "confd.moh.{moh_uuid}.delete",
+    "upload_moh_file": "confd.moh.{moh_uuid}.files.{filename}.update",
+    "delete_moh_file": "confd.moh.{moh_uuid}.files.{filename}.delete",
     "delete_parkinglot": "confd.parkinglots.{parkinglot_id}.delete",
     "associate_parkinglot_extension": "confd.parkinglots.{parkinglot_id}.extensions.{extension_id}.update",
     "pagings": "confd.pagings.read",

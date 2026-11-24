@@ -6,7 +6,16 @@ import re
 from datetime import datetime
 from typing import Any, Literal
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import (
+    APIRouter,
+    Depends,
+    File,
+    Form,
+    HTTPException,
+    Request,
+    Response,
+    UploadFile,
+)
 from pydantic import BaseModel, Field
 
 from api.db import db_client
@@ -805,6 +814,83 @@ async def preview_prompt(
     )
     return Response(
         content=audio, media_type="audio/wav", headers={"Cache-Control": "no-store"}
+    )
+
+
+# --------------------------------------------------- music on hold
+
+
+class HoldMusicState(BaseModel):
+    active: bool
+    music: bool
+    announcement: bool
+    queues: int
+    parking_lots: int
+    suggested_announcement: str
+
+
+@router.get("/hold-music")
+async def get_hold_music(user: UserModel = Depends(get_user)) -> HoldMusicState:
+    """The company's music on hold, and where it plays."""
+    from api.services.pbx import hold_music
+
+    return HoldMusicState(**await _call(hold_music.get_hold_music(_org(user))))
+
+
+@router.post("/hold-music")
+async def publish_hold_music(
+    music: Literal["generated", "custom", "none"] = Form("generated"),
+    announcement: str = Form("", max_length=800),
+    voice_workflow_id: int | None = Form(None),
+    music_file: UploadFile | None = File(None),
+    user: UserModel = Depends(get_user),
+) -> HoldMusicState:
+    """Music (generated or the company's WAV) and an announcement spoken with
+    its voice, played to callers waiting in its queues and parking lots."""
+    from api.services.pbx import hold_music
+
+    custom = None
+    if music == "custom" and music_file is not None:
+        custom = await music_file.read(hold_music.MAX_UPLOAD_BYTES + 1)
+        if len(custom) > hold_music.MAX_UPLOAD_BYTES:
+            raise HTTPException(status_code=413, detail="Fichier trop volumineux")
+    state = await _call(
+        hold_music.publish_hold_music(
+            _org(user),
+            hold_music.HoldMusicSpec(
+                music=music,
+                announcement=announcement,
+                voice_workflow_id=voice_workflow_id,
+                custom_music=custom,
+            ),
+        )
+    )
+    return HoldMusicState(**state)
+
+
+@router.delete("/hold-music", status_code=204)
+async def remove_hold_music(user: UserModel = Depends(get_user)):
+    """Back to the PBX's default music."""
+    from api.services.pbx import hold_music
+
+    await _call(hold_music.remove_hold_music(_org(user)))
+    return Response(status_code=204)
+
+
+@router.get(
+    "/hold-music/sample",
+    response_class=Response,
+    responses={200: {"content": {"audio/wav": {}}}},
+)
+async def hold_music_sample(user: UserModel = Depends(get_user)) -> Response:
+    """Listen to the generated music (telephone quality, 8 kHz)."""
+    from api.services.pbx import hold_music
+
+    _org(user)
+    return Response(
+        content=hold_music.generate_music(seconds=20),
+        media_type="audio/wav",
+        headers={"Cache-Control": "no-store"},
     )
 
 
