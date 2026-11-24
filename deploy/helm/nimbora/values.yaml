@@ -121,7 +121,7 @@ brand:
   markUrl: ""
   faviconUrl: ""
   primaryColor: ""
-  gradient: ""        # three colours: "#0a7d4f, #11a36b, #7bd389"
+  gradient: ""        # three colours: "#0a7d4f,#11a36b,#7bd389"
   fontFamily: ""
   fontUrl: ""
   assetsConfigMap: ""

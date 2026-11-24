@@ -22,10 +22,10 @@ The platform's charter comes from `BRAND_*` variables in `.env`. The API uses th
 | `BRAND_MARK_URL` | Square symbol (sidebar, small spaces) |
 | `BRAND_FAVICON_URL` | Browser tab icon |
 | `BRAND_PRIMARY_COLOR` | Buttons, links, focus rings, selected items |
-| `BRAND_GRADIENT` | Three colours of the brand gradient (titles, backgrounds), e.g. `#0a7d4f, #11a36b, #7bd389` |
+| `BRAND_GRADIENT` | Three colours of the brand gradient (titles, backgrounds), comma-separated **without spaces**: `#0a7d4f,#11a36b,#7bd389` |
 | `BRAND_FONT_FAMILY` / `BRAND_FONT_URL` | Display font (titles) and its `.woff2` file |
 
-Colours accept `#rgb`/`#rrggbb`, `rgb()`, `hsl()` or `oklch()`. A value that does not match is **ignored** (the platform's default is kept), so a typo cannot break the page or inject CSS.
+Colours accept `#rgb`/`#rrggbb`, `rgb()`, `hsl()` or `oklch()`. In `.env`, a space followed by `#` starts a comment: write the gradient without spaces (`#a,#b,#c`), or quote it. A value that does not match is **ignored** (the platform's default is kept), so a typo cannot break the page or inject CSS.
 
 A renamed platform without a logo shows its name in text, with its initial on the brand gradient; the NIMBORA artwork is never shown under another name.
 
@@ -45,7 +45,7 @@ File variables take an `https://` address or a path on the platform. To host the
     BRAND_MARK_URL=/brand-assets/mark.svg
     BRAND_FAVICON_URL=/brand-assets/favicon.png
     BRAND_PRIMARY_COLOR=#0a7d4f
-    BRAND_GRADIENT=#0a7d4f, #11a36b, #7bd389
+    BRAND_GRADIENT=#0a7d4f,#11a36b,#7bd389
     ```
   </Step>
   <Step title="Restart">

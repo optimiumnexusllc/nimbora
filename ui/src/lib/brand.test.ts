@@ -73,4 +73,14 @@ describe("readBrand", () => {
     expect(brand.name).toBe("Acme</title><script>");
     expect(brandCss(brand)).toBe("");
   });
+
+  it("reads a gradient written without spaces, as .env needs it", () => {
+    // In .env, " #" starts a comment: "#a, #b" would reach us as "#a,".
+    expect(readBrand({ BRAND_GRADIENT: "#0a7d4f,#11a36b,#7bd389" }).gradient).toEqual([
+      "#0a7d4f",
+      "#11a36b",
+      "#7bd389",
+    ]);
+    expect(readBrand({ BRAND_GRADIENT: "#0a7d4f," }).gradient).toBeNull();
+  });
 });
