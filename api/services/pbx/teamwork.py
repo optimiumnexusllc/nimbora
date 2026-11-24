@@ -193,13 +193,16 @@ async def create_parking_lot(
         context = await _internal_context(client)
         if await client.extensions(exten=spec.extension, context=context):
             raise PbxRouteError(f"Le numéro {spec.extension} est déjà utilisé", 409)
+        from api.services.pbx import hold_music
+
         lot = await client.create_parkinglot(
             {
                 "name": spec.name[:128],
                 "slots_start": spec.slots_start,
                 "slots_end": spec.slots_end,
                 "timeout": spec.timeout,
-                "music_on_hold": "default",
+                # The company's music on hold when it has one.
+                "music_on_hold": await hold_music.class_name(client),
             }
         )
         try:

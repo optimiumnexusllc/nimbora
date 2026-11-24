@@ -291,6 +291,7 @@ class FakePbx:
         self.conferences: list[dict] = []
         self.callpickups: list[dict] = []
         self.parkinglots: list[dict] = []
+        self.mohs: list[dict] = []  # music on hold classes (file_data: name → bytes)
         self.pagings: list[dict] = []
         self.parked: list[dict] = []  # calld parked calls, keyed by lot_id
         self.participants: dict[int, list[dict]] = {}
@@ -312,6 +313,11 @@ class FakePbx:
 
     def revoke_tokens(self) -> None:
         self.tokens.clear()
+
+    def _moh_exists(self, name: str | None) -> bool:
+        return name in (None, "", "default") or any(
+            m["name"] == name for m in self.mohs
+        )
 
     def handle(self, request: httpx.Request) -> httpx.Response:
         path = request.url.path
@@ -765,6 +771,10 @@ class FakePbx:
                     return httpx.Response(
                         400, json=["Input Error - field 'name': read only"]
                     )
+                if "music_on_hold" in body and not self._moh_exists(
+                    body["music_on_hold"]
+                ):
+                    return httpx.Response(400, json=["Input Error - MOH not found"])
                 queue.update(body)
                 return httpx.Response(204)
             if method == "DELETE":
@@ -896,6 +906,60 @@ class FakePbx:
                 return httpx.Response(204)
             self.ivrs.remove(ivr)
             return httpx.Response(204)
+
+        # ----- music on hold (wazo-confd plugins/moh)
+        if path == f"{prefix}/moh" and method == "GET":
+            items = [
+                {k: v for k, v in moh.items() if k != "file_data"}
+                | {"files": [{"name": n} for n in sorted(moh["file_data"])]}
+                for moh in self.mohs
+            ]
+            return httpx.Response(200, json={"items": items, "total": len(items)})
+        if path == f"{prefix}/moh" and method == "POST":
+            if not body.get("label") or body.get("mode") not in {
+                "custom",
+                "files",
+                "mp3",
+            }:
+                return httpx.Response(400, json=["Input Error - label/mode"])
+            moh_uuid = f"moh-{self._id()}"
+            moh = {
+                "uuid": moh_uuid,
+                "name": f"moh_{moh_uuid.replace('-', '')}",
+                "tenant_uuid": TENANT,
+                "label": body["label"],
+                "mode": body["mode"],
+                "sort": body.get("sort"),
+                "application": body.get("application"),
+                "file_data": {},
+            }
+            self.mohs.append(moh)
+            return httpx.Response(
+                201, json={k: v for k, v in moh.items() if k != "file_data"}
+            )
+        m = re.fullmatch(rf"{prefix}/moh/([^/]+)", path)
+        if m:
+            moh = next((x for x in self.mohs if x["uuid"] == m.group(1)), None)
+            if moh is None:
+                return httpx.Response(404, json=["Resource Not Found - MOH"])
+            if method == "DELETE":
+                self.mohs.remove(moh)
+                return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/moh/([^/]+)/files/([^/]+)", path)
+        if m:
+            moh = next((x for x in self.mohs if x["uuid"] == m.group(1)), None)
+            if moh is None:
+                return httpx.Response(404, json=["Resource Not Found - MOH"])
+            if method == "PUT":
+                error = _moh_file_error(request.content)
+                if error:
+                    return httpx.Response(400, json=[f"Input Error - {error}"])
+                moh["file_data"][m.group(2)] = request.content
+                return httpx.Response(204)
+            if method == "DELETE":
+                if moh["file_data"].pop(m.group(2), None) is None:
+                    return httpx.Response(404, json=["Resource Not Found - file"])
+                return httpx.Response(204)
 
         # ----- sounds
         if path == f"{prefix}/sounds" and method == "GET":
@@ -1342,6 +1406,19 @@ class FakePbx:
             self.parkinglots.append(lot)
             return httpx.Response(201, json=lot)
         m = re.fullmatch(rf"{prefix}/parkinglots/(\d+)", path)
+        if m and method == "PUT":
+            lot = next(
+                (x for x in self.parkinglots if x["id"] == int(m.group(1))), None
+            )
+            if lot is None:
+                return httpx.Response(404, json=["Resource Not Found - ParkingLot"])
+            if not body.get("slots_start") or not body.get("slots_end"):
+                return httpx.Response(400, json=["Input Error - slots required"])
+            if not self._moh_exists(body.get("music_on_hold")):
+                return httpx.Response(400, json=["Input Error - MOH not found"])
+            lot.update(body)
+            return httpx.Response(204)
+        m = re.fullmatch(rf"{prefix}/parkinglots/(\d+)", path)
         if m and method == "DELETE":
             lot = next(
                 (x for x in self.parkinglots if x["id"] == int(m.group(1))), None
@@ -1663,3 +1740,21 @@ def install(monkeypatch, fake: FakePbx) -> None:
 
 def as_dict(value: Any) -> Any:
     return value
+
+
+def _moh_file_error(data: bytes) -> str | None:
+    """What wazo-confd's MohFileUploadSchema refuses."""
+    import io
+    import wave
+
+    try:
+        with wave.open(io.BytesIO(data), "rb") as f:
+            if f.getnchannels() > 1:
+                return "Audio file should be mono"
+            if f.getframerate() not in (8000, 16000):
+                return "Audio file should have a sample rate of 8kHz or 16kHz"
+            if f.getsampwidth() > 2:
+                return "Audio file should have bit depth of no more than 16 bits"
+    except (wave.Error, EOFError) as error:
+        return f'Not able to read audio file: "{error}"'
+    return None
