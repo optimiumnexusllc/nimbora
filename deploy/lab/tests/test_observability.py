@@ -14,6 +14,7 @@ EMITTERS = [
     ROOT / "api" / "services" / "observability" / "business_metrics.py",
     ROOT / "api" / "services" / "observability" / "metrics.py",
     ROOT / "deploy" / "pbx" / "scripts" / "backup.sh",
+    ROOT / "deploy" / "pbx" / "scripts" / "check_whitelabel.py",
     ROOT / "deploy" / "enterprise" / "scripts" / "backup.sh",
 ]
 METRIC = re.compile(r"\bnimbora_[a-z_]+")

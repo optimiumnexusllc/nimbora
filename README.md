@@ -147,7 +147,7 @@ offre ; l'opérateur exporte chaque mois la consommation de toutes les entrepris
 **Exploitation** : sauvegarde **chiffrée** du PBX et de la plateforme chaque nuit (bases,
 configuration, messageries, enregistrements), copie hors serveur, restauration vérifiée qui
 refuse une sauvegarde altérée ; métriques **Prometheus** (PBX de chaque entreprise, alertes de
-supervision, minutes du mois, fraîcheur des sauvegardes), 13 règles d'alerte et un tableau de
+supervision, minutes du mois, fraîcheur des sauvegardes), 14 règles d'alerte et un tableau de
 bord **Grafana** prêts à l'emploi ([sauvegarde et supervision](docs/deployment/backup-monitoring.mdx)).
 
 L'administration se fait aussi depuis NIMBORA :
@@ -546,7 +546,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | 🧪 | Agents IA de plusieurs entreprises sur le même Asterisk (une application Stasis chacune) et appel entre postes de deux tenants (doit échouer) : clés de fournisseur IA non disponibles |
 | ✅ | Facturation des minutes humaines avec les minutes IA : appels décrochés avec un client sur le PBX (hors appels internes et hors appels pris par l'IA), comptés à la fin de chaque appel et rattrapés toutes les heures depuis le journal des appels (jamais deux fois) ; minutes humaines incluses et prix du dépassement par offre ; consommation sur la page Abonnement ; rapport mensuel par entreprise (minutes IA, minutes humaines, dépassements) et export CSV pour la facturation |
 | ✅ | Sauvegarde et restauration du PBX et de la plateforme : chaque nuit, bases du moteur, configuration, secrets du kit, messageries, sons et enregistrements ; chiffrement AES-256, copie hors serveur, empreintes SHA-256, restauration vérifiée (`--check`) qui refuse une sauvegarde altérée |
-| ✅ | Métriques Prometheus d'exploitation : PBX de chaque entreprise (joignable, événements, alertes de supervision, rattrapage des minutes), abonnements, minutes IA et humaines du mois, fraîcheur des sauvegardes ; 13 règles d'alerte et tableau de bord Grafana « NIMBORA operations » |
+| ✅ | Métriques Prometheus d'exploitation : PBX de chaque entreprise (joignable, événements, alertes de supervision, rattrapage des minutes), abonnements, minutes IA et humaines du mois, fraîcheur des sauvegardes ; 14 règles d'alerte et tableau de bord Grafana « NIMBORA operations » |
 | ✅ | Sauvegarde et restauration du PBX validées sur le moteur réel (laboratoire) : sauvegarde chiffrée, `restore.sh --check`, restauration complète en 58 s (tenants, postes et files identiques) ; la sauvegarde couvre aussi l'état du moteur (clés des services, DTLS, `astdb`, sons) ; métrique de fraîcheur dans Prometheus, 5 cibles sur 5, tableau Grafana provisionné |
 | 🔜 | Haute disponibilité du PBX (serveur de secours, bascule) |
 | ✅ | **Sécurité du stockage** : le bucket des enregistrements est désormais **privé** (la politique anonyme lecture/écriture/liste des versions précédentes, joignable par `/voice-audio/`, est retirée au démarrage) ; tous les liens de téléchargement et d'envoi sont **signés et expirent**, calculés pour l'adresse publique |
@@ -561,7 +561,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | 🔜 | Messages vocaux et musique d'attente générés par les voix IA locales, dans la langue de l'entreprise |
 | 🔜 | Applications mobile et de bureau à la marque, notifications sans service tiers |
 | 🔜 | Connexion Google / Microsoft par NIMBORA plutôt que par le service hébergé du fournisseur du moteur |
-| 🔜 | Contrôle automatique de toute mention résiduelle du moteur (e-mails, SIP, pages) après chaque mise à jour |
+| 🧪 | **Contrôle automatique des mentions résiduelles du moteur** après chaque mise à jour de paquets (crochet APT) et chaque semaine : page d'accueil et en-têtes HTTP, en-têtes SIP (requête `OPTIONS` réelle), expéditeurs et gabarits des e-mails, interface web du moteur ; journal, métriques et 3 alertes Prometheus (`scripts/check_whitelabel.py`). Testé contre un faux PBX ; à valider sur le moteur réel |
 | 🔜 | Miroir de paquets et publication des sources de toute modification du moteur (GPL-3.0) |
 
 ### Phase 6 — Plateforme revendable en marque blanche
