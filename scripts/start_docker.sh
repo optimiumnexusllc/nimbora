@@ -226,4 +226,25 @@ esac
 postgres_password="$(dotenv_value POSTGRES_PASSWORD || true)"
 sync_postgres_password "$postgres_password"
 
-REGISTRY="$REGISTRY" ENABLE_TELEMETRY="$ENABLE_TELEMETRY" docker compose --profile tunnel up --pull always
+# Object store: the bundled SeaweedFS; an install made before keeps its MinIO
+# (OBJECT_STORE=minio) until its files are migrated, and MinIO runs while its
+# volume exists and MINIO_RETIRED is not true (docs/deployment/object-storage.mdx).
+object_store="$(dotenv_value OBJECT_STORE || true)"
+has_minio=false
+docker volume ls -q 2>/dev/null | grep -qE '(^|_)minio-data$' && has_minio=true
+if [[ -z "$object_store" ]]; then
+    object_store=seaweedfs
+    [[ "$has_minio" == true ]] && object_store=minio
+    set_dotenv_value OBJECT_STORE "$object_store"
+fi
+minio_profile=()
+if [[ "$object_store" == minio || ( "$has_minio" == true && "$(dotenv_value MINIO_RETIRED || true)" != true ) ]]; then
+    minio_profile=(--profile minio)
+    echo "Object store: the bundled MinIO is kept running (existing files)."
+else
+    # `up` never stops a container whose profile is no longer active: retire
+    # MinIO explicitly (container only, its volume stays).
+    docker compose --profile minio rm -sf minio >/dev/null 2>&1 || true
+fi
+
+REGISTRY="$REGISTRY" ENABLE_TELEMETRY="$ENABLE_TELEMETRY" docker compose --profile tunnel "${minio_profile[@]}" up --pull always

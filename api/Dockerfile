@@ -146,6 +146,9 @@ COPY --chown=nimbora:nimbora ./api ./api
 #     with the command:[] entries in deploy/helm/nimbora/templates/*.yaml.
 #   drain_web.sh             — web pod preStop hook (call-safe scale-down); see
 #     lifecycle.preStop in deploy/helm/nimbora/templates/web-deployment.yaml.
+#   migrate_object_store.py  — moves stored files between object stores
+#     (`python -m scripts.migrate_object_store copy|verify|switch`, run from
+#     /app; docs/deployment/object-storage.mdx).
 COPY --chown=nimbora:nimbora \
      ./scripts/start_services_docker.sh \
      ./scripts/run_migrate.sh \
@@ -154,6 +157,7 @@ COPY --chown=nimbora:nimbora \
      ./scripts/run_ari_manager.sh \
      ./scripts/run_campaign_orchestrator.sh \
      ./scripts/drain_web.sh \
+     ./scripts/migrate_object_store.py \
      ./scripts/
 
 # ts_validator Node deps (built in ts-deps stage with full node:22-slim image).

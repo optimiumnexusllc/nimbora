@@ -9,11 +9,13 @@ from api.constants import (
     MINIO_PUBLIC_ENDPOINT,
     MINIO_SECRET_KEY,
     MINIO_SECURE,
+    S3_ACCESS_KEY,
     S3_ADDRESSING_STYLE,
     S3_BUCKET,
     S3_ENDPOINT_URL,
     S3_PUBLIC_ENDPOINT_URL,
     S3_REGION,
+    S3_SECRET_KEY,
     S3_SIGNATURE_VERSION,
 )
 from api.enums import Environment, StorageBackend
@@ -78,6 +80,8 @@ def get_storage_for_backend(backend: str) -> BaseFileSystem:
             signature_version=S3_SIGNATURE_VERSION,
             addressing_style=S3_ADDRESSING_STYLE,
             public_endpoint_url=S3_PUBLIC_ENDPOINT_URL,
+            access_key=S3_ACCESS_KEY,
+            secret_key=S3_SECRET_KEY,
         )
 
     # Future backend implementations can be added here:
@@ -116,3 +120,49 @@ def get_storage() -> BaseFileSystem:
     Deprecated: Use 'from api.services.storage import storage_fs' instead.
     """
     return storage_fs
+
+
+# Files still on the bundled MinIO while the API is set to another store:
+# reported by /api/v1/health so an upgrade that left MinIO behind shows.
+LEGACY_MINIO_FILES = 0
+
+
+async def startup_checks(attempts: int = 10, delay: float = 3.0) -> None:
+    """Bundled SeaweedFS: create the bucket on first start. Any store but MinIO:
+    warn about files still on MinIO (an update that switched the default store
+    before the files were migrated). Never stops the API."""
+    import asyncio
+
+    global LEGACY_MINIO_FILES
+    from api import constants
+
+    if constants.BUNDLED_SEAWEEDFS and isinstance(storage_fs, S3FileSystem):
+        for attempt in range(1, attempts + 1):
+            try:
+                if await storage_fs.aensure_bucket():
+                    logger.info(
+                        f"Object store: bucket '{storage_fs.bucket_name}' created on SeaweedFS"
+                    )
+                break
+            except Exception as error:  # noqa: BLE001 - SeaweedFS may still be starting
+                if attempt == attempts:
+                    logger.error(f"Object store: SeaweedFS unreachable ({error})")
+                else:
+                    await asyncio.sleep(delay)
+    if constants.OBJECT_STORE != "minio":
+        try:
+            from api.db import db_client
+
+            LEGACY_MINIO_FILES = await db_client.count_storage_backend(
+                StorageBackend.MINIO.value
+            )
+        except Exception:  # noqa: BLE001 - informative only
+            logger.opt(exception=True).debug("Legacy MinIO file count unavailable")
+        if LEGACY_MINIO_FILES:
+            logger.error(
+                f"Object store is {constants.OBJECT_STORE} but {LEGACY_MINIO_FILES} "
+                "files are still on the bundled MinIO: keep it running "
+                "(COMPOSE_PROFILES=minio) and migrate them "
+                "(python -m scripts.migrate_object_store copy / verify / switch), "
+                "or set OBJECT_STORE=minio. See docs/deployment/object-storage.mdx."
+            )

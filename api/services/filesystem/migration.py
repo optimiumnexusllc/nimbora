@@ -9,7 +9,11 @@ Cloudflare R2, Wasabi, AWS) or a self-hosted one (SeaweedFS, Garage).
    resume, and a last run just before switching copies what was added since.
 2. ``verify``: every source object exists at the destination with its size.
 3. ``switch``: database rows pointing at MinIO now point at the S3 backend;
-   then set ENABLE_AWS_S3=true (and the S3_* settings) and restart.
+   then set OBJECT_STORE=seaweedfs (bundled SeaweedFS) or ENABLE_AWS_S3=true
+   and the S3_* settings, and restart.
+
+With OBJECT_STORE=seaweedfs and no S3_* settings, the destination is the
+bundled SeaweedFS (its bucket is created if needed).
 """
 
 from __future__ import annotations
@@ -142,11 +146,20 @@ def clients_from_settings():
         config["signature_version"] = constants.S3_SIGNATURE_VERSION
     if constants.S3_ADDRESSING_STYLE:
         config["s3"] = {"addressing_style": constants.S3_ADDRESSING_STYLE}
+    keys = (
+        {
+            "aws_access_key_id": constants.S3_ACCESS_KEY,
+            "aws_secret_access_key": constants.S3_SECRET_KEY,
+        }
+        if constants.S3_ACCESS_KEY and constants.S3_SECRET_KEY
+        else {}
+    )
     s3_client = boto3.client(
         "s3",
         region_name=constants.S3_REGION,
         endpoint_url=constants.S3_ENDPOINT_URL,
         config=Config(**config) if config else None,
+        **keys,
     )
     return minio_client, constants.MINIO_BUCKET, s3_client, constants.S3_BUCKET
 

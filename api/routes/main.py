@@ -118,6 +118,10 @@ class HealthResponse(BaseModel):
     version: str
     # Commit the running API image was built from; null when not stamped.
     build_commit: str | None = None
+    # Where files are stored: seaweedfs (bundled), minio (bundled, legacy) or s3.
+    object_store: str | None = None
+    # Files still on the bundled MinIO while another store is active.
+    legacy_minio_files: int = 0
     backend_api_endpoint: str
     # Public URL the deployment is reachable at when it sits behind a Cloudflare
     # tunnel (the host has no public IP). null for a directly-reachable deployment.
@@ -137,6 +141,7 @@ class HealthResponse(BaseModel):
 
 @router.get("/health", response_model=HealthResponse)
 async def health() -> HealthResponse:
+    from api import constants
     from api.constants import (
         APP_VERSION,
         AUTH_PROVIDER,
@@ -149,6 +154,7 @@ async def health() -> HealthResponse:
         STACK_AUTH_PROJECT_ID,
         STACK_PUBLISHABLE_CLIENT_KEY,
     )
+    from api.services import storage
     from api.utils.common import get_backend_endpoints, is_local_or_private_url
 
     backend_endpoint, _ = await get_backend_endpoints()
@@ -168,6 +174,10 @@ async def health() -> HealthResponse:
         status="ok",
         version=APP_VERSION,
         build_commit=BUILD_COMMIT,
+        object_store=(
+            "seaweedfs" if constants.BUNDLED_SEAWEEDFS else constants.OBJECT_STORE
+        ),
+        legacy_minio_files=storage.LEGACY_MINIO_FILES,
         backend_api_endpoint=BACKEND_API_ENDPOINT,
         tunnel_url=tunnel_url,
         deployment_mode=DEPLOYMENT_MODE,

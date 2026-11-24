@@ -271,6 +271,16 @@ if [[ -z "${MINIO_ROOT_PASSWORD:-}" ]]; then
         nimbora_success "✓ MINIO_ROOT_PASSWORD created in .env"
     fi
 fi
+# Object store: an install made before keeps its MinIO (OBJECT_STORE=minio).
+docker_cmd=(docker)
+docker info >/dev/null 2>&1 || docker_cmd=(sudo docker)
+# (The library sourced above may predate this function: remote_up.sh, which
+# sources the updated one, makes the same decision before starting anything.)
+if declare -F nimbora_object_store_profiles >/dev/null \
+    && [[ "$(nimbora_object_store_profiles .env "${docker_cmd[@]}")" == minio ]]; then
+    nimbora_warn "Object store: the bundled MinIO is kept (existing files, frozen image without updates)."
+    nimbora_warn "Move to the bundled SeaweedFS: docs/deployment/object-storage.mdx (copy, verify, switch)."
+fi
 nimbora_prepare_remote_install "$(pwd)"
 docker compose config -q
 nimbora_success "✓ Remote init configuration validated"

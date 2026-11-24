@@ -78,11 +78,13 @@ server {
     }
 
     location /voice-audio/ {
-        proxy_pass http://minio:9000/voice-audio/;
+        # The bundled object store (seaweedfs:8333 or, for installs made
+        # before, minio:9000), chosen by OBJECT_STORE when rendered.
+        proxy_pass http://__NIMBORA_OBJECT_STORE__/voice-audio/;
 
         proxy_http_version 1.1;
 
-        # Headers for file downloads from MinIO
+        # Headers for file downloads from the object store
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;

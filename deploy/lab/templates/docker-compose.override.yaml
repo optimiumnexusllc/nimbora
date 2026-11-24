@@ -13,6 +13,14 @@ services:
   redis:
     ports: !override []
 
+  seaweedfs:
+    container_name: nimbora_seaweedfs
+    ports: !override []
+    networks:
+      app-network:
+        gw_priority: 1
+      traefik: {}
+
   minio:
     container_name: nimbora_minio
     ports: !override []

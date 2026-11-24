@@ -8,7 +8,7 @@ dédié. Pour la production, gardez un serveur dédié au PBX (`deploy/pbx/READM
 ```
  Internet ──► pare-feu de l'hébergeur ──► serveur (Ubuntu/Debian, Docker, Traefik existant)
                                            │
-   443 app.votre-domaine ──► Traefik ──────┼──► nimbora_ui / nimbora_api / nimbora_minio  (Docker, réseau br-nimboralab)
+   443 app.votre-domaine ──► Traefik ──────┼──► nimbora_ui / nimbora_api / nimbora_seaweedfs  (Docker, réseau br-nimboralab)
    443 pbx.votre-domaine ──► Traefik ──────┼──► 10.250.0.10:443  nginx du PBX  ─┐
    RTP 10000-20000/udp ──► DNAT ───────────┼──► 10.250.0.10      Asterisk       │ conteneur Incus « nimbora-pbx »
                                            │                                     │ Debian 12, 2 vCPU, 4 Go
@@ -143,6 +143,8 @@ Mise à jour de la plateforme : `git pull` puis `sudo ./install.sh --only nimbor
 secrets du `.env` sont conservés, les migrations de base s'appliquent au démarrage de
 l'API). Mise à jour du moteur : dans le conteneur, comme sur un serveur dédié, puis
 `--only pbx` réapplique la marque et le NAT.
+
+**Stockage objet.** Une installation neuve utilise SeaweedFS (`nimbora_seaweedfs`). Une installation qui avait déjà MinIO le garde (`OBJECT_STORE=minio` écrit par le kit) ; pour passer à SeaweedFS : `OBJECT_STORE=seaweedfs` dans `/opt/nimbora-lab/.env`, relancer `--only nimbora`, puis `copy`, `verify`, `switch` (voir `docs/deployment/object-storage.mdx`), et enfin `MINIO_RETIRED=true` et relancer : MinIO n'est plus démarré.
 
 **Quelle version tourne ?** Les images portent le commit dont elles sont construites :
 

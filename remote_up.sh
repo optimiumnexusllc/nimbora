@@ -87,6 +87,17 @@ nimbora_sync_postgres_password "$SCRIPT_DIR" "${COMPOSE_CMD[@]}"
 # the same private-IP classification (api/utils/common.py:is_local_or_private_url),
 # so the two stay in sync. A public-IP install runs nginx only.
 PROFILE_ARGS=(--profile remote)
+# The bundled MinIO for installs made before SeaweedFS became the default.
+DOCKER_CMD=(docker)
+[[ "${COMPOSE_CMD[0]}" == sudo ]] && DOCKER_CMD=(sudo docker)
+if [[ "$(nimbora_object_store_profiles .env "${DOCKER_CMD[@]}")" == minio ]]; then
+    PROFILE_ARGS+=(--profile minio)
+    nimbora_info "Object store: the bundled MinIO is kept running (existing files). Migration: docs/deployment/object-storage.mdx"
+else
+    # `up` never stops a container whose profile is no longer active: retire
+    # MinIO explicitly (container only, its volume stays) — lab step 20.
+    "${COMPOSE_CMD[@]}" --profile minio rm -sf minio >/dev/null 2>&1 || true
+fi
 if nimbora_is_local_ipv4 "${SERVER_IP:-}"; then
     PROFILE_ARGS+=(--profile tunnel)
 fi

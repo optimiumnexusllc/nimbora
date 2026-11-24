@@ -4451,6 +4451,14 @@ export type HealthResponse = {
      */
     build_commit?: string | null;
     /**
+     * Object Store
+     */
+    object_store?: string | null;
+    /**
+     * Legacy Minio Files
+     */
+    legacy_minio_files?: number;
+    /**
      * Backend Api Endpoint
      */
     backend_api_endpoint: string;
