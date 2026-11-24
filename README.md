@@ -570,7 +570,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | Statut | Fonctionnalité |
 |---|---|
 | ✅ | Nom de la plateforme, du PBX, domaine des e-mails et en-tête SIP centralisés (`BRAND_*`) |
-| 🧪 | **Charte de l'interface configurable** : nom affiché, logo clair et sombre, symbole, favicon, couleur principale, dégradé, police, lus au démarrage depuis `BRAND_*` (fichiers dans `brand/`, ConfigMap pour Helm) ; valeurs validées (aucune injection de CSS) ; le nom remplace « NIMBORA » partout où l'utilisateur le voit, les textes d'aide disent « la plateforme ». Rendu vérifié en local (charte complète, nom seul, NIMBORA par défaut) ; à valider au laboratoire. Une charte par revendeur viendra avec les revendeurs |
+| ✅ | **Charte de l'interface configurable** : nom affiché, logo clair et sombre, symbole, favicon, couleur principale, dégradé, police, lus au démarrage depuis `BRAND_*` (fichiers dans `brand/`, ConfigMap pour Helm) ; valeurs validées (aucune injection de CSS) ; le nom remplace « NIMBORA » partout où l'utilisateur le voit, les textes d'aide disent « la plateforme ». Rendu vérifié en local (charte complète, nom seul, NIMBORA par défaut) et au laboratoire (étape 21 : charte d'essai en service, fichiers servis avec leurs protections, aucune mention NIMBORA à l'écran). Une charte par revendeur viendra avec les revendeurs |
 | 🔜 | Domaines personnalisés par revendeur et par entreprise, HTTPS automatique, e-mails transactionnels à leur nom |
 | 🔜 | Revendeurs : console, entreprises clientes, offres et prix propres, commissions, facturation Stripe Connect |
 | 🔜 | Documentation, widget web et pages publiques à la marque du revendeur |
