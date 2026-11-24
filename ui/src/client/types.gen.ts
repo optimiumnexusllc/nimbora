@@ -9313,6 +9313,34 @@ export type StockUpdate = {
 };
 
 /**
+ * StripeLink
+ */
+export type StripeLink = {
+    /**
+     * Url
+     */
+    url: string;
+};
+
+/**
+ * StripeState
+ */
+export type StripeState = {
+    /**
+     * Connected
+     */
+    connected: boolean;
+    /**
+     * Charges Enabled
+     */
+    charges_enabled: boolean;
+    /**
+     * Details Submitted
+     */
+    details_submitted: boolean;
+};
+
+/**
  * SubjectRequest
  */
 export type SubjectRequest = {
@@ -22386,6 +22414,47 @@ export type StartCheckoutApiV1SaasCheckoutPostResponses = {
 
 export type StartCheckoutApiV1SaasCheckoutPostResponse = StartCheckoutApiV1SaasCheckoutPostResponses[keyof StartCheckoutApiV1SaasCheckoutPostResponses];
 
+export type ListMyPlansApiV1SaasSubscriptionPlansGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/saas/subscription/plans';
+};
+
+export type ListMyPlansApiV1SaasSubscriptionPlansGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type ListMyPlansApiV1SaasSubscriptionPlansGetError = ListMyPlansApiV1SaasSubscriptionPlansGetErrors[keyof ListMyPlansApiV1SaasSubscriptionPlansGetErrors];
+
+export type ListMyPlansApiV1SaasSubscriptionPlansGetResponses = {
+    /**
+     * Response List My Plans Api V1 Saas Subscription Plans Get
+     *
+     * Successful Response
+     */
+    200: Array<PlanResponse>;
+};
+
+export type ListMyPlansApiV1SaasSubscriptionPlansGetResponse = ListMyPlansApiV1SaasSubscriptionPlansGetResponses[keyof ListMyPlansApiV1SaasSubscriptionPlansGetResponses];
+
 export type OpenBillingPortalApiV1SaasPortalPostData = {
     body?: never;
     headers?: {
@@ -22996,6 +23065,123 @@ export type GetResellerApiV1ResellerGetResponses = {
 };
 
 export type GetResellerApiV1ResellerGetResponse = GetResellerApiV1ResellerGetResponses[keyof GetResellerApiV1ResellerGetResponses];
+
+export type GetStripeStateApiV1ResellerStripeGetData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/reseller/stripe';
+};
+
+export type GetStripeStateApiV1ResellerStripeGetErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type GetStripeStateApiV1ResellerStripeGetError = GetStripeStateApiV1ResellerStripeGetErrors[keyof GetStripeStateApiV1ResellerStripeGetErrors];
+
+export type GetStripeStateApiV1ResellerStripeGetResponses = {
+    /**
+     * Successful Response
+     */
+    200: StripeState;
+};
+
+export type GetStripeStateApiV1ResellerStripeGetResponse = GetStripeStateApiV1ResellerStripeGetResponses[keyof GetStripeStateApiV1ResellerStripeGetResponses];
+
+export type StartStripeOnboardingApiV1ResellerStripeOnboardingPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/reseller/stripe/onboarding';
+};
+
+export type StartStripeOnboardingApiV1ResellerStripeOnboardingPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type StartStripeOnboardingApiV1ResellerStripeOnboardingPostError = StartStripeOnboardingApiV1ResellerStripeOnboardingPostErrors[keyof StartStripeOnboardingApiV1ResellerStripeOnboardingPostErrors];
+
+export type StartStripeOnboardingApiV1ResellerStripeOnboardingPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: StripeLink;
+};
+
+export type StartStripeOnboardingApiV1ResellerStripeOnboardingPostResponse = StartStripeOnboardingApiV1ResellerStripeOnboardingPostResponses[keyof StartStripeOnboardingApiV1ResellerStripeOnboardingPostResponses];
+
+export type OpenStripeDashboardApiV1ResellerStripeDashboardPostData = {
+    body?: never;
+    headers?: {
+        /**
+         * Authorization
+         */
+        authorization?: string | null;
+        /**
+         * X-Api-Key
+         */
+        'X-API-Key'?: string | null;
+    };
+    path?: never;
+    query?: never;
+    url: '/api/v1/reseller/stripe/dashboard';
+};
+
+export type OpenStripeDashboardApiV1ResellerStripeDashboardPostErrors = {
+    /**
+     * Not found
+     */
+    404: unknown;
+    /**
+     * Validation Error
+     */
+    422: HttpValidationError;
+};
+
+export type OpenStripeDashboardApiV1ResellerStripeDashboardPostError = OpenStripeDashboardApiV1ResellerStripeDashboardPostErrors[keyof OpenStripeDashboardApiV1ResellerStripeDashboardPostErrors];
+
+export type OpenStripeDashboardApiV1ResellerStripeDashboardPostResponses = {
+    /**
+     * Successful Response
+     */
+    200: StripeLink;
+};
+
+export type OpenStripeDashboardApiV1ResellerStripeDashboardPostResponse = OpenStripeDashboardApiV1ResellerStripeDashboardPostResponses[keyof OpenStripeDashboardApiV1ResellerStripeDashboardPostResponses];
 
 export type ListBasePlansApiV1ResellerBasePlansGetData = {
     body?: never;

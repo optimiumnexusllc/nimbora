@@ -7,14 +7,15 @@ never sees another one's companies or offers. 404 unless SAAS_MODE is on.
 from datetime import datetime
 from typing import Literal
 
+import httpx
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, EmailStr, Field
 
-from api.constants import SAAS_MODE
+from api.constants import SAAS_MODE, UI_APP_URL
 from api.db import db_client
 from api.db.models import ResellerModel, SubscriptionPlanModel, UserModel
 from api.services.auth.depends import get_user
-from api.services.saas import resellers
+from api.services.saas import resellers, stripe_billing
 from api.services.saas.plans import LIMIT_FIELDS
 
 
@@ -165,6 +166,16 @@ async def _company(reseller: ResellerModel, organization_id: int) -> Company:
     )
 
 
+class StripeState(BaseModel):
+    connected: bool
+    charges_enabled: bool
+    details_submitted: bool
+
+
+class StripeLink(BaseModel):
+    url: str
+
+
 # ---------------------------------------------------------------------- routes
 
 
@@ -179,6 +190,77 @@ async def get_reseller(reseller: ResellerModel = Depends(current_reseller)):
         ),
         companies=await db_client.count_reseller_companies(reseller.id),
     )
+
+
+@router.get("/stripe", response_model=StripeState)
+async def get_stripe_state(reseller: ResellerModel = Depends(current_reseller)):
+    """Its Stripe account, as Stripe sees it now."""
+    if not reseller.stripe_account_id:
+        return StripeState(
+            connected=False, charges_enabled=False, details_submitted=False
+        )
+    try:
+        account = await stripe_billing.retrieve_account(reseller.stripe_account_id)
+    except (httpx.HTTPError, stripe_billing.StripeNotConfigured):
+        raise HTTPException(status_code=502, detail="Stripe indisponible")
+    charges_enabled = bool(account.get("charges_enabled"))
+    if charges_enabled != reseller.stripe_charges_enabled:
+        await db_client.set_reseller_stripe(
+            reseller.id, reseller.stripe_account_id, charges_enabled
+        )
+    return StripeState(
+        connected=True,
+        charges_enabled=charges_enabled,
+        details_submitted=bool(account.get("details_submitted")),
+    )
+
+
+@router.post("/stripe/onboarding", response_model=StripeLink)
+async def start_stripe_onboarding(reseller: ResellerModel = Depends(current_reseller)):
+    """Stripe's page to open (or finish) its Express account."""
+    if not stripe_billing.is_configured():
+        raise HTTPException(
+            status_code=409,
+            detail="Le paiement en ligne n'est pas activé sur la plateforme",
+        )
+    try:
+        account_id = reseller.stripe_account_id
+        if not account_id:
+            account = await stripe_billing.create_express_account(
+                reseller_id=reseller.id, email=reseller.contact_email
+            )
+            account_id = account["id"]
+            await db_client.set_reseller_stripe(
+                reseller.id, account_id, bool(account.get("charges_enabled"))
+            )
+        url = await stripe_billing.create_account_link(
+            account_id=account_id,
+            refresh_url=f"{UI_APP_URL.rstrip('/')}/reseller?stripe=refresh",
+            return_url=f"{UI_APP_URL.rstrip('/')}/reseller?stripe=return",
+        )
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="Stripe indisponible")
+    return StripeLink(url=url)
+
+
+@router.post("/stripe/dashboard", response_model=StripeLink)
+async def open_stripe_dashboard(reseller: ResellerModel = Depends(current_reseller)):
+    """Its Express dashboard: payments received, payouts."""
+    if not reseller.stripe_account_id:
+        raise HTTPException(status_code=409, detail="Compte Stripe non connecté")
+    try:
+        url = await stripe_billing.create_login_link(reseller.stripe_account_id)
+    except httpx.HTTPStatusError as error:
+        if error.response.status_code == 400:
+            # Stripe opens the dashboard only once onboarding is submitted.
+            raise HTTPException(
+                status_code=409,
+                detail="Terminez l'inscription Stripe avant d'ouvrir le tableau de bord",
+            )
+        raise HTTPException(status_code=502, detail="Stripe indisponible")
+    except (httpx.HTTPError, stripe_billing.StripeNotConfigured):
+        raise HTTPException(status_code=502, detail="Stripe indisponible")
+    return StripeLink(url=url)
 
 
 @router.get("/base-plans", response_model=list[ResellerPlan])

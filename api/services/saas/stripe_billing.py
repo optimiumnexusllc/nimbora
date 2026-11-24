@@ -17,7 +17,12 @@ from typing import Any
 import httpx
 from loguru import logger
 
-from api.constants import STRIPE_API_BASE, STRIPE_SECRET_KEY, STRIPE_WEBHOOK_SECRET
+from api.constants import (
+    STRIPE_API_BASE,
+    STRIPE_CONNECT_WEBHOOK_SECRET,
+    STRIPE_SECRET_KEY,
+    STRIPE_WEBHOOK_SECRET,
+)
 from api.db import db_client
 from api.services.saas import subscription_service
 
@@ -61,6 +66,106 @@ async def _post(path: str, data: dict[str, Any]) -> dict:
         logger.warning("Stripe {} failed: {}", path, response.text[:500])
         response.raise_for_status()
     return response.json()
+
+
+async def _get(path: str) -> dict:
+    if not STRIPE_SECRET_KEY:
+        raise StripeNotConfigured("STRIPE_SECRET_KEY is not set")
+    async with httpx.AsyncClient(timeout=20) as client:
+        response = await client.get(
+            f"{STRIPE_API_BASE}/v1/{path}", auth=(STRIPE_SECRET_KEY, "")
+        )
+    if response.status_code >= 400:
+        logger.warning("Stripe {} failed: {}", path, response.text[:500])
+        response.raise_for_status()
+    return response.json()
+
+
+# ------------------------------------------------ Stripe Connect (resellers)
+
+
+async def create_express_account(*, reseller_id: int, email: str | None) -> dict:
+    """The reseller's Express account, which receives its companies' payments."""
+    data: dict[str, Any] = {
+        "type": "express",
+        "capabilities[card_payments][requested]": "true",
+        "capabilities[transfers][requested]": "true",
+        "metadata[reseller_id]": str(reseller_id),
+    }
+    if email:
+        data["email"] = email
+    return await _post("accounts", data)
+
+
+async def retrieve_account(account_id: str) -> dict:
+    return await _get(f"accounts/{account_id}")
+
+
+async def create_account_link(
+    *, account_id: str, refresh_url: str, return_url: str
+) -> str:
+    """Stripe's onboarding page for the reseller (single use, short-lived)."""
+    link = await _post(
+        "account_links",
+        {
+            "account": account_id,
+            "refresh_url": refresh_url,
+            "return_url": return_url,
+            "type": "account_onboarding",
+        },
+    )
+    return link["url"]
+
+
+async def create_login_link(account_id: str) -> str:
+    """The reseller's Express dashboard (payouts, payments)."""
+    link = await _post(f"accounts/{account_id}/login_links", {})
+    return link["url"]
+
+
+async def create_reseller_checkout_session(
+    *,
+    organization_id: int,
+    plan_code: str,
+    plan_name: str,
+    currency: str,
+    monthly_price_cents: int,
+    account_id: str,
+    commission_percent: float,
+    success_url: str,
+    cancel_url: str,
+    customer_id: str | None = None,
+    customer_email: str | None = None,
+) -> str:
+    """A company of a reseller subscribes to one of its offers: the
+    subscription lives on the platform's account, each payment goes to the
+    reseller (on_behalf_of, transfer_data) minus the platform's commission
+    (application_fee_percent). The offer has no Stripe price: it is described
+    here (price_data)."""
+    data: dict[str, Any] = {
+        "mode": "subscription",
+        "line_items[0][quantity]": 1,
+        "line_items[0][price_data][currency]": currency,
+        "line_items[0][price_data][unit_amount]": monthly_price_cents,
+        "line_items[0][price_data][recurring][interval]": "month",
+        "line_items[0][price_data][product_data][name]": plan_name,
+        "success_url": success_url,
+        "cancel_url": cancel_url,
+        "client_reference_id": str(organization_id),
+        "metadata[organization_id]": str(organization_id),
+        "metadata[plan_code]": plan_code,
+        "subscription_data[metadata][organization_id]": str(organization_id),
+        "subscription_data[metadata][plan_code]": plan_code,
+        "subscription_data[on_behalf_of]": account_id,
+        "subscription_data[transfer_data][destination]": account_id,
+        "subscription_data[application_fee_percent]": f"{commission_percent:g}",
+    }
+    if customer_id:
+        data["customer"] = customer_id
+    elif customer_email:
+        data["customer_email"] = customer_email
+    session = await _post("checkout/sessions", data)
+    return session["url"]
 
 
 async def create_checkout_session(
@@ -108,10 +213,28 @@ def verify_webhook_signature(
     secret: str | None = None,
     now: float | None = None,
 ) -> None:
-    """Raise StripeSignatureError unless the payload is signed by Stripe."""
-    secret = secret or STRIPE_WEBHOOK_SECRET
-    if not secret:
-        raise StripeSignatureError("STRIPE_WEBHOOK_SECRET is not set")
+    """Raise StripeSignatureError unless the payload is signed by Stripe.
+
+    Two endpoints may deliver to the same URL: the platform's own and the one
+    listening to connected accounts (STRIPE_CONNECT_WEBHOOK_SECRET); a payload
+    signed with either is accepted."""
+    if secret is None:
+        errors = []
+        for candidate in (STRIPE_WEBHOOK_SECRET, STRIPE_CONNECT_WEBHOOK_SECRET):
+            if not candidate:
+                continue
+            try:
+                verify_webhook_signature(
+                    payload, signature_header, secret=candidate, now=now
+                )
+                return
+            except StripeSignatureError as error:
+                errors.append(error)
+        raise (
+            errors[-1]
+            if errors
+            else StripeSignatureError("STRIPE_WEBHOOK_SECRET is not set")
+        )
     timestamp: int | None = None
     signatures: list[str] = []
     for part in (signature_header or "").split(","):
@@ -180,6 +303,15 @@ async def handle_event(event: dict) -> str:
     """Apply one verified Stripe event. Returns a short outcome label."""
     event_type = event.get("type", "")
     obj = (event.get("data") or {}).get("object") or {}
+    if event_type == "account.updated":
+        # A reseller's Express account: can it take payments now?
+        reseller = await db_client.get_reseller_by_stripe_account(obj.get("id") or "")
+        if reseller is None:
+            return "ignored"
+        await db_client.set_reseller_stripe(
+            reseller.id, obj["id"], bool(obj.get("charges_enabled"))
+        )
+        return "account_updated"
     organization_id = await _organization_id_for(obj)
     if organization_id is None:
         logger.info("Stripe event {} matches no organization; ignored", event_type)

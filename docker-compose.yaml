@@ -309,6 +309,11 @@ services:
       SAAS_TRIAL_DAYS: "${SAAS_TRIAL_DAYS:-14}"
       SAAS_GRACE_DAYS: "${SAAS_GRACE_DAYS:-3}"
       SAAS_PLATFORM_NAME: "${SAAS_PLATFORM_NAME:-NIMBORA}"
+      # Online payment (docs/deployment/saas.mdx): the platform's Stripe key and
+      # webhook secrets, the second one for resellers' connected accounts.
+      STRIPE_SECRET_KEY: "${STRIPE_SECRET_KEY:-}"
+      STRIPE_WEBHOOK_SECRET: "${STRIPE_WEBHOOK_SECRET:-}"
+      STRIPE_CONNECT_WEBHOOK_SECRET: "${STRIPE_CONNECT_WEBHOOK_SECRET:-}"
 
       # Shared PBX of the operator (api/services/pbx/provisioning.py): one tenant
       # per company, created with the provisioning account of deploy/pbx --operator.

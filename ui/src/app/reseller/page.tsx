@@ -18,6 +18,7 @@ import {
 import type { Company, ResellerInfo, ResellerPlan } from "@/client/types.gen";
 import { PageLayout, PageSection } from "@/components/layout/PageLayout";
 import { InvitationLinkDialog } from "@/components/saas/InvitationLinkDialog";
+import { ResellerStripeCard } from "@/components/saas/ResellerStripeCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -408,6 +409,7 @@ export default function ResellerPage() {
                     : undefined
             }
         >
+            {info && <ResellerStripeCard commissionPercent={info.commission_percent} />}
             <Tabs defaultValue="companies">
                 <TabsList>
                     <TabsTrigger value="companies">
