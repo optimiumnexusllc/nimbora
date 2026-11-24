@@ -39,6 +39,13 @@ describe("ResellerStripeCard", () => {
         await waitFor(() => expect(assign).toHaveBeenCalledWith("https://connect.stripe.test/express/xyz"));
     });
 
+    it("hides the dashboard until Stripe's onboarding is submitted", async () => {
+        mocks.state.mockResolvedValue({ data: { connected: true, charges_enabled: false, details_submitted: false } });
+        render(<ResellerStripeCard commissionPercent={20} />);
+        expect(await screen.findByText("Inscription à terminer")).toBeTruthy();
+        expect(screen.queryByRole("button", { name: /Tableau de bord/ })).toBeNull();
+    });
+
     it("shows an active account without the onboarding button", async () => {
         mocks.state.mockResolvedValue({ data: { connected: true, charges_enabled: true, details_submitted: true } });
         render(<ResellerStripeCard commissionPercent={20} />);

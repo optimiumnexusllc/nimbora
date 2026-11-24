@@ -250,6 +250,14 @@ async def open_stripe_dashboard(reseller: ResellerModel = Depends(current_resell
         raise HTTPException(status_code=409, detail="Compte Stripe non connecté")
     try:
         url = await stripe_billing.create_login_link(reseller.stripe_account_id)
+    except httpx.HTTPStatusError as error:
+        if error.response.status_code == 400:
+            # Stripe opens the dashboard only once onboarding is submitted.
+            raise HTTPException(
+                status_code=409,
+                detail="Terminez l'inscription Stripe avant d'ouvrir le tableau de bord",
+            )
+        raise HTTPException(status_code=502, detail="Stripe indisponible")
     except (httpx.HTTPError, stripe_billing.StripeNotConfigured):
         raise HTTPException(status_code=502, detail="Stripe indisponible")
     return StripeLink(url=url)

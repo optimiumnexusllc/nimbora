@@ -74,7 +74,7 @@ export function ResellerStripeCard({ commissionPercent }: { commissionPercent: n
                             {state.connected ? "Terminer l'inscription Stripe" : "Connecter mon compte Stripe"}
                         </Button>
                     )}
-                    {state?.connected && (
+                    {state?.connected && state.details_submitted && (
                         <Button type="button" variant="outline" onClick={() => void open("dashboard")} disabled={busy}>
                             <ExternalLink /> Tableau de bord Stripe
                         </Button>

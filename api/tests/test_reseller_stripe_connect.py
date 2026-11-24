@@ -53,6 +53,11 @@ class FakeStripe:
                 200, json={"url": "https://connect.stripe.test/setup/abc"}
             )
         if path == "/v1/accounts/acct_reseller1/login_links":
+            if not self.account["details_submitted"]:
+                # Stripe refuses a login link before onboarding is submitted.
+                return httpx.Response(
+                    400, json={"error": {"type": "invalid_request_error"}}
+                )
             return httpx.Response(
                 200, json={"url": "https://connect.stripe.test/express/xyz"}
             )
@@ -225,6 +230,22 @@ async def test_offers_are_purchasable_once_the_reseller_takes_payments(
         after = (await client.get("/api/v1/saas/subscription/plans")).json()
     assert [(p["code"], p["purchasable"]) for p in before] == [(code, False)]
     assert [(p["code"], p["purchasable"]) for p in after] == [(code, True)]
+
+
+async def test_dashboard_waits_for_the_submitted_onboarding(
+    db_session, saas_on, stripe, as_user
+):
+    """Before the reseller submits Stripe's onboarding, Stripe has no
+    dashboard to open: say so (409), not « Stripe indisponible » (502)."""
+    _, admin, _, _, _ = await _reseller_with_company(db_session, as_user)
+    async with as_user(admin) as client:
+        await client.post("/api/v1/reseller/stripe/onboarding")
+        early = await client.post("/api/v1/reseller/stripe/dashboard")
+        stripe.account = {"charges_enabled": False, "details_submitted": True}
+        later = await client.post("/api/v1/reseller/stripe/dashboard")
+    assert early.status_code == 409, early.text
+    assert "inscription" in early.json()["detail"].lower()
+    assert later.status_code == 200, later.text
 
 
 async def test_account_updated_events_follow_the_reseller_account(
