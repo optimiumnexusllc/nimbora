@@ -131,10 +131,10 @@ entreprise (aucune sortie vers le réseau téléphonique : pas de fraude possibl
 |---|---|
 | État des services | `docker compose ps` |
 | Journaux | `docker compose logs -f api` |
-| Sauvegarde (base + enregistrements + config) | `./scripts/backup.sh` (cron conseillé, voir l'en-tête du script) |
+| Sauvegarde (base + stockage objet + config) | `./scripts/backup.sh` (cron conseillé, voir l'en-tête du script) |
 | Vérifier une sauvegarde | `./scripts/restore.sh /var/backups/nimbora/AAAAMMJJ-HHMMSS --check` |
 | Restauration | `./scripts/restore.sh /var/backups/nimbora/AAAAMMJJ-HHMMSS` |
-| Mise à jour | `git pull && docker compose build && docker compose up -d` (migrations automatiques) |
+| Mise à jour | `git pull && sudo ./install.sh` (garde secrets et données, choisit le stockage objet, reconstruit ; migrations automatiques) |
 | Console Asterisk | `docker compose exec asterisk asterisk -rvvv` |
 
 Dans `backup.env` (à côté de `docker-compose.yml`) : `BACKUP_PASSPHRASE_FILE` chiffre les
@@ -142,6 +142,34 @@ archives (AES-256), `BACKUP_RSYNC_TARGET` copie chaque sauvegarde hors du serveu
 `KEEP_DAYS` règle la rétention. Chaque sauvegarde a son `SHA256SUMS` ; la restauration
 refuse une sauvegarde altérée. Avec le node exporter, la fraîcheur de la dernière sauvegarde
 alimente l'alerte Prometheus `PlatformBackupTooOld` (voir `deploy/observability`).
+
+### Stockage objet : SeaweedFS
+
+Les enregistrements, transcriptions et documents vont dans **SeaweedFS** (Apache-2.0,
+maintenu), sur le réseau Docker privé ; Caddy sert les liens signés sous `/voice-audio/`.
+Une installation faite avant cette version garde **MinIO** : `install.sh` trouve son volume
+(`nimbora-enterprise_minio_data`), écrit `OBJECT_STORE=minio` et ajoute le profil `minio` à
+`COMPOSE_PROFILES` dans `.env`. Rien ne change tant que vous ne migrez pas.
+
+> **Première mise à jour après cette version : passez par `sudo ./install.sh`.** Un
+> `docker compose up -d` lancé directement, avant tout passage de `install.sh`, démarrerait
+> SeaweedFS sans MinIO : les anciens fichiers deviendraient illisibles (ils ne sont pas
+> perdus, le volume reste) jusqu'au prochain `install.sh`. `/api/v1/health` l'indique
+> (`legacy_minio_files`).
+
+Pour migrer vers SeaweedFS (MinIO reste lisible pendant la copie) :
+
+```bash
+sed -i 's/^OBJECT_STORE=.*/OBJECT_STORE=seaweedfs/' .env && sudo ./install.sh
+docker compose exec api python -m scripts.migrate_object_store copy
+docker compose exec api python -m scripts.migrate_object_store verify
+docker compose exec api python -m scripts.migrate_object_store switch   # taper BASCULER
+echo MINIO_RETIRED=true >> .env && sudo ./install.sh                    # arrête MinIO
+```
+
+Gardez le volume MinIO quelque temps (la sauvegarde l'inclut tant qu'il existe), écoutez
+quelques anciens enregistrements, puis supprimez-le : `docker volume rm nimbora-enterprise_minio_data`.
+Détails : [docs/deployment/object-storage.mdx](../../docs/deployment/object-storage.mdx).
 
 ## 7. Sécurité intégrée
 
@@ -151,9 +179,9 @@ alimente l'alerte Prometheus `PlatformBackupTooOld` (voir `deploy/observability`
   noms Asterisk embarquent l'identifiant de l'entreprise et la configuration générée est
   assainie (aucune injection possible via les noms).
 - Protection SSRF : une entreprise ne peut pas faire appeler par la plateforme des
-  adresses internes (base de données, Redis, MinIO, ARI, métadonnées cloud). Seules les
+  adresses internes (base de données, Redis, stockage objet, ARI, métadonnées cloud). Seules les
   URL de modèles vers `ollama`, `speaches` et `vllm` sont autorisées, jamais pour les outils HTTP.
-- Seuls 80/443, SIP/RTP et TURN sont exposés ; Postgres, Redis, MinIO, l'API, Ollama et
+- Seuls 80/443, SIP/RTP et TURN sont exposés ; Postgres, Redis, le stockage objet, l'API, Ollama et
   Speaches restent sur le réseau Docker privé.
 - Mots de passe SIP des agents : seul le condensat digest est stocké.
 - Télémétrie désactivée : aucune donnée envoyée à des tiers.

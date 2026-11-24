@@ -5,8 +5,8 @@
 #   docker compose --profile gpu up -d         # NVIDIA GPU server (local AI on GPU)
 #
 # Only Caddy (80/443), Asterisk SIP/RTP and TURN are reachable from the
-# internet. Postgres, Redis, MinIO, the API, Ollama and Speaches stay on the
-# private Docker network.
+# internet. Postgres, Redis, the object store (SeaweedFS, or MinIO on installs
+# made before), the API, Ollama and Speaches stay on the private Docker network.
 
 name: nimbora-enterprise  # volume names depend on it: keep when upgrading
 
@@ -48,10 +48,47 @@ services:
     logging: *logging
     networks: [internal]
 
+  seaweedfs:
+    # The bundled object store (recordings, transcripts, documents): SeaweedFS,
+    # Apache-2.0 and maintained, one container (master + volume + filer + S3
+    # gateway); same image and command as the root docker-compose.yaml. Its
+    # admin identity is the stack's generated MINIO_ROOT_USER /
+    # MINIO_ROOT_PASSWORD (names kept so existing .env files work): the bucket
+    # is private. Override the image with SEAWEEDFS_IMAGE.
+    image: ${SEAWEEDFS_IMAGE:-chrislusf/seaweedfs:4.55@sha256:7ca46aeae2f223b37e5d91593c17ab37738eec6df6ab69b48a0487f7643342b9}
+    restart: unless-stopped
+    command:
+      - server
+      - -ip=seaweedfs
+      - -ip.bind=0.0.0.0
+      - -s3
+      - -s3.port=8333
+      - -s3.port.iceberg=0
+      - -s3.port.lance=0
+      - -master.telemetry=false
+    environment:
+      AWS_ACCESS_KEY_ID: "${MINIO_ROOT_USER:?}"
+      AWS_SECRET_ACCESS_KEY: "${MINIO_ROOT_PASSWORD:?}"
+    volumes:
+      - seaweedfs_data:/data
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1:8333/healthz"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 20s
+    logging: *logging
+    networks: [internal]
+
   minio:
+    # Legacy bundled store, for installs made before SeaweedFS became the
+    # default: started only with the `minio` profile, which install.sh writes
+    # into COMPOSE_PROFILES when it finds the existing MinIO volume, until the
+    # files are migrated and MINIO_RETIRED=true (docs/deployment/object-storage.mdx).
     # Bitnami's build of the last open-source MinIO release: MinIO removed its
     # own images from quay.io and Docker Hub. Runs as root to keep the /data
     # layout; see the root docker-compose.yaml.
+    profiles: ["minio"]
     image: ${MINIO_IMAGE:-bitnamilegacy/minio:2025.4.22@sha256:50cec18ac4184af4671a78aedd5554942c8ae105d51a465fa82037949046da01}
     restart: unless-stopped
     user: "0"
@@ -90,6 +127,10 @@ services:
       DATABASE_URL: "postgresql+asyncpg://postgres:${POSTGRES_PASSWORD}@postgres:5432/postgres"
       REDIS_URL: "redis://:${REDIS_PASSWORD}@redis:6379"
       ENABLE_AWS_S3: "false"
+      # seaweedfs (default) or minio (written by install.sh for installs made
+      # before). The MINIO_* settings stay: files recorded on MinIO are read
+      # from it until they are migrated.
+      OBJECT_STORE: "${OBJECT_STORE:-seaweedfs}"
       MINIO_ENDPOINT: "minio:9000"
       MINIO_PUBLIC_ENDPOINT: "${PUBLIC_BASE_URL}"
       MINIO_ACCESS_KEY: "${MINIO_ROOT_USER}"
@@ -159,7 +200,8 @@ services:
     depends_on:
       postgres: {condition: service_healthy}
       redis: {condition: service_healthy}
-      minio: {condition: service_healthy}
+      seaweedfs: {condition: service_healthy}
+      minio: {condition: service_healthy, required: false}
     healthcheck:
       test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/v1/health').read()\""]
       interval: 30s
@@ -195,6 +237,7 @@ services:
     environment:
       PUBLIC_HOST: "${PUBLIC_HOST}"
       ACME_EMAIL: "${ACME_EMAIL:?}"
+      OBJECT_STORE: "${OBJECT_STORE:-seaweedfs}"  # where /voice-audio/ goes
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
@@ -314,7 +357,8 @@ services:
 volumes:
   postgres_data:
   redis_data:
-  minio_data:
+  seaweedfs_data:
+  minio_data:  # installs made before SeaweedFS; kept after the migration
   caddy_data:
   caddy_config:
   asterisk_generated:
