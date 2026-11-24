@@ -1,0 +1,40 @@
+name: Deploy tests
+
+# deploy/lab/tests: compose files, install and update scripts, lab kit,
+# enterprise stack, backups. Pure Python + bash, no service needed.
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "deploy/**"
+      - "scripts/**"
+      - "docker-compose.yaml"
+      - "docker-compose-local.yaml"
+      - "remote_up.sh"
+      - "api/Dockerfile"
+      - "ui/Dockerfile"
+      - ".github/workflows/deploy-tests.yml"
+  push:
+    branches: [main]
+    paths:
+      - "deploy/**"
+      - "scripts/**"
+      - "docker-compose.yaml"
+      - "remote_up.sh"
+      - ".github/workflows/deploy-tests.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  pytest:
+    name: Deploy tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+      - run: pip install pytest pyyaml
+      - run: pytest deploy/lab/tests -q
