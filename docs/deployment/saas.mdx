@@ -15,6 +15,7 @@ With `SAAS_MODE=true`, one NIMBORA installation hosts many client companies. Eac
 | `SAAS_GRACE_DAYS` | days of calls after a failed payment (default 3) |
 | `SAAS_PLATFORM_NAME` | name shown to companies |
 | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | online payment (optional) |
+| `STRIPE_CONNECT_WEBHOOK_SECRET` | signing secret of the webhook endpoint listening to connected accounts (resellers, optional) |
 | `ENABLE_SIGNUP` | `false` to create accounts only by invitation (the sign-up page then shows "Inscriptions fermées") |
 | `PBX_PROVISIONING_*` | the operator's shared PBX, see [Enterprise PBX](/integrations/telephony/enterprise-pbx#shared-pbx-of-the-platform-one-tenant-per-company) |
 
@@ -77,3 +78,27 @@ A reseller never sees another reseller's companies or offers. The companies of a
 <Note>
 Until the reseller's Stripe account is connected, online payment is refused for its companies: the reseller confirms their status itself (trial, active, suspended).
 </Note>
+
+### Online payment through the reseller (Stripe Connect)
+
+The reseller connects its own Stripe account from its console (**Paiement en ligne** → **Connecter mon compte Stripe**): Stripe opens its onboarding page (identity, bank account), then sends it back to the console. Once Stripe allows payments on that account, its companies can pay online, from their **Abonnement** page, for one of its offers. Each payment:
+
+- is taken on the platform's Stripe account, where the subscription lives (renewals, failed payments and cancellations reach the platform's webhook as for direct customers);
+- goes to the reseller's account (`transfer_data[destination]`), the reseller being the seller on the customer's statement (`on_behalf_of`);
+- leaves the platform its commission (`application_fee_percent`).
+
+The reseller follows its payments and payouts in its Stripe Express dashboard (**Tableau de bord Stripe**).
+
+**What to set up in Stripe**, once, in the platform's account (test mode first):
+
+<Steps>
+  <Step title="Turn on Connect">
+    Dashboard → **Connect** → get started, as a **platform**, accounts of type **Express**. Fill in the platform profile and the branding of the onboarding pages (name, icon, colour).
+  </Step>
+  <Step title="Add the webhook for connected accounts">
+    Dashboard → Developers → **Webhooks** → add an endpoint on the same URL as the platform's (`https://<your domain>/api/v1/saas/stripe/webhook`), choose **Listen to events on Connected accounts**, event `account.updated`. Copy its signing secret into `STRIPE_CONNECT_WEBHOOK_SECRET` (the server's secrets file, never a chat or a commit) and restart.
+  </Step>
+  <Step title="Try it">
+    Create a reseller, connect its account with Stripe's test data, create a company and pay with a test card (`4242 4242 4242 4242`). The payment appears in the reseller's Express dashboard, the commission in the platform's **Collected fees**.
+  </Step>
+</Steps>

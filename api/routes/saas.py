@@ -252,11 +252,7 @@ async def start_checkout(request: CheckoutRequest, user: UserModel = Depends(get
     organization_id = _require_org(user)
     organization = await db_client.get_organization_by_id(organization_id)
     if organization is not None and organization.reseller_id is not None:
-        # Its offer and its payments go through its reseller.
-        raise HTTPException(
-            status_code=409,
-            detail="Votre abonnement est géré par votre revendeur : contactez-le.",
-        )
+        return await _reseller_checkout(organization, request.plan_code, user)
     if not stripe_billing.is_configured():
         raise HTTPException(
             status_code=409,
@@ -285,6 +281,59 @@ async def start_checkout(request: CheckoutRequest, user: UserModel = Depends(get
     except httpx.HTTPError:
         raise HTTPException(status_code=502, detail="Payment provider unavailable")
     return RedirectResponse(url=url)
+
+
+async def _reseller_checkout(organization, plan_code: str, user: UserModel):
+    """A reseller's company pays online for one of its reseller's offers,
+    through the reseller's Stripe Connect account (the platform keeps its
+    commission)."""
+    reseller = await db_client.get_reseller(organization.reseller_id)
+    if (
+        reseller is None
+        or not stripe_billing.is_configured()
+        or not (reseller.stripe_account_id and reseller.stripe_charges_enabled)
+    ):
+        raise HTTPException(
+            status_code=409,
+            detail="Le paiement en ligne de votre revendeur n'est pas encore activé : contactez-le.",
+        )
+    plan = await db_client.get_reseller_plan(reseller.id, plan_code)
+    if plan is None or not plan.is_active:
+        raise HTTPException(status_code=404, detail="Plan not found")
+    subscription = await subscription_service.ensure_organization_subscription(
+        organization.id
+    )
+    try:
+        url = await stripe_billing.create_reseller_checkout_session(
+            organization_id=organization.id,
+            plan_code=plan.code,
+            plan_name=plan.name,
+            currency=plan.currency,
+            monthly_price_cents=plan.monthly_price_cents,
+            account_id=reseller.stripe_account_id,
+            commission_percent=resellers.bps_to_percent(reseller.commission_bps),
+            success_url=f"{UI_APP_URL}/billing?checkout=success",
+            cancel_url=f"{UI_APP_URL}/billing?checkout=cancel",
+            customer_id=subscription.stripe_customer_id,
+            customer_email=subscription.billing_email or user.email,
+        )
+    except httpx.HTTPError:
+        raise HTTPException(status_code=502, detail="Payment provider unavailable")
+    return RedirectResponse(url=url)
+
+
+@router.get("/subscription/plans", response_model=list[PlanResponse])
+async def list_my_plans(user: UserModel = Depends(get_user)):
+    """The offers this company can subscribe to: its reseller's, or the
+    platform's public price list for a direct customer."""
+    organization_id = _require_org(user)
+    organization = await db_client.get_organization_by_id(organization_id)
+    if organization is not None and organization.reseller_id is not None:
+        plans = await db_client.list_reseller_plans(organization.reseller_id)
+        return [_plan_response(plan) for plan in plans if plan.is_active]
+    await subscription_service.ensure_default_plans()
+    plans = await db_client.list_subscription_plans(public_only=True)
+    return [_plan_response(plan) for plan in plans]
 
 
 @router.post("/portal", response_model=RedirectResponse)

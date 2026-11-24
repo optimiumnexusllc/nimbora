@@ -416,6 +416,9 @@ SAAS_PLATFORM_NAME = os.getenv("SAAS_PLATFORM_NAME", "NIMBORA")
 # super-admin console and invoiced out of band.
 STRIPE_SECRET_KEY = os.getenv("STRIPE_SECRET_KEY") or None
 STRIPE_WEBHOOK_SECRET = os.getenv("STRIPE_WEBHOOK_SECRET") or None
+# Signing secret of the Stripe webhook endpoint that listens to connected
+# accounts (resellers' Stripe Connect accounts: account.updated).
+STRIPE_CONNECT_WEBHOOK_SECRET = os.getenv("STRIPE_CONNECT_WEBHOOK_SECRET") or None
 STRIPE_API_BASE = os.getenv("STRIPE_API_BASE", "https://api.stripe.com")
 
 # Self-hosted AI stack. When enabled, every new organization is provisioned

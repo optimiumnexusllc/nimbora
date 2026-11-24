@@ -288,7 +288,8 @@ const BASE = "/api/v1";
 
 export const enterpriseApi = {
     // Tenant: subscription
-    listPlans: () => call<Plan[]>("get", `${BASE}/saas/plans`),
+    // The offers this company can take: its reseller's, or the public price list.
+    listPlans: () => call<Plan[]>("get", `${BASE}/saas/subscription/plans`),
     getSubscription: () => call<Subscription>("get", `${BASE}/saas/subscription`),
     startCheckout: (plan_code: string) =>
         call<{ url: string }>("post", `${BASE}/saas/checkout`, { plan_code }),

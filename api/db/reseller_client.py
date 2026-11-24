@@ -82,6 +82,31 @@ class ResellerClient(BaseDBClient):
             )
             return [(row[0], int(row[1])) for row in result.all()]
 
+    async def set_reseller_stripe(
+        self, reseller_id: int, account_id: str, charges_enabled: bool
+    ) -> None:
+        async with self.async_session() as session:
+            await session.execute(
+                update(ResellerModel)
+                .where(ResellerModel.id == reseller_id)
+                .values(
+                    stripe_account_id=account_id,
+                    stripe_charges_enabled=charges_enabled,
+                )
+            )
+            await session.commit()
+
+    async def get_reseller_by_stripe_account(
+        self, account_id: str
+    ) -> ResellerModel | None:
+        async with self.async_session() as session:
+            result = await session.execute(
+                select(ResellerModel).where(
+                    ResellerModel.stripe_account_id == account_id
+                )
+            )
+            return result.scalars().first()
+
     async def count_reseller_companies(self, reseller_id: int) -> int:
         async with self.async_session() as session:
             result = await session.execute(

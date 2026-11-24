@@ -18,6 +18,7 @@ const mocks = vi.hoisted(() => ({
 }));
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 vi.mock("@/lib/auth", () => ({ useAuth: () => ({ user: { id: 1 }, loading: false }) }));
+vi.mock("@/components/saas/ResellerStripeCard", () => ({ ResellerStripeCard: () => null }));
 vi.mock("@/client/sdk.gen", () => ({
     getResellerApiV1ResellerGet: mocks.me,
     listCompaniesApiV1ResellerCompaniesGet: mocks.companies,
