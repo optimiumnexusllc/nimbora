@@ -1,0 +1,126 @@
+{{- if eq .Values.storage.mode "internalSeaweedfs" }}
+{{- /*
+Bundled SeaweedFS for storage.mode=internalSeaweedfs: Apache-2.0 and maintained,
+one container (master + volume + filer + S3 gateway), same image and command
+as the compose files. Its admin identity is the <release>-minio credentials
+(internal-minio.yaml), so the bucket is private. Single replica (Recreate
+strategy — the RWO volume can't be shared); the app creates its bucket at
+start-up. The components reach each other on the pod IP (-ip), not through the
+Service, which only exposes S3. The volume is kept by Helm if the mode changes.
+*/}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "nimbora.seaweedfsHost" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nimbora.labels" . | nindent 4 }}
+    app.kubernetes.io/component: seaweedfs
+spec:
+  type: ClusterIP
+  ports:
+    - name: s3
+      port: 8333
+      targetPort: s3
+  selector:
+    {{- include "nimbora.selectorLabels" . | nindent 4 }}
+    app.kubernetes.io/component: seaweedfs
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "nimbora.seaweedfsHost" . }}
+  namespace: {{ .Release.Namespace }}
+  annotations:
+    helm.sh/resource-policy: keep
+  labels:
+    {{- include "nimbora.labels" . | nindent 4 }}
+    app.kubernetes.io/component: seaweedfs
+spec:
+  accessModes: ["ReadWriteOnce"]
+  {{- if .Values.seaweedfs.persistence.storageClass }}
+  storageClassName: {{ .Values.seaweedfs.persistence.storageClass | quote }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ .Values.seaweedfs.persistence.size | quote }}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "nimbora.seaweedfsHost" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "nimbora.labels" . | nindent 4 }}
+    app.kubernetes.io/component: seaweedfs
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "nimbora.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: seaweedfs
+  template:
+    metadata:
+      labels:
+        {{- include "nimbora.selectorLabels" . | nindent 8 }}
+        app.kubernetes.io/component: seaweedfs
+    spec:
+      containers:
+        - name: seaweedfs
+          image: {{ printf "%s/%s:%s" (.Values.seaweedfs.image.registry | default "docker.io") .Values.seaweedfs.image.repository (.Values.seaweedfs.image.tag | toString) | quote }}
+          imagePullPolicy: {{ .Values.seaweedfs.image.pullPolicy | default "IfNotPresent" }}
+          args:
+            - server
+            - -ip=$(POD_IP)
+            - -ip.bind=0.0.0.0
+            - -s3
+            - -s3.port=8333
+            - -s3.port.iceberg=0
+            - -s3.port.lance=0
+            - -master.telemetry=false
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-minio
+                  key: root-user
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-minio
+                  key: root-password
+          ports:
+            - name: s3
+              containerPort: 8333
+          readinessProbe:
+            httpGet:
+              path: /healthz
+              port: s3
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: s3
+            initialDelaySeconds: 30
+            periodSeconds: 15
+            timeoutSeconds: 5
+            failureThreshold: 6
+          resources:
+            {{- toYaml .Values.seaweedfs.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /data
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "nimbora.seaweedfsHost" . }}
+{{- end }}

@@ -54,6 +54,11 @@ redis:
   # For external mode, secrets.redisUrl must be set.
 
 storage:
+  # internalSeaweedfs: bundled SeaweedFS (maintained) — recommended for new
+  #   releases (see examples/).
+  # internalMinio: bundled MinIO, the default so that releases installed before
+  #   keep their store on `helm upgrade`. To move: README « Object storage ».
+  # externalMinio / s3: your own S3-compatible service.
   mode: internalMinio
   # For externalMinio mode, set externalMinio.endpoint + secrets.minioAccessKey
   # + secrets.minioSecretKey.
@@ -646,6 +651,21 @@ redisinternal:
     requests: { cpu: 50m, memory: 64Mi }
     limits: { cpu: 500m, memory: 256Mi }
 
+seaweedfs:
+  # storage.mode=internalSeaweedfs. Same pinned image as the compose files
+  # (validated on the lab). Credentials: minio.auth below (shared secret).
+  image:
+    registry: docker.io
+    repository: chrislusf/seaweedfs
+    tag: "4.55@sha256:7ca46aeae2f223b37e5d91593c17ab37738eec6df6ab69b48a0487f7643342b9"
+    pullPolicy: IfNotPresent
+  persistence:
+    size: 20Gi
+    storageClass: ""
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { cpu: "1", memory: 1Gi }
+
 minio:
   # MinIO removed its own images from quay.io and Docker Hub: Bitnami's build of
   # the last open-source release (2025-04-22), pinned like the compose files.
@@ -656,6 +676,9 @@ minio:
     repository: bitnamilegacy/minio
     tag: "2025.4.22@sha256:50cec18ac4184af4671a78aedd5554942c8ae105d51a465fa82037949046da01"
     pullPolicy: IfNotPresent
+  # With storage.mode=internalSeaweedfs: keep MinIO running while its files are
+  # copied (scripts/migrate_object_store.py), then set back to false.
+  keepDuringMigration: false
   auth:
     rootUser: minioadmin
     rootPassword: ""     # auto-generated and persisted across upgrades if empty

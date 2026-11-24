@@ -28,7 +28,7 @@
       "properties": {
         "mode": {
           "type": "string",
-          "enum": ["internalMinio", "externalMinio", "s3"]
+          "enum": ["internalSeaweedfs", "internalMinio", "externalMinio", "s3"]
         }
       },
       "required": ["mode"]

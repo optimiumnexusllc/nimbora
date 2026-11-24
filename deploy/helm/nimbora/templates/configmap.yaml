@@ -25,6 +25,14 @@ data:
   {{- if eq .Values.storage.mode "internalMinio" }}
   MINIO_ENDPOINT: {{ printf "%s:9000" (include "nimbora.minioHost" .) | quote }}
   MINIO_PUBLIC_ENDPOINT: {{ .Values.config.minioPublicEndpoint | quote }}
+  {{- else if eq .Values.storage.mode "internalSeaweedfs" }}
+  OBJECT_STORE: "seaweedfs"
+  SEAWEEDFS_ENDPOINT: {{ printf "http://%s:8333" (include "nimbora.seaweedfsHost" .) | quote }}
+  MINIO_PUBLIC_ENDPOINT: {{ .Values.config.minioPublicEndpoint | quote }}
+  {{- if .Values.minio.keepDuringMigration }}
+  {{- /* Files still recorded on MinIO are read from it until migrated. */}}
+  MINIO_ENDPOINT: {{ printf "%s:9000" (include "nimbora.minioHost" .) | quote }}
+  {{- end }}
   {{- else if eq .Values.storage.mode "externalMinio" }}
   MINIO_ENDPOINT: {{ .Values.storage.externalMinio.endpoint | quote }}
   MINIO_PUBLIC_ENDPOINT: {{ .Values.storage.externalMinio.publicEndpoint | quote }}

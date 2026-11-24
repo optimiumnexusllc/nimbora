@@ -15,11 +15,11 @@ exercised against a live cluster.
 ```bash
 cd deploy/helm/nimbora
 
-# Install with defaults (all internal deps, Gateway API exposure).
-# The bundled Postgres/Redis/MinIO are in-chart manifests (official Postgres and
-# Redis images, nimbora's MinIO build) — no `helm dependency` / subchart pull step
-# needed.
+# Install (all internal deps, Gateway API exposure, bundled SeaweedFS).
+# The bundled Postgres/Redis/SeaweedFS are in-chart manifests (official images)
+# — no `helm dependency` / subchart pull step needed.
 helm install nimbora . \
+  --set storage.mode=internalSeaweedfs \
   --set secrets.ossJwtSecret="$(openssl rand -hex 32)" \
   --set secrets.turnSecret="$(openssl rand -hex 32)" \
   --set exposure.gatewayApi.gatewayClassName=istio
@@ -77,14 +77,41 @@ silent. Each is exposed in `values.yaml` for operator override.
 - **Singleton replica counts: hard-coded.** No `replicaCount` knob
   exposed on ari-manager / campaign-orchestrator. Prevents accidental
   `kubectl scale` corrupting in-memory dedup state.
-- **MinIO browser exposure: shared host, path prefix `/voice-audio/`.**
-  Mirrors current nginx behavior. Operators wanting a separate
-  hostname can override by editing `httproute-minio.yaml` or
-  `ingress.yaml` post-install.
+- **Object-store browser exposure: shared host, path prefix `/voice-audio/`.**
+  Mirrors current nginx behavior, for SeaweedFS and MinIO alike.
+  Operators wanting a separate hostname can override by editing
+  `httproute-minio.yaml` or `ingress.yaml` post-install.
 - **NetworkPolicy: not in v1.** TODO below.
 - **ServiceMonitor / Prometheus: not in v1.** TODO below.
 - **TURN TLS (turns://): not in v1.** Original docker-compose exposed
   port 5349 but never wired certs. Chart scopes v1 to plain TURN.
+
+## Object storage
+
+| `storage.mode` | Store |
+|---|---|
+| `internalSeaweedfs` | Bundled SeaweedFS (Apache-2.0, maintained), same pinned image as the compose files. **Recommended for new releases** (the examples use it). |
+| `internalMinio` | Bundled MinIO (Bitnami's build of the last open-source release, frozen). The chart default, so that a release installed before keeps its store on `helm upgrade`. |
+| `externalMinio`, `s3` | Your own S3-compatible service. |
+
+Both bundled stores use the `<release>-minio` secret (name kept for existing
+releases) and serve signed links under `/voice-audio/`. Their volumes carry
+`helm.sh/resource-policy: keep`: changing the mode never deletes data.
+
+**Moving a release from MinIO to SeaweedFS** (MinIO stays readable during the copy):
+
+```bash
+helm upgrade nimbora . --reuse-values \
+  --set storage.mode=internalSeaweedfs --set minio.keepDuringMigration=true
+kubectl exec deploy/nimbora-web -- python -m scripts.migrate_object_store copy
+kubectl exec deploy/nimbora-web -- python -m scripts.migrate_object_store verify
+kubectl exec -it deploy/nimbora-web -- python -m scripts.migrate_object_store switch   # type BASCULER
+helm upgrade nimbora . --reuse-values --set minio.keepDuringMigration=false
+```
+
+`/api/v1/health` shows `object_store` and `legacy_minio_files` (0 after the
+switch). Play a few old recordings, then delete the kept volume by hand:
+`kubectl delete pvc <release>-minio`. Details: `docs/deployment/object-storage.mdx`.
 
 ## `/tmp` audit (review fix #6)
 

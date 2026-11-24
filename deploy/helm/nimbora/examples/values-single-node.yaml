@@ -5,8 +5,10 @@ database:
   mode: internal
 redis:
   mode: internal
+# Object store: bundled SeaweedFS. A release installed before with these values
+# ran MinIO: keep `internalMinio` or migrate first (README « Object storage »).
 storage:
-  mode: internalMinio
+  mode: internalSeaweedfs
 exposure:
   mode: ingress
   ingress:
@@ -56,6 +58,6 @@ postgresql:
 redisinternal:
   persistence:
     size: 1Gi
-minio:
+seaweedfs:
   persistence:
     size: 5Gi

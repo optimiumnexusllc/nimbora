@@ -97,6 +97,22 @@ In-cluster service references for internal deps.
 {{- define "nimbora.postgresHost" -}}{{ .Release.Name }}-postgresql{{- end }}
 {{- define "nimbora.redisHost" -}}{{ .Release.Name }}-redisinternal-master{{- end }}
 {{- define "nimbora.minioHost" -}}{{ .Release.Name }}-minio{{- end }}
+{{- define "nimbora.seaweedfsHost" -}}{{ .Release.Name }}-seaweedfs{{- end }}
+
+{{/*
+Bundled object store. internalSeaweedfs is the maintained one; internalMinio
+stays for releases installed before it. During a migration
+(storage.mode=internalSeaweedfs + minio.keepDuringMigration=true) MinIO keeps
+running so files not yet copied stay readable. Both share the <release>-minio
+credentials (name kept for existing releases): links signed before the switch
+stay valid once the files are copied.
+*/}}
+{{- define "nimbora.bundledStore" -}}
+{{- if or (eq .Values.storage.mode "internalMinio") (eq .Values.storage.mode "internalSeaweedfs") -}}true{{- end -}}
+{{- end }}
+{{- define "nimbora.runMinio" -}}
+{{- if or (eq .Values.storage.mode "internalMinio") (and (eq .Values.storage.mode "internalSeaweedfs") .Values.minio.keepDuringMigration) -}}true{{- end -}}
+{{- end }}
 
 {{/*
 Resolved passwords for the bundled internal deps.
@@ -200,9 +216,9 @@ ship with a literal "$(POSTGRES_PASSWORD)" as the password.
   value: {{ include "nimbora.databaseUrl" . | quote }}
 - name: REDIS_URL
   value: {{ include "nimbora.redisUrl" . | quote }}
-{{- if eq .Values.storage.mode "internalMinio" }}
-{{- /* Internal MinIO creds come from the <release>-minio secret, the same
-       source the MinIO server uses (no ordering constraint — no composition). */}}
+{{- if include "nimbora.bundledStore" . }}
+{{- /* Bundled store creds (MinIO or SeaweedFS) come from the <release>-minio
+       secret, the same source the server uses (no ordering constraint). */}}
 - name: MINIO_ACCESS_KEY
   valueFrom:
     secretKeyRef:
