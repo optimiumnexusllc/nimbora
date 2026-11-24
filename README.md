@@ -320,7 +320,7 @@ flowchart LR
     worker -- feed en direct, commandes --> redis[(Redis)]
     api -- supervision --> redis
     api --> pg[(PostgreSQL<br/>+ pgvector)]
-    api --> s3[(MinIO / S3<br/>enregistrements)]
+    api --> s3[(SeaweedFS / S3<br/>enregistrements)]
     ui[Interface Next.js<br/>console, softphone] --> api
     agent((Conseiller)) -- WebRTC --> ast
     caller -- SIP --> pbx[PBX d'entreprise<br/>marque blanche]
@@ -331,7 +331,7 @@ flowchart LR
 
 | Dossier | Contenu |
 |---|---|
-| `api/` | Backend FastAPI (Python 3.13), PostgreSQL + pgvector, Redis / ARQ, MinIO |
+| `api/` | Backend FastAPI (Python 3.13), PostgreSQL + pgvector, Redis / ARQ, stockage S3 (SeaweedFS par défaut) |
 | `api/services/supervision/` | Appels en direct (Redis), actions du superviseur, état Asterisk, flux temps réel (WebSocket) |
 | `api/services/contact_center/` | Files, postes, passations, rappels, configuration Asterisk générée |
 | `api/services/customer_memory/` | Mémoire client |
@@ -551,7 +551,7 @@ Légende : ✅ livré · 🧪 livré, à valider sur une installation réelle ·
 | 🔜 | Haute disponibilité du PBX (serveur de secours, bascule) |
 | ✅ | **Sécurité du stockage** : le bucket des enregistrements est désormais **privé** (la politique anonyme lecture/écriture/liste des versions précédentes, joignable par `/voice-audio/`, est retirée au démarrage) ; tous les liens de téléchargement et d'envoi sont **signés et expirent**, calculés pour l'adresse publique |
 | ✅ | **Sortie de MinIO vers un stockage S3 maintenu** (Scaleway, OVHcloud, Cloudflare R2, Wasabi, AWS, SeaweedFS, Garage) : outil `scripts/migrate_object_store.py` copy / verify / switch (reprise sans doublon, vérification des tailles, bascule de la base), liens signés pour l'adresse publique (`S3_PUBLIC_ENDPOINT_URL`) |
-| 🧪 | **Stockage objet auto-hébergé maintenu par défaut : SeaweedFS** (Apache-2.0) dans `docker-compose.yaml` et le kit du laboratoire ; MinIO, figé depuis le retrait de ses images publiques, n'est plus démarré que pour les installations existantes (profil `minio`, détecté par les scripts de mise à jour : aucune installation n'est envoyée vers un stockage vide) jusqu'à leur migration (copy, verify, switch, puis `MINIO_RETIRED=true`) ; `/api/v1/health` indique `object_store` et les fichiers restés sur MinIO ([doc](docs/deployment/object-storage.mdx)). À valider sur le laboratoire ; la pile `deploy/enterprise` et le chart Helm suivront |
+| ✅ | **Stockage objet auto-hébergé maintenu par défaut : SeaweedFS** (Apache-2.0) dans `docker-compose.yaml` et le kit du laboratoire ; MinIO, figé depuis le retrait de ses images publiques, n'est plus démarré que pour les installations existantes (profil `minio`, détecté par les scripts de mise à jour : aucune installation n'est envoyée vers un stockage vide) jusqu'à leur migration (copy, verify, switch, puis `MINIO_RETIRED=true`) ; `/api/v1/health` indique `object_store` et les fichiers restés sur MinIO ([doc](docs/deployment/object-storage.mdx)). Validé sur le laboratoire (étape 20 : migration sans perte, liens signés, MinIO arrêté, volume conservé). 🧪 La pile `deploy/enterprise` et le chart Helm restent sur MinIO pour l'instant |
 
 **5.5 Marque blanche totale du PBX**
 
