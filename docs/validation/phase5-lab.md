@@ -1024,6 +1024,21 @@ l'image : **`chrislusf/seaweedfs:4.55@sha256:7ca46aeae2f223b37e5d91593c17ab37738
 | (2) Conteneurs | ✅ sortie du kit de l'opérateur : `docker ps -a … \| grep -c nimbora_minio` → `0`, volume `nimbora-lab_minio-data` toujours listé ; `nimbora_seaweedfs` healthy |
 | (3) Document téléversé puis relu, MinIO arrêté pour de bon | ✅ `PUT` 200 (« SeaweedFS 30GB 4.55 »), `process-document` 200, relecture par lien signé 200 `text/plain`, 403 sans signature ; document supprimé, 0 restant |
 
+## Rapport d'étape 21 — PR #28 « charte de l'interface » et PR #30 « contrôle des mentions du moteur » (24 novembre 2026)
+
+Déployé par l'opérateur : `feat/ui-charter` (`dadc44f`) avec une charte d'essai (`BRAND_NAME=Acme Voix`,
+symbole et favicon `/brand-assets/acme-mark.svg`, couleur `#0a7d4f`, dégradé `#0a7d4f,#11a36b,#7bd389`).
+Session sans `sudo` ni `docker` : requêtes HTTP et Chromium sans interface. Sans fusion.
+
+| Étape | Résultat |
+|---|---|
+| (1) `GET /api/v1/health` | ✅ `build_commit: "dadc44f"` (une première lecture, avant le déploiement, donnait `8997cd8` et une page sans charte : sans objet) |
+| (2) `GET /auth/login` | ✅ `<title>` « Acme Voix — Centre d'appels IA » ; `<style id="brand-charter">` avec `--primary: #0a7d4f` et les trois couleurs du dégradé ; `<link rel="icon" href="/brand-assets/acme-mark.svg">` (et `apple-touch-icon` identique) ; 14 occurrences de « Acme Voix », aucune « NIMBORA » visible. ⚠️ une occurrence « NIMBORA » subsiste dans les données de la page : `pbxName: "NIMBORA Voice"`, nom du PBX laissé par défaut par la charte d'essai (variable `PBX_NAME`), non affiché sur la page de connexion |
+| (3) `GET /brand-assets/acme-mark.svg` | ✅ 200, `content-type: image/svg+xml`, `x-content-type-options: nosniff`, `content-security-policy: default-src 'none'; style-src 'unsafe-inline'; sandbox` |
+| (3) `GET /brand-assets/../.env` et `/brand-assets/secrets.env` | ⚠️ **307 vers `/auth/login`** (puis 200 sur la page de connexion), et non 404 : l'intergiciel d'authentification de l'UI intercepte ces chemins avant la route des fichiers de charte (le `..` ramène à `/.env`, et `secrets.env` n'a pas une extension de fichier de charte). Rien n'est servi, aucun contenu ne fuit ; le code attendu était 404. `/brand-assets/nope.svg` (nom inconnu, bonne extension) → **404** |
+| (4) Capture de `/auth/login` (Chromium sans interface, `login-acme.png`) | ✅ logo `acme-mark.svg` (alt « Acme Voix ») en haut et dans le panneau ; bouton « Se connecter » en vert `rgb(10, 125, 79)` avec dégradé `#0a7d4f → #11a36b → #7bd389` ; aucune image ni attribut mentionnant NIMBORA ; accroche « Le centre d'appels qui pense, parle et décide. » |
+| (5) Contrôle des mentions du moteur (PR #30) | ⏳ **sortie non transmise à la session** : aucune ligne MENTION/ERREUR ni code de sortie à rapporter pour l'instant ; rien n'a été modifié sur le PBX |
+
 ## Fournisseurs d'IA : combinaison à paliers gratuits (analyse du code, 21 novembre 2026)
 
 Aucune clé n'est disponible pour cette validation. Les clés se saisissent **dans la console**
